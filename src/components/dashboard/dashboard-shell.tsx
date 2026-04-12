@@ -45,7 +45,9 @@ export function DashboardShell({ rows }: { rows: EnergyRow[] }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-muted">
-            {metrics.dateStart && metrics.dateEnd ? `${shortDate(metrics.dateStart)} to ${shortDate(metrics.dateEnd)}` : "No data loaded"}
+            {metrics.dateStart && metrics.dateEnd
+              ? `${shortDate(metrics.dateStart)} to ${shortDate(metrics.dateEnd)}`
+              : "No data loaded"}
           </p>
           <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
             A clearer view of your LiveMopay usage and spend.
@@ -54,7 +56,13 @@ export function DashboardShell({ rows }: { rows: EnergyRow[] }) {
         <RefreshCapture />
       </div>
 
-      <FilterBar from={from} to={to} quickRange={quickRange} onDateChange={updateDates} onQuickRange={updateQuickRange} />
+      <FilterBar
+        from={from}
+        to={to}
+        quickRange={quickRange}
+        onDateChange={updateDates}
+        onQuickRange={updateQuickRange}
+      />
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
@@ -62,7 +70,11 @@ export function DashboardShell({ rows }: { rows: EnergyRow[] }) {
           value={formatCurrency(metrics.totalSpend)}
           detail={`incl. ${formatCurrency(metrics.totalFixedSpend)} fixed`}
         />
-        <MetricCard label="Total usage" value={formatKwh(metrics.totalKwh)} detail={`${formatKwh(metrics.averageKwhPerDay)} per day`} />
+        <MetricCard
+          label="Total usage"
+          value={formatKwh(metrics.totalKwh)}
+          detail={`${formatKwh(metrics.averageKwhPerDay)} per day`}
+        />
         <MetricCard
           label="Effective rate"
           value={formatTariff(metrics.energyCostPerKwh)}

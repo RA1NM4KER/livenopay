@@ -1,6 +1,16 @@
 "use client";
 
-import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
 import type { DailyPoint } from "@/lib/types";
 import { formatCurrency, shortDate } from "@/lib/format";
 import { ChartShell } from "./chart-shell";

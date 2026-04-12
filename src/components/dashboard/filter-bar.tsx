@@ -4,15 +4,7 @@ import type { QuickRange } from "@/lib/filters";
 
 const ranges: QuickRange[] = ["7d", "30d", "90d", "all"];
 
-function IsoDateInput({
-  label,
-  value,
-  onChange
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
+function IsoDateInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
     <label className="flex items-center gap-2 text-sm text-muted">
       {label}
@@ -26,7 +18,11 @@ function IsoDateInput({
           stroke="currentColor"
           strokeWidth="1.8"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v3M17 3v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M7 3v3M17 3v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+          />
         </svg>
         <input
           aria-label={label}

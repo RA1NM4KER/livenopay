@@ -5,15 +5,7 @@ import type { HourlyPoint } from "@/lib/types";
 import { formatCurrency, formatKwh } from "@/lib/format";
 import { ChartShell } from "./chart-shell";
 
-export function HourlyChart({
-  data,
-  metric,
-  title
-}: {
-  data: HourlyPoint[];
-  metric: "spend" | "kwh";
-  title: string;
-}) {
+export function HourlyChart({ data, metric, title }: { data: HourlyPoint[]; metric: "spend" | "kwh"; title: string }) {
   return (
     <ChartShell title={title} eyebrow="Hour of day">
       <ResponsiveContainer height="100%" width="100%">
@@ -23,7 +15,10 @@ export function HourlyChart({
           <YAxis tickLine={false} axisLine={false} width={48} />
           <Tooltip
             contentStyle={{ borderColor: "#e4e0d7", borderRadius: 8, boxShadow: "0 10px 30px rgba(36,35,31,.08)" }}
-            formatter={(value) => [metric === "spend" ? formatCurrency(Number(value)) : formatKwh(Number(value)), metric]}
+            formatter={(value) => [
+              metric === "spend" ? formatCurrency(Number(value)) : formatKwh(Number(value)),
+              metric
+            ]}
           />
           <Bar dataKey={metric} fill={metric === "spend" ? "#c7b991" : "#bfc9b6"} radius={[4, 4, 0, 0]} />
         </BarChart>

@@ -70,7 +70,9 @@ function SortHeader({
         type="button"
       >
         <span>{label}</span>
-        <span className={`${active ? "text-ink" : "text-muted/60"}`}>{active ? (direction === "asc" ? "↑" : "↓") : "↕"}</span>
+        <span className={`${active ? "text-ink" : "text-muted/60"}`}>
+          {active ? (direction === "asc" ? "↑" : "↓") : "↕"}
+        </span>
       </button>
     </th>
   );
@@ -85,30 +87,27 @@ export function DataTable({ rows }: { rows: EnergyRow[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("captured");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  const filtered = useMemo(
-    () => {
-      const accessor = sortAccessors[sortKey];
+  const filtered = useMemo(() => {
+    const accessor = sortAccessors[sortKey];
 
-      return filterRowsByRange(rows, from, to)
-        .filter((row) => matchesSearch(row, query))
-        .slice()
-        .sort((left, right) => {
-          const primary = compareValues(accessor(left), accessor(right));
-          const directed = sortDirection === "asc" ? primary : -primary;
+    return filterRowsByRange(rows, from, to)
+      .filter((row) => matchesSearch(row, query))
+      .slice()
+      .sort((left, right) => {
+        const primary = compareValues(accessor(left), accessor(right));
+        const directed = sortDirection === "asc" ? primary : -primary;
 
-          if (directed !== 0) {
-            return directed;
-          }
+        if (directed !== 0) {
+          return directed;
+        }
 
-          if (right.ledgerTimestamp !== left.ledgerTimestamp) {
-            return right.ledgerTimestamp - left.ledgerTimestamp;
-          }
+        if (right.ledgerTimestamp !== left.ledgerTimestamp) {
+          return right.ledgerTimestamp - left.ledgerTimestamp;
+        }
 
-          return right.periodTimestamp - left.periodTimestamp;
-        });
-    },
-    [from, query, rows, sortDirection, sortKey, to]
-  );
+        return right.periodTimestamp - left.periodTimestamp;
+      });
+  }, [from, query, rows, sortDirection, sortKey, to]);
 
   function updateSort(nextKey: SortKey) {
     if (nextKey === sortKey) {
@@ -151,7 +150,13 @@ export function DataTable({ rows }: { rows: EnergyRow[] }) {
         </label>
       </div>
 
-      <FilterBar from={from} to={to} quickRange={quickRange} onDateChange={updateDates} onQuickRange={updateQuickRange} />
+      <FilterBar
+        from={from}
+        to={to}
+        quickRange={quickRange}
+        onDateChange={updateDates}
+        onQuickRange={updateQuickRange}
+      />
 
       <Card>
         <CardHeader title="Transactions" eyebrow="CSV" />
@@ -159,14 +164,66 @@ export function DataTable({ rows }: { rows: EnergyRow[] }) {
           <table className="w-full min-w-[860px] border-collapse text-left text-sm">
             <thead className="border-b border-line bg-canvas text-xs uppercase tracking-[0.16em] text-muted">
               <tr>
-                <SortHeader label="Period" sortKey="period" activeKey={sortKey} direction={sortDirection} onSort={updateSort} />
-                <SortHeader label="Type" sortKey="type" activeKey={sortKey} direction={sortDirection} onSort={updateSort} />
-                <SortHeader label="Band" sortKey="band" activeKey={sortKey} direction={sortDirection} onSort={updateSort} />
-                <SortHeader label="kWh" sortKey="kwh" align="right" activeKey={sortKey} direction={sortDirection} onSort={updateSort} />
-                <SortHeader label="Tariff" sortKey="tariff" align="right" activeKey={sortKey} direction={sortDirection} onSort={updateSort} />
-                <SortHeader label="Cost / amount" sortKey="amount" align="right" activeKey={sortKey} direction={sortDirection} onSort={updateSort} />
-                <SortHeader label="Balance" sortKey="balance" align="right" activeKey={sortKey} direction={sortDirection} onSort={updateSort} />
-                <SortHeader label="Captured" sortKey="captured" activeKey={sortKey} direction={sortDirection} onSort={updateSort} />
+                <SortHeader
+                  label="Period"
+                  sortKey="period"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={updateSort}
+                />
+                <SortHeader
+                  label="Type"
+                  sortKey="type"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={updateSort}
+                />
+                <SortHeader
+                  label="Band"
+                  sortKey="band"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={updateSort}
+                />
+                <SortHeader
+                  label="kWh"
+                  sortKey="kwh"
+                  align="right"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={updateSort}
+                />
+                <SortHeader
+                  label="Tariff"
+                  sortKey="tariff"
+                  align="right"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={updateSort}
+                />
+                <SortHeader
+                  label="Cost / amount"
+                  sortKey="amount"
+                  align="right"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={updateSort}
+                />
+                <SortHeader
+                  label="Balance"
+                  sortKey="balance"
+                  align="right"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={updateSort}
+                />
+                <SortHeader
+                  label="Captured"
+                  sortKey="captured"
+                  activeKey={sortKey}
+                  direction={sortDirection}
+                  onSort={updateSort}
+                />
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -181,7 +238,10 @@ export function DataTable({ rows }: { rows: EnergyRow[] }) {
                 const tariffDisplay = row.chargeKind === "energy" ? formatTariff(row.tariff) : "--";
 
                 return (
-                  <tr className="transition hover:bg-canvas/70" key={`${row.periodDateTime}-${row.balance}-${row.cost}`}>
+                  <tr
+                    className="transition hover:bg-canvas/70"
+                    key={`${row.periodDateTime}-${row.balance}-${row.cost}`}
+                  >
                     <td className="px-4 py-3 font-medium text-ink">{row.periodDateTime.replace("T", " ")}</td>
                     <td className="px-4 py-3">
                       <span className="rounded bg-canvas px-2 py-1 text-xs font-medium uppercase tracking-[0.12em] text-muted">

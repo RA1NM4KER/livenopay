@@ -61,12 +61,7 @@ export function DailyKwhChart({ data }: { data: DailyPoint[] }) {
             labelFormatter={(label) => shortDate(String(label))}
           />
           <Bar dataKey="kwh" stackId="day" fill="#bfc9b6" radius={[4, 4, 0, 0]} />
-          <Bar
-            dataKey="projectedKwhRemainder"
-            stackId="day"
-            fill="transparent"
-            shape={<ProjectedBarShape />}
-          />
+          <Bar dataKey="projectedKwhRemainder" stackId="day" fill="transparent" shape={<ProjectedBarShape />} />
         </BarChart>
       </ResponsiveContainer>
     </ChartShell>

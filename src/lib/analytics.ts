@@ -53,7 +53,8 @@ function buildDaily(rows: EnergyRow[]): DailyPoint[] {
         cumulativeSpend: round(cumulativeSpend),
         energyIntervals,
         isComplete,
-        projectedSpend: !isComplete && energyIntervals > 0 ? round((energySpend / energyIntervals) * 48 + fixedSpend) : undefined,
+        projectedSpend:
+          !isComplete && energyIntervals > 0 ? round((energySpend / energyIntervals) * 48 + fixedSpend) : undefined,
         projectedKwh: !isComplete && energyIntervals > 0 ? round((kwh / energyIntervals) * 48) : undefined
       };
     });
@@ -177,7 +178,12 @@ function previousTrend(daily: DailyPoint[]) {
   return ((recentAverage - previousAverage) / previousAverage) * 100;
 }
 
-function buildInsights(rows: EnergyRow[], daily: DailyPoint[], hourly: HourlyPoint[], tariffTimeline: TariffPoint[]): Insight[] {
+function buildInsights(
+  rows: EnergyRow[],
+  daily: DailyPoint[],
+  hourly: HourlyPoint[],
+  tariffTimeline: TariffPoint[]
+): Insight[] {
   const energyRows = rows.filter((row) => row.chargeKind === "energy");
   const fixedSpend = sum(rows.filter((row) => row.chargeKind === "fixed").map((row) => row.cost));
   const topSpendHour = maxBy(hourly, (hour) => hour.spend);

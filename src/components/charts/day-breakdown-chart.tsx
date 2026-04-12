@@ -76,8 +76,21 @@ export function DayBreakdownChart({
             <BarChart data={intervalData} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
               <CartesianGrid stroke="#e4e0d7" vertical={false} />
               <XAxis dataKey="time" interval={3} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="spend" tickFormatter={(value) => `R${value}`} tickLine={false} axisLine={false} width={48} />
-              <YAxis yAxisId="kwh" orientation="right" tickFormatter={(value) => `${value}`} tickLine={false} axisLine={false} width={42} />
+              <YAxis
+                yAxisId="spend"
+                tickFormatter={(value) => `R${value}`}
+                tickLine={false}
+                axisLine={false}
+                width={48}
+              />
+              <YAxis
+                yAxisId="kwh"
+                orientation="right"
+                tickFormatter={(value) => `${value}`}
+                tickLine={false}
+                axisLine={false}
+                width={42}
+              />
               <Tooltip
                 contentStyle={{ borderColor: "#e4e0d7", borderRadius: 8, boxShadow: "0 10px 30px rgba(36,35,31,.08)" }}
                 formatter={(value, name) => [
