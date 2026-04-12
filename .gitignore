@@ -1,0 +1,11 @@
+.next
+node_modules
+out
+dist
+.DS_Store
+*.log
+.idea
+__pycache__
+*.pyc
+livemopay_dumps
+livemopay_energy.csv
