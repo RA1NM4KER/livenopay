@@ -112,7 +112,7 @@ export function RefreshCapture() {
     <div className="relative flex flex-wrap items-center gap-3">
       <div className="relative flex w-48">
         <button
-          className="flex-1 rounded-l-md border border-ink bg-ink px-4 py-2 text-sm font-medium text-paper transition hover:bg-[#35332d] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex-1 rounded-l-md border border-ink bg-ink px-4 py-2 text-sm font-medium text-paper transition hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={status === "running"}
           onClick={() => runCapture("incremental")}
           type="button"
@@ -122,7 +122,7 @@ export function RefreshCapture() {
         <button
           aria-expanded={menuOpen}
           aria-label="Capture options"
-          className="inline-flex items-center rounded-r-md border border-l-paper/20 border-ink bg-ink px-3 py-2 text-sm font-medium text-paper transition hover:bg-[#35332d] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center rounded-r-md border border-l-paper/20 border-ink bg-ink px-3 py-2 text-sm font-medium text-paper transition hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-60"
           disabled={status === "running"}
           onClick={() => setMenuOpen((open) => !open)}
           type="button"
@@ -154,7 +154,7 @@ export function RefreshCapture() {
       {toast ? (
         <div
           className={`fixed right-4 top-4 z-50 w-[min(22rem,calc(100vw-2rem))] rounded-lg border p-4 shadow-soft ${
-            toast.tone === "error" ? "border-[#d6b8b0] bg-roseSoft" : "border-line bg-paper"
+            toast.tone === "error" ? "border-projection/50 bg-roseSoft" : "border-line bg-paper"
           }`}
           role="status"
         >

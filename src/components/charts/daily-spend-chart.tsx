@@ -34,7 +34,7 @@ export function DailySpendChart({ data }: { data: DailyPoint[] }) {
     >
       <ResponsiveContainer height="100%" width="100%">
         <ComposedChart data={chartData} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
-          <CartesianGrid stroke="#e4e0d7" vertical={false} />
+          <CartesianGrid stroke="rgb(var(--color-line))" vertical={false} />
           <XAxis dataKey="date" tickFormatter={shortDate} tickLine={false} axisLine={false} />
           <YAxis tickFormatter={(value) => `R${value}`} tickLine={false} axisLine={false} width={48} />
           <Tooltip
@@ -68,18 +68,18 @@ export function DailySpendChart({ data }: { data: DailyPoint[] }) {
           <Area
             type="monotone"
             dataKey="actualSpend"
-            stroke="#6f7f6b"
-            fill="#dfe6d9"
+            stroke="rgb(var(--color-accent))"
+            fill="rgb(var(--color-accent-soft))"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: "#6f7f6b", stroke: "#f8f7f3", strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: "rgb(var(--color-accent))", stroke: "rgb(var(--color-paper))", strokeWidth: 2 }}
           />
           <Line
             dataKey="currentSpend"
             stroke="transparent"
             strokeWidth={8}
-            dot={{ r: 4, fill: "#6f7f6b", stroke: "#f8f7f3", strokeWidth: 2 }}
-            activeDot={{ r: 5, fill: "#6f7f6b", stroke: "#f8f7f3", strokeWidth: 2 }}
+            dot={{ r: 4, fill: "rgb(var(--color-accent))", stroke: "rgb(var(--color-paper))", strokeWidth: 2 }}
+            activeDot={{ r: 5, fill: "rgb(var(--color-accent))", stroke: "rgb(var(--color-paper))", strokeWidth: 2 }}
           />
           <Line dataKey="projectedSpendValue" stroke="transparent" strokeWidth={8} dot={false} activeDot={false} />
           {projectedDay ? (
@@ -90,7 +90,7 @@ export function DailySpendChart({ data }: { data: DailyPoint[] }) {
                 { x: previousDay?.date ?? projectedDay.date, y: previousDay?.spend ?? projectedDay.spend },
                 { x: projectedDay.date, y: projectedDay.projectedSpend }
               ]}
-              stroke="#8f7669"
+              stroke="rgb(var(--color-projection))"
               strokeDasharray="3 4"
               strokeWidth={2.4}
             />

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ThemeToggle } from "./theme-toggle";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -9,14 +10,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="text-xs font-medium uppercase tracking-[0.26em] text-muted">Livenopay</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">Electricity ledger</h1>
         </Link>
-        <nav className="flex items-center gap-2 rounded-lg border border-line bg-paper p-1 text-sm text-muted">
-          <Link className="rounded-md px-3 py-2 transition hover:bg-canvas hover:text-ink" href="/">
-            Dashboard
-          </Link>
-          <Link className="rounded-md px-3 py-2 transition hover:bg-canvas hover:text-ink" href="/data">
-            Data
-          </Link>
-        </nav>
+        <div className="flex flex-wrap items-center gap-2">
+          <nav className="flex items-center gap-2 rounded-lg border border-line bg-paper p-1 text-sm text-muted">
+            <Link className="rounded-md px-3 py-2 transition hover:bg-canvas hover:text-ink" href="/">
+              Dashboard
+            </Link>
+            <Link className="rounded-md px-3 py-2 transition hover:bg-canvas hover:text-ink" href="/data">
+              Data
+            </Link>
+          </nav>
+          <ThemeToggle />
+        </div>
       </header>
       {children}
     </main>

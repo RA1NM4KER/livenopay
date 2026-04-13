@@ -10,14 +10,20 @@ export function TariffChart({ data }: { data: TariffPoint[] }) {
     <ChartShell title="Tariff bands" eyebrow="Daily average">
       <ResponsiveContainer height="100%" width="100%">
         <LineChart data={data} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
-          <CartesianGrid stroke="#e4e0d7" vertical={false} />
+          <CartesianGrid stroke="rgb(var(--color-line))" vertical={false} />
           <XAxis dataKey="dateLabel" tickLine={false} axisLine={false} />
           <YAxis tickFormatter={(value) => `R${value}`} tickLine={false} axisLine={false} width={52} />
           <Tooltip
-            contentStyle={{ borderColor: "#e4e0d7", borderRadius: 8, boxShadow: "0 10px 30px rgba(36,35,31,.08)" }}
+            contentStyle={{
+              backgroundColor: "rgb(var(--color-paper))",
+              borderColor: "rgb(var(--color-line))",
+              borderRadius: 8,
+              boxShadow: "var(--shadow-soft)",
+              color: "rgb(var(--color-ink))"
+            }}
             formatter={(value) => [formatTariff(Number(value)), "Tariff"]}
           />
-          <Line type="monotone" dataKey="tariff" stroke="#8f7669" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="tariff" stroke="rgb(var(--color-projection))" strokeWidth={2} dot={{ r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
     </ChartShell>

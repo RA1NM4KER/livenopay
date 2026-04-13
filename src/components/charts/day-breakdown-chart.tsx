@@ -74,7 +74,7 @@ export function DayBreakdownChart({
         <div className="h-80">
           <ResponsiveContainer height="100%" width="100%">
             <BarChart data={intervalData} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
-              <CartesianGrid stroke="#e4e0d7" vertical={false} />
+              <CartesianGrid stroke="rgb(var(--color-line))" vertical={false} />
               <XAxis dataKey="time" interval={3} tickLine={false} axisLine={false} />
               <YAxis
                 yAxisId="spend"
@@ -92,14 +92,20 @@ export function DayBreakdownChart({
                 width={42}
               />
               <Tooltip
-                contentStyle={{ borderColor: "#e4e0d7", borderRadius: 8, boxShadow: "0 10px 30px rgba(36,35,31,.08)" }}
+                contentStyle={{
+                  backgroundColor: "rgb(var(--color-paper))",
+                  borderColor: "rgb(var(--color-line))",
+                  borderRadius: 8,
+                  boxShadow: "var(--shadow-soft)",
+                  color: "rgb(var(--color-ink))"
+                }}
                 formatter={(value, name) => [
                   name === "spend" ? formatCurrency(Number(value)) : formatKwh(Number(value)),
                   name === "spend" ? "Spend" : "Usage"
                 ]}
               />
-              <Bar yAxisId="spend" dataKey="spend" fill="#c7b991" radius={[4, 4, 0, 0]} />
-              <Bar yAxisId="kwh" dataKey="kwh" fill="#bfc9b6" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="spend" dataKey="spend" fill="rgb(var(--color-spend))" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="kwh" dataKey="kwh" fill="rgb(var(--color-usage))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

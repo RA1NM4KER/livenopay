@@ -32,7 +32,7 @@ function ProjectedBarShape({ x = 0, y = 0, width = 0, height = 0 }: ProjectedBar
         `L ${right} ${bottom}`
       ].join(" ")}
       fill="none"
-      stroke="#8f7669"
+      stroke="rgb(var(--color-projection))"
       strokeDasharray="3 3"
       strokeWidth={1.8}
     />
@@ -49,18 +49,24 @@ export function DailyKwhChart({ data }: { data: DailyPoint[] }) {
     <ChartShell title="Daily usage" eyebrow="kWh">
       <ResponsiveContainer height="100%" width="100%">
         <BarChart data={chartData} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
-          <CartesianGrid stroke="#e4e0d7" vertical={false} />
+          <CartesianGrid stroke="rgb(var(--color-line))" vertical={false} />
           <XAxis dataKey="date" tickFormatter={shortDate} tickLine={false} axisLine={false} />
           <YAxis tickFormatter={(value) => `${value}`} tickLine={false} axisLine={false} width={42} />
           <Tooltip
-            contentStyle={{ borderColor: "#e4e0d7", borderRadius: 8, boxShadow: "0 10px 30px rgba(36,35,31,.08)" }}
+            contentStyle={{
+              backgroundColor: "rgb(var(--color-paper))",
+              borderColor: "rgb(var(--color-line))",
+              borderRadius: 8,
+              boxShadow: "var(--shadow-soft)",
+              color: "rgb(var(--color-ink))"
+            }}
             formatter={(value, name) => [
               formatKwh(Number(value)),
               name === "projectedKwhRemainder" ? "Projected remaining" : "Usage"
             ]}
             labelFormatter={(label) => shortDate(String(label))}
           />
-          <Bar dataKey="kwh" stackId="day" fill="#bfc9b6" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="kwh" stackId="day" fill="rgb(var(--color-usage))" radius={[4, 4, 0, 0]} />
           <Bar dataKey="projectedKwhRemainder" stackId="day" fill="transparent" shape={<ProjectedBarShape />} />
         </BarChart>
       </ResponsiveContainer>

@@ -230,9 +230,9 @@ export function DataTable({ rows }: { rows: EnergyRow[] }) {
               {filtered.map((row) => {
                 const amountClass =
                   row.chargeKind === "topup"
-                    ? "font-medium text-[#2f8f46]"
+                    ? "font-medium text-success"
                     : row.chargeKind === "fixed"
-                      ? "font-medium text-[#2f6fa3]"
+                      ? "font-medium text-fixed"
                       : "text-ink";
                 const kwhDisplay = row.chargeKind === "energy" ? formatKwh(row.kwh) : "--";
                 const tariffDisplay = row.chargeKind === "energy" ? formatTariff(row.tariff) : "--";

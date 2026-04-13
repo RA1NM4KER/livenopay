@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,18 +10,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        canvas: "#f7f6f2",
-        paper: "#fffefa",
-        ink: "#24231f",
-        muted: "#77736a",
-        line: "#e4e0d7",
-        accent: "#6f7f6b",
-        accentSoft: "#dfe6d9",
-        amberSoft: "#ece0c7",
-        roseSoft: "#ead9d3"
+        canvas: "rgb(var(--color-canvas) / <alpha-value>)",
+        paper: "rgb(var(--color-paper) / <alpha-value>)",
+        ink: "rgb(var(--color-ink) / <alpha-value>)",
+        muted: "rgb(var(--color-muted) / <alpha-value>)",
+        line: "rgb(var(--color-line) / <alpha-value>)",
+        accent: "rgb(var(--color-accent) / <alpha-value>)",
+        accentSoft: "rgb(var(--color-accent-soft) / <alpha-value>)",
+        amberSoft: "rgb(var(--color-amber-soft) / <alpha-value>)",
+        roseSoft: "rgb(var(--color-rose-soft) / <alpha-value>)",
+        success: "rgb(var(--color-success) / <alpha-value>)",
+        fixed: "rgb(var(--color-fixed) / <alpha-value>)",
+        projection: "rgb(var(--color-projection) / <alpha-value>)",
+        spend: "rgb(var(--color-spend) / <alpha-value>)",
+        usage: "rgb(var(--color-usage) / <alpha-value>)"
       },
       boxShadow: {
-        soft: "0 18px 50px rgba(36, 35, 31, 0.07)"
+        soft: "var(--shadow-soft)"
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"]
