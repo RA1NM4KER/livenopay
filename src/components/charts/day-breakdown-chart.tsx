@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardHeader } from "@/components/ui/card";
 import { formatCurrency, formatKwh } from "@/lib/format";
@@ -35,6 +36,34 @@ function buildIntervalPoints(rows: EnergyRow[], selectedDate: string) {
   });
 }
 
+function roundedCeiling(value: number, step: number) {
+  return Math.max(step, Math.ceil(value / step) * step);
+}
+
+function buildStableAxisDomains(rows: EnergyRow[]) {
+  const intervalTotals = new Map<string, { spend: number; kwh: number }>();
+
+  rows
+    .filter((row) => row.chargeKind === "energy")
+    .forEach((row) => {
+      const key = `${row.periodDate}-${row.periodTime}`;
+      const total = intervalTotals.get(key) ?? { spend: 0, kwh: 0 };
+
+      total.spend += row.cost;
+      total.kwh += row.kwh;
+      intervalTotals.set(key, total);
+    });
+
+  const values = Array.from(intervalTotals.values());
+  const maxSpend = Math.max(0, ...values.map((value) => value.spend));
+  const maxKwh = Math.max(0, ...values.map((value) => value.kwh));
+
+  return {
+    spend: roundedCeiling(maxSpend, 1),
+    kwh: roundedCeiling(maxKwh, 0.5)
+  };
+}
+
 function sum(rows: EnergyRow[], key: "cost" | "kwh") {
   return rows.reduce((total, row) => total + row[key], 0);
 }
@@ -52,6 +81,7 @@ export function DayBreakdownChart({
   const energyRows = dayRows.filter((row) => row.chargeKind === "energy");
   const fixedRows = dayRows.filter((row) => row.chargeKind === "fixed");
   const intervalData = buildIntervalPoints(rows, selectedDate);
+  const axisDomains = useMemo(() => buildStableAxisDomains(rows), [rows]);
   const energySpend = sum(energyRows, "cost");
   const fixedSpend = sum(fixedRows, "cost");
   const usage = sum(energyRows, "kwh");
@@ -78,6 +108,7 @@ export function DayBreakdownChart({
               <XAxis dataKey="time" interval={3} tickLine={false} axisLine={false} />
               <YAxis
                 yAxisId="spend"
+                domain={[0, axisDomains.spend]}
                 tickFormatter={(value) => `R${value}`}
                 tickLine={false}
                 axisLine={false}
@@ -85,6 +116,7 @@ export function DayBreakdownChart({
               />
               <YAxis
                 yAxisId="kwh"
+                domain={[0, axisDomains.kwh]}
                 orientation="right"
                 tickFormatter={(value) => `${value}`}
                 tickLine={false}
