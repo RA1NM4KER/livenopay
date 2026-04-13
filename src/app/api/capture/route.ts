@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 function parseProgressLine(line: string) {
-  const progress = line.match(/^\[(\d+)\] added=(\d+) new=(\d+) total=(\d+)/);
+  const progress = line.match(/^\[(\d+)] added=(\d+) new=(\d+) total=(\d+)/);
   const incrementalDone = line.match(/Done\. Added (\d+) new rows\. Wrote (\d+) rows/);
   const fullDone = line.match(/Done\. Rebuilt .* with (\d+) rows\./);
 

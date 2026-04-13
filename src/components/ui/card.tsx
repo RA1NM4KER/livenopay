@@ -1,15 +1,10 @@
-import type { ReactNode } from "react";
-
-type CardProps = {
-  children: ReactNode;
-  className?: string;
-};
+import type { CardHeaderProps, CardProps } from "./types";
 
 export function Card({ children, className = "" }: CardProps) {
   return <section className={`rounded-lg border border-line bg-paper/88 shadow-soft ${className}`}>{children}</section>;
 }
 
-export function CardHeader({ title, eyebrow, action }: { title: string; eyebrow?: string; action?: ReactNode }) {
+export function CardHeader({ title, eyebrow, action }: CardHeaderProps) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-4">
       <div>

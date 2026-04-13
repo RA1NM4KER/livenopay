@@ -9,19 +9,19 @@ import { HourlyChart } from "@/components/charts/hourly-chart";
 import { TariffChart } from "@/components/charts/tariff-chart";
 import { MetricCard } from "@/components/ui/metric-card";
 import { createAnalytics, filterRowsByRange } from "@/lib/analytics";
-import { defaultRange, quickRangeFromLatest, type QuickRange } from "@/lib/filters";
+import { defaultRange, quickRangeFromLatest } from "@/lib/filters";
 import { formatCurrency, formatKwh, formatTariff, longDateTime, shortDate } from "@/lib/format";
-import type { EnergyRow } from "@/lib/types";
+import type { QuickRange } from "@/lib/types";
 import { FilterBar } from "./filter-bar";
 import { Insights } from "./insights";
 import { RefreshCapture } from "./refresh-capture";
+import type { DashboardShellProps } from "./types";
 
-export function DashboardShell({ rows }: { rows: EnergyRow[] }) {
+export function DashboardShell({ rows }: DashboardShellProps) {
   const initialRange = useMemo(() => defaultRange(rows), [rows]);
   const [from, setFrom] = useState(initialRange.from);
   const [to, setTo] = useState(initialRange.to);
   const [quickRange, setQuickRange] = useState<QuickRange>(initialRange.quickRange);
-  const [selectedDay, setSelectedDay] = useState(initialRange.to);
 
   const analytics = useMemo(() => createAnalytics(filterRowsByRange(rows, from, to)), [from, rows, to]);
 
@@ -116,7 +116,7 @@ export function DashboardShell({ rows }: { rows: EnergyRow[] }) {
         <DailyKwhChart data={analytics.daily} />
       </section>
 
-      <DayBreakdownChart rows={rows} selectedDate={selectedDay} onDateChange={setSelectedDay} />
+      <DayBreakdownChart rows={rows} />
 
       <section className="grid gap-5 lg:grid-cols-2">
         <CumulativeSpendChart data={analytics.daily} />

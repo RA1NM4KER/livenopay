@@ -1,6 +1,7 @@
 import { Card } from "./card";
+import type { MetricCardProps } from "./types";
 
-export function MetricCard({ label, value, detail }: { label: string; value: string; detail?: string }) {
+export function MetricCard({ label, value, detail }: MetricCardProps) {
   return (
     <Card className="p-4">
       <p className="text-sm text-muted">{label}</p>

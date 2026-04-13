@@ -1,84 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FilterBar } from "@/components/dashboard/filter-bar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { filterRowsByRange } from "@/lib/analytics";
-import { defaultRange, quickRangeFromLatest, type QuickRange } from "@/lib/filters";
-import { formatCurrency, formatKwh, formatTariff } from "@/lib/format";
-import type { EnergyRow } from "@/lib/types";
-import { FilterBar } from "@/components/dashboard/filter-bar";
+import { defaultRange, quickRangeFromLatest } from "@/lib/filters";
+import { formatCurrency } from "@/lib/format";
+import type { QuickRange } from "@/lib/types";
+import { amountClassFor, kwhDisplayFor, tariffDisplayFor } from "./row-formatting";
+import { SortHeader } from "./sort-header";
+import { matchesSearch, nextSortDirection, sortRows } from "./table-sorting";
+import type { DataTableProps, SortDirection, SortKey } from "./types";
 
-type SortKey = "period" | "type" | "band" | "kwh" | "tariff" | "amount" | "balance" | "captured";
-type SortDirection = "asc" | "desc";
-
-function matchesSearch(row: EnergyRow, query: string) {
-  const normalized = query.trim().toLowerCase();
-
-  if (!normalized) {
-    return true;
-  }
-
-  return [row.captureDateTime, row.chargeLabel, row.periodDateTime, row.periodTime]
-    .join(" ")
-    .toLowerCase()
-    .includes(normalized);
-}
-
-const sortAccessors: Record<SortKey, (row: EnergyRow) => number | string> = {
-  period: (row) => row.periodTimestamp,
-  type: (row) => row.chargeKind,
-  band: (row) => row.chargeLabel,
-  kwh: (row) => row.kwh,
-  tariff: (row) => row.tariff,
-  amount: (row) => row.cost,
-  balance: (row) => row.balance,
-  captured: (row) => row.captureTimestamp
-};
-
-function compareValues(left: number | string, right: number | string) {
-  if (typeof left === "number" && typeof right === "number") {
-    return left - right;
-  }
-
-  return String(left).localeCompare(String(right));
-}
-
-function SortHeader({
-  label,
-  sortKey,
-  align = "left",
-  activeKey,
-  direction,
-  onSort
-}: {
-  label: string;
-  sortKey: SortKey;
-  align?: "left" | "right";
-  activeKey: SortKey;
-  direction: SortDirection;
-  onSort: (key: SortKey) => void;
-}) {
-  const active = activeKey === sortKey;
-
-  return (
-    <th className={`px-4 py-3 font-medium ${align === "right" ? "text-right" : "text-left"}`}>
-      <button
-        className={`inline-flex items-center gap-1 rounded text-xs uppercase tracking-[0.16em] transition hover:text-ink ${
-          align === "right" ? "justify-end" : "justify-start"
-        }`}
-        onClick={() => onSort(sortKey)}
-        type="button"
-      >
-        <span>{label}</span>
-        <span className={`${active ? "text-ink" : "text-muted/60"}`}>
-          {active ? (direction === "asc" ? "↑" : "↓") : "↕"}
-        </span>
-      </button>
-    </th>
-  );
-}
-
-export function DataTable({ rows }: { rows: EnergyRow[] }) {
+export function DataTable({ rows }: DataTableProps) {
   const initialRange = useMemo(() => defaultRange(rows), [rows]);
   const [from, setFrom] = useState(initialRange.from);
   const [to, setTo] = useState(initialRange.to);
@@ -88,35 +22,16 @@ export function DataTable({ rows }: { rows: EnergyRow[] }) {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const filtered = useMemo(() => {
-    const accessor = sortAccessors[sortKey];
-
-    return filterRowsByRange(rows, from, to)
-      .filter((row) => matchesSearch(row, query))
-      .slice()
-      .sort((left, right) => {
-        const primary = compareValues(accessor(left), accessor(right));
-        const directed = sortDirection === "asc" ? primary : -primary;
-
-        if (directed !== 0) {
-          return directed;
-        }
-
-        if (right.ledgerTimestamp !== left.ledgerTimestamp) {
-          return right.ledgerTimestamp - left.ledgerTimestamp;
-        }
-
-        return right.periodTimestamp - left.periodTimestamp;
-      });
+    return sortRows(
+      filterRowsByRange(rows, from, to).filter((row) => matchesSearch(row, query)),
+      sortKey,
+      sortDirection
+    );
   }, [from, query, rows, sortDirection, sortKey, to]);
 
   function updateSort(nextKey: SortKey) {
-    if (nextKey === sortKey) {
-      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
-      return;
-    }
-
+    setSortDirection((direction) => nextSortDirection(sortKey, nextKey, direction));
     setSortKey(nextKey);
-    setSortDirection(nextKey === "type" || nextKey === "band" ? "asc" : "desc");
   }
 
   function updateDates(nextFrom: string, nextTo: string) {
@@ -228,14 +143,9 @@ export function DataTable({ rows }: { rows: EnergyRow[] }) {
             </thead>
             <tbody className="divide-y divide-line">
               {filtered.map((row) => {
-                const amountClass =
-                  row.chargeKind === "topup"
-                    ? "font-medium text-success"
-                    : row.chargeKind === "fixed"
-                      ? "font-medium text-fixed"
-                      : "text-ink";
-                const kwhDisplay = row.chargeKind === "energy" ? formatKwh(row.kwh) : "--";
-                const tariffDisplay = row.chargeKind === "energy" ? formatTariff(row.tariff) : "--";
+                const amountClass = amountClassFor(row);
+                const kwhDisplay = kwhDisplayFor(row);
+                const tariffDisplay = tariffDisplayFor(row);
 
                 return (
                   <tr

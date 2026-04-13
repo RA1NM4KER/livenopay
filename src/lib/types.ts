@@ -15,6 +15,8 @@ export type EnergyRow = {
   balance: number;
 };
 
+export type QuickRange = "7d" | "30d" | "90d" | "all";
+
 export type DailyPoint = {
   date: string;
   spend: number;
@@ -49,12 +51,6 @@ export type TariffPoint = {
   chargeLabel: string;
   spend: number;
   mixed?: boolean;
-};
-
-export type Metric = {
-  label: string;
-  value: string;
-  detail?: string;
 };
 
 export type Insight = {

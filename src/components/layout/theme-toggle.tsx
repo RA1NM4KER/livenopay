@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-type ThemeChoice = "system" | "light" | "dark";
+import type { ThemeChoice } from "./types";
 
 const storageKey = "livenopay-theme";
 

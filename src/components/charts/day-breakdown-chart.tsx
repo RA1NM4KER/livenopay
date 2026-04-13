@@ -1,90 +1,24 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardHeader } from "@/components/ui/card";
+import { buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
 import { formatCurrency, formatKwh } from "@/lib/format";
-import type { EnergyRow } from "@/lib/types";
+import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
+import { DaySummaryCard } from "./day-summary-card";
+import type { DayBreakdownChartProps } from "./types";
 
-type IntervalPoint = {
-  time: string;
-  spend: number;
-  kwh: number;
-};
-
-function buildIntervalPoints(rows: EnergyRow[], selectedDate: string) {
-  const energyRows = rows.filter((row) => row.chargeKind === "energy" && row.periodDate === selectedDate);
-  const byTime = new Map<string, EnergyRow[]>();
-
-  energyRows.forEach((row) => {
-    const bucket = byTime.get(row.periodTime) ?? [];
-    bucket.push(row);
-    byTime.set(row.periodTime, bucket);
-  });
-
-  return Array.from({ length: 48 }, (_, index): IntervalPoint => {
-    const hour = Math.floor(index / 2);
-    const minute = index % 2 === 0 ? "00" : "30";
-    const time = `${String(hour).padStart(2, "0")}:${minute}`;
-    const items = byTime.get(time) ?? [];
-
-    return {
-      time,
-      spend: Math.round(items.reduce((total, row) => total + row.cost, 0) * 100) / 100,
-      kwh: Math.round(items.reduce((total, row) => total + row.kwh, 0) * 100) / 100
-    };
-  });
-}
-
-function roundedCeiling(value: number, step: number) {
-  return Math.max(step, Math.ceil(value / step) * step);
-}
-
-function buildStableAxisDomains(rows: EnergyRow[]) {
-  const intervalTotals = new Map<string, { spend: number; kwh: number }>();
-
-  rows
-    .filter((row) => row.chargeKind === "energy")
-    .forEach((row) => {
-      const key = `${row.periodDate}-${row.periodTime}`;
-      const total = intervalTotals.get(key) ?? { spend: 0, kwh: 0 };
-
-      total.spend += row.cost;
-      total.kwh += row.kwh;
-      intervalTotals.set(key, total);
-    });
-
-  const values = Array.from(intervalTotals.values());
-  const maxSpend = Math.max(0, ...values.map((value) => value.spend));
-  const maxKwh = Math.max(0, ...values.map((value) => value.kwh));
-
-  return {
-    spend: roundedCeiling(maxSpend, 1),
-    kwh: roundedCeiling(maxKwh, 0.5)
-  };
-}
-
-function sum(rows: EnergyRow[], key: "cost" | "kwh") {
-  return rows.reduce((total, row) => total + row[key], 0);
-}
-
-export function DayBreakdownChart({
-  rows,
-  selectedDate,
-  onDateChange
-}: {
-  rows: EnergyRow[];
-  selectedDate: string;
-  onDateChange: (date: string) => void;
-}) {
+export function DayBreakdownChart({ rows }: DayBreakdownChartProps) {
+  const [selectedDate, setSelectedDate] = useState(rows[rows.length - 1]?.periodDate ?? "");
   const dayRows = rows.filter((row) => row.periodDate === selectedDate);
   const energyRows = dayRows.filter((row) => row.chargeKind === "energy");
   const fixedRows = dayRows.filter((row) => row.chargeKind === "fixed");
   const intervalData = buildIntervalPoints(rows, selectedDate);
   const axisDomains = useMemo(() => buildStableAxisDomains(rows), [rows]);
-  const energySpend = sum(energyRows, "cost");
-  const fixedSpend = sum(fixedRows, "cost");
-  const usage = sum(energyRows, "kwh");
+  const energySpend = sumRows(energyRows, "cost");
+  const fixedSpend = sumRows(fixedRows, "cost");
+  const usage = sumRows(energyRows, "kwh");
 
   return (
     <Card>
@@ -94,7 +28,7 @@ export function DayBreakdownChart({
         action={
           <input
             className="h-9 rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none focus:border-accent"
-            onChange={(event) => onDateChange(event.target.value)}
+            onChange={(event) => setSelectedDate(event.target.value)}
             type="date"
             value={selectedDate}
           />
@@ -103,8 +37,8 @@ export function DayBreakdownChart({
       <div className="grid gap-4 p-4 lg:grid-cols-[1fr_18rem]">
         <div className="h-80">
           <ResponsiveContainer height="100%" width="100%">
-            <BarChart data={intervalData} margin={{ left: 4, right: 12, top: 8, bottom: 0 }}>
-              <CartesianGrid stroke="rgb(var(--color-line))" vertical={false} />
+            <BarChart data={intervalData} margin={chartMargin}>
+              <CartesianGrid stroke={chartColors.line} vertical={false} />
               <XAxis dataKey="time" interval={3} tickLine={false} axisLine={false} />
               <YAxis
                 yAxisId="spend"
@@ -124,36 +58,21 @@ export function DayBreakdownChart({
                 width={42}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgb(var(--color-paper))",
-                  borderColor: "rgb(var(--color-line))",
-                  borderRadius: 8,
-                  boxShadow: "var(--shadow-soft)",
-                  color: "rgb(var(--color-ink))"
-                }}
+                contentStyle={chartTooltipStyle}
                 formatter={(value, name) => [
                   name === "spend" ? formatCurrency(Number(value)) : formatKwh(Number(value)),
                   name === "spend" ? "Spend" : "Usage"
                 ]}
               />
-              <Bar yAxisId="spend" dataKey="spend" fill="rgb(var(--color-spend))" radius={[4, 4, 0, 0]} />
-              <Bar yAxisId="kwh" dataKey="kwh" fill="rgb(var(--color-usage))" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="spend" dataKey="spend" fill={chartColors.spend} radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="kwh" dataKey="kwh" fill={chartColors.usage} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <aside className="grid content-start gap-3">
-          <div className="rounded-lg border border-line bg-canvas p-4">
-            <p className="text-sm text-muted">Energy spend</p>
-            <p className="mt-2 text-xl font-semibold text-ink">{formatCurrency(energySpend)}</p>
-          </div>
-          <div className="rounded-lg border border-line bg-canvas p-4">
-            <p className="text-sm text-muted">Energy usage</p>
-            <p className="mt-2 text-xl font-semibold text-ink">{formatKwh(usage)}</p>
-          </div>
-          <div className="rounded-lg border border-line bg-canvas p-4">
-            <p className="text-sm text-muted">Fixed charges</p>
-            <p className="mt-2 text-xl font-semibold text-ink">{formatCurrency(fixedSpend)}</p>
-          </div>
+          <DaySummaryCard label="Energy spend" value={formatCurrency(energySpend)} />
+          <DaySummaryCard label="Energy usage" value={formatKwh(usage)} />
+          <DaySummaryCard label="Fixed charges" value={formatCurrency(fixedSpend)} />
         </aside>
       </div>
     </Card>

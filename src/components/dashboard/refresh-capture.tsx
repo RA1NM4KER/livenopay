@@ -2,12 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-type CaptureResult = {
-  type?: "progress" | "done" | "error" | "log";
-  message: string;
-  detail?: string;
-};
+import type { CaptureResult } from "./types";
 
 function readableCaptureDetail(detail?: string) {
   if (!detail) {

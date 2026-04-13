@@ -1,8 +1,8 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { ThemeToggle } from "./theme-toggle";
+import type { AppShellProps } from "./types";
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children }: AppShellProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-5">

@@ -1,6 +1,4 @@
-import type { EnergyRow } from "./types";
-
-export type QuickRange = "7d" | "30d" | "90d" | "all";
+import type { EnergyRow, QuickRange } from "./types";
 
 export function defaultRange(rows: EnergyRow[]) {
   const latest = rows[rows.length - 1]?.periodDate;

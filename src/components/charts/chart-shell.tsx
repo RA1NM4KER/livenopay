@@ -1,19 +1,7 @@
-import type { ReactNode } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
+import type { ChartShellProps } from "./types";
 
-export function ChartShell({
-  title,
-  eyebrow,
-  action,
-  footer,
-  children
-}: {
-  title: string;
-  eyebrow?: string;
-  action?: ReactNode;
-  footer?: ReactNode;
-  children: ReactNode;
-}) {
+export function ChartShell({ title, eyebrow, action, footer, children }: ChartShellProps) {
   return (
     <Card>
       <CardHeader title={title} eyebrow={eyebrow} action={action} />

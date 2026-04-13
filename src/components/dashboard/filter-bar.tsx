@@ -1,10 +1,11 @@
 "use client";
 
-import type { QuickRange } from "@/lib/filters";
+import type { QuickRange } from "@/lib/types";
+import type { FilterBarProps, IsoDateInputProps } from "./types";
 
 const ranges: QuickRange[] = ["7d", "30d", "90d", "all"];
 
-function IsoDateInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function IsoDateInput({ label, value, onChange }: IsoDateInputProps) {
   return (
     <label className="flex items-center gap-2 text-sm text-muted">
       {label}
@@ -36,19 +37,7 @@ function IsoDateInput({ label, value, onChange }: { label: string; value: string
   );
 }
 
-export function FilterBar({
-  from,
-  to,
-  quickRange,
-  onDateChange,
-  onQuickRange
-}: {
-  from: string;
-  to: string;
-  quickRange: QuickRange;
-  onDateChange: (from: string, to: string) => void;
-  onQuickRange: (range: QuickRange) => void;
-}) {
+export function FilterBar({ from, to, quickRange, onDateChange, onQuickRange }: FilterBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-paper px-3 py-3">
       <div className="flex rounded-md bg-canvas p-1">

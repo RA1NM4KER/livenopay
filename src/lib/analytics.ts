@@ -102,51 +102,6 @@ function buildHighestUsageHour(rows: EnergyRow[]): UsageHourPeak | undefined {
   return maxBy(hourlyPeaks, (item) => item.kwh);
 }
 
-function buildTariffTimeline(rows: EnergyRow[]): TariffPoint[] {
-  const energyRows = rows.filter((row) => row.chargeKind === "energy");
-  const byPeriod = new Map<string, EnergyRow[]>();
-
-  energyRows.forEach((row) => {
-    const bucket = byPeriod.get(row.periodDateTime) ?? [];
-    bucket.push(row);
-    byPeriod.set(row.periodDateTime, bucket);
-  });
-
-  const periodPoints = Array.from(byPeriod.entries())
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([, items]) => {
-      const first = items[0];
-      const kwh = sum(items.map((item) => item.kwh));
-      const spend = sum(items.map((item) => item.cost));
-      const tariffs = new Set(items.map((item) => item.tariff));
-      const labels = Array.from(new Set(items.map((item) => item.chargeLabel.replace("Energy Charge: ", ""))));
-
-      return {
-        periodDateTime: first.periodDateTime,
-        dateLabel: `${shortDate(first.periodDate)} ${first.periodTime}`,
-        tariff: round(kwh > 0 ? spend / kwh : first.tariff),
-        chargeLabel: labels.join(" / "),
-        spend: round(spend),
-        mixed: tariffs.size > 1
-      };
-    });
-
-  const changes = periodPoints.filter(
-    (point, index) =>
-      index === 0 ||
-      point.tariff !== periodPoints[index - 1]?.tariff ||
-      point.chargeLabel !== periodPoints[index - 1]?.chargeLabel ||
-      point.mixed
-  );
-  const lastPoint = periodPoints[periodPoints.length - 1];
-
-  if (lastPoint && changes[changes.length - 1]?.periodDateTime !== lastPoint.periodDateTime) {
-    changes.push(lastPoint);
-  }
-
-  return changes;
-}
-
 function buildDailyTariffTimeline(rows: EnergyRow[]): TariffPoint[] {
   return buildDaily(rows)
     .filter((day) => day.kwh > 0)
@@ -298,10 +253,6 @@ export function filterRowsByRange(rows: EnergyRow[], from?: string, to?: string)
       return false;
     }
 
-    if (to && row.periodDate > to) {
-      return false;
-    }
-
-    return true;
+    return !(to && row.periodDate > to);
   });
 }

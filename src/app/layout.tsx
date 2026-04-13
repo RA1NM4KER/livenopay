@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import Script from "next/script";
+import type { RootLayoutProps } from "./types";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,15 +8,13 @@ export const metadata: Metadata = {
   description: "Local LiveMopay electricity analytics"
 };
 
-export default function RootLayout({
-  children
-}: Readonly<{
-  children: ReactNode;
-}>) {
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
+      <body className="font-sans antialiased">
+        <Script
+          id="theme-bootstrap"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
 try {
@@ -28,8 +27,8 @@ try {
 `
           }}
         />
-      </head>
-      <body className="font-sans antialiased">{children}</body>
+        {children}
+      </body>
     </html>
   );
 }

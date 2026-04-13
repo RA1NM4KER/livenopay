@@ -1,5 +1,5 @@
 import { Card, CardHeader } from "@/components/ui/card";
-import type { Insight } from "@/lib/types";
+import type { InsightsProps } from "./types";
 
 const toneClass = {
   neutral: "bg-canvas",
@@ -7,7 +7,7 @@ const toneClass = {
   watch: "bg-amberSoft"
 };
 
-export function Insights({ insights }: { insights: Insight[] }) {
+export function Insights({ insights }: InsightsProps) {
   return (
     <Card>
       <CardHeader title="Signals" eyebrow="Insights" />
