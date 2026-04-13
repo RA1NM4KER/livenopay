@@ -9,6 +9,22 @@ type CaptureResult = {
   detail?: string;
 };
 
+function readableCaptureDetail(detail?: string) {
+  if (!detail) {
+    return "Start the emulator or connect your phone, open LiveMopay, then try again.";
+  }
+
+  if (detail.includes("Traceback") || detail.includes("subprocess.CalledProcessError")) {
+    return "Android capture is not available. Start the emulator or connect your phone, open LiveMopay, then try again.";
+  }
+
+  if (detail.includes("SETUP_REQUIRED")) {
+    return "Open LiveMopay, go to the Ledger tab, tap the orange Ledger button, then scroll to the newest entries at the top before refreshing capture.";
+  }
+
+  return detail;
+}
+
 export function RefreshCapture() {
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
@@ -20,7 +36,7 @@ export function RefreshCapture() {
     setMenuOpen(false);
     setToast({
       title: mode === "full" ? "Starting full recapture..." : "Running local capture...",
-      detail: "Waiting for LiveMopay rows.",
+      detail: "Use the Ledger screen with the newest entries visible at the top.",
       tone: "neutral"
     });
 
@@ -53,7 +69,7 @@ export function RefreshCapture() {
           if (event.type === "error") {
             finalEvent = event;
             setStatus("error");
-            setToast({ title: event.message, detail: event.detail, tone: "error" });
+            setToast({ title: event.message, detail: readableCaptureDetail(event.detail), tone: "error" });
             return;
           }
 
@@ -73,7 +89,7 @@ export function RefreshCapture() {
 
       if (finalEvent?.type === "error") {
         setStatus("error");
-        setToast({ title: finalEvent.message, detail: finalEvent.detail, tone: "error" });
+        setToast({ title: finalEvent.message, detail: readableCaptureDetail(finalEvent.detail), tone: "error" });
         return;
       }
 
@@ -86,7 +102,7 @@ export function RefreshCapture() {
       setStatus("error");
       setToast({
         title: "Capture failed.",
-        detail: error instanceof Error ? error.message : "The local capture script could not run.",
+        detail: readableCaptureDetail(error instanceof Error ? error.message : undefined),
         tone: "error"
       });
     }

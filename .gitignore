@@ -9,3 +9,4 @@ __pycache__
 *.pyc
 livemopay_dumps
 livemopay_energy.csv
+livemopay_capture.log

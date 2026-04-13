@@ -8,6 +8,14 @@ function parseProgressLine(line: string) {
   const incrementalDone = line.match(/Done\. Added (\d+) new rows\. Wrote (\d+) rows/);
   const fullDone = line.match(/Done\. Rebuilt .* with (\d+) rows\./);
 
+  if (line.startsWith("CAPTURE_LOG: ")) {
+    return {
+      type: "progress",
+      message: "Capture setup...",
+      detail: line.replace("CAPTURE_LOG: ", "")
+    };
+  }
+
   if (progress) {
     return {
       type: "progress",
@@ -43,6 +51,14 @@ function parseProgressLine(line: string) {
     };
   }
 
+  if (line.startsWith("Preparing LiveMopay ledger screen")) {
+    return {
+      type: "progress",
+      message: "Opening ledger history...",
+      detail: "Resetting the Android app to the newest ledger entries."
+    };
+  }
+
   return {
     type: "log",
     message: line
@@ -51,6 +67,43 @@ function parseProgressLine(line: string) {
 
 function encodeEvent(event: object) {
   return new TextEncoder().encode(`${JSON.stringify(event)}\n`);
+}
+
+function friendlyCaptureError(stderr: string, code: number | null) {
+  const raw = stderr.trim();
+
+  if (raw.includes("SETUP_REQUIRED")) {
+    return "Open LiveMopay, go to the Ledger tab, tap the orange Ledger button, then scroll to the newest entries at the top before refreshing capture.";
+  }
+
+  if (raw.includes("ADB_NOT_FOUND")) {
+    return "ADB is not installed. Install Android platform tools, then try again. On macOS with Homebrew: brew install android-platform-tools.";
+  }
+
+  if (raw.includes("ADB_UNAUTHORIZED")) {
+    return "Unlock the Android phone and tap Allow on the USB debugging prompt, then try again.";
+  }
+
+  if (raw.includes("NO_ANDROID_DEVICE")) {
+    return "Connect an Android phone with USB debugging enabled, or start an Android emulator, then try again.";
+  }
+
+  if (
+    raw.includes("uiautomator") ||
+    raw.includes("platform-tools/adb") ||
+    raw.includes("device") ||
+    raw.includes("emulator")
+  ) {
+    return "Android capture is not available. Start the emulator or connect your phone, open LiveMopay, then try again.";
+  }
+
+  if (raw.includes("No such file") || raw.includes("not found")) {
+    return "The local capture tool could not start. Check that Python, ADB, and the capture script are available.";
+  }
+
+  return code === null
+    ? "The local capture script stopped unexpectedly."
+    : `The local capture script exited with code ${code}.`;
 }
 
 export async function POST(request: Request) {
@@ -71,6 +124,7 @@ export async function POST(request: Request) {
       let stdoutBuffer = "";
       let stderrBuffer = "";
       let sawDone = false;
+      const recentLogs: string[] = [];
 
       controller.enqueue(
         encodeEvent({
@@ -89,6 +143,12 @@ export async function POST(request: Request) {
           const event = parseProgressLine(line);
           if (event.type === "done") {
             sawDone = true;
+          }
+          if (line.startsWith("CAPTURE_LOG: ")) {
+            recentLogs.push(line.replace("CAPTURE_LOG: ", ""));
+            if (recentLogs.length > 6) {
+              recentLogs.shift();
+            }
           }
           controller.enqueue(encodeEvent(event));
         });
@@ -129,11 +189,12 @@ export async function POST(request: Request) {
         }
 
         if (code !== 0) {
+          const detail = friendlyCaptureError(stderrBuffer, code);
           controller.enqueue(
             encodeEvent({
               type: "error",
               message: "Capture failed.",
-              detail: stderrBuffer.trim() || `Python exited with code ${code}.`
+              detail: recentLogs.length ? `${detail} Last steps: ${recentLogs.join(" -> ")}` : detail
             })
           );
         }

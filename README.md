@@ -74,9 +74,78 @@ The dashboard includes a `Refresh capture` button that calls `POST /api/capture`
 
     python3 capture_livemopay.py
 
-This assumes local execution with Android/ADB already set up for the capture script.
+This assumes local execution with Android platform tools available. The script looks for `adb` in this order:
 
-Before capture starts, make sure the LiveMopay history screen is open on the Android device or emulator and positioned near the newest entries.
+1. `ADB_PATH`, if you set it
+2. `adb` on your shell path
+3. Android Studio's default macOS SDK path: `~/Library/Android/sdk/platform-tools/adb`
+
+### Install ADB
+
+ADB is the small Android command line tool that lets this project read and scroll the LiveMopay screen from your computer.
+
+On macOS, the lightest setup is:
+
+    brew install android-platform-tools
+
+On Linux, install the platform tools package from your distro:
+
+    sudo apt install android-sdk-platform-tools
+
+For Fedora:
+
+    sudo dnf install android-tools
+
+For Arch:
+
+    sudo pacman -S android-tools
+
+On Windows:
+
+1. download `SDK Platform-Tools for Windows` from Google's Android developer site
+2. extract it somewhere simple, for example `C:\platform-tools`
+3. add that folder to your Windows `Path`
+4. or set `ADB_PATH` to the full executable path, for example `C:\platform-tools\adb.exe`
+
+After installing, connect the phone and run:
+
+    adb devices
+
+If the phone asks whether to allow USB debugging, tap `Allow`. The device should show as `device`, not `unauthorized`.
+
+### Recommended: use your Android phone
+
+1. install LiveMopay on your Android phone and log in
+2. connect the phone to your computer with USB
+3. turn on Developer Options on the phone
+4. turn on USB debugging
+5. unlock the phone and tap `Allow` if it asks about USB debugging
+6. open LiveMopay
+7. tap the bottom `Ledger` tab
+8. leave the app on the Ledger summary page, where the orange `Ledger` button is visible
+9. click `Refresh capture` in this dashboard
+
+Once capture starts, do not touch the phone until it finishes. The script is reading and scrolling the Android UI, so manual taps or scrolling can make it capture the wrong screen or miss rows.
+
+### Advanced: use Android Studio emulator
+
+Use this if you do not want to connect a real phone:
+
+1. install Android Studio
+2. create or start an Android emulator
+3. install LiveMopay inside the emulator and log in
+4. tap the bottom `Ledger` tab
+5. leave the app on the Ledger summary page, where the orange `Ledger` button is visible
+6. click `Refresh capture` in this dashboard
+
+Once capture starts, do not touch the emulator until it finishes.
+
+It is also okay if you already tapped the orange `Ledger` button and are looking at the list of individual electricity rows. The script tries to reset the app into the right place automatically:
+
+1. if it starts inside the list of individual electricity rows, it taps the top-left back arrow
+2. it opens the Ledger tab if needed
+3. it taps the orange `Ledger` button
+4. it verifies that transaction rows are visible before scanning
 
 If the phone, emulator, permissions, or ADB path are not ready, the dashboard still loads from the existing CSV and reports the capture failure in the UI.
 
@@ -131,4 +200,4 @@ It is designed for local use first:
 - capture is triggered from my own machine
 - the dashboard remains usable even if capture is unavailable
 
-The goal is simple: get my electricity data out of a limited UI and into a format I can actually inspect and understand.
+The goal is straightforward: get my electricity data out of a limited UI and into a format I can actually inspect and understand.
