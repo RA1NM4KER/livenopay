@@ -1,8 +1,24 @@
-import { readFile } from "fs/promises";
-import path from "path";
 import type { EnergyRow } from "./types";
 
-const CSV_PATH = path.join(process.cwd(), "livemopay_energy.csv");
+export type RawEnergyRecord = {
+  capture_dt: string;
+  charge_label: string;
+  period_dt: string;
+  kwh: string;
+  tariff: string;
+  cost: string;
+  balance: string;
+};
+
+export type EnergyRecordInput = {
+  capture_dt: string;
+  charge_label: string;
+  period_dt: string;
+  kwh: string | number;
+  tariff: string | number;
+  cost: string | number;
+  balance: string | number;
+};
 
 type RawCsvRow = Record<string, string>;
 
@@ -39,7 +55,7 @@ function parseCsvLine(line: string) {
   return values;
 }
 
-function parseCsv(text: string): RawCsvRow[] {
+export function parseCsv(text: string): RawCsvRow[] {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   const headers = parseCsvLine(lines[0] ?? "");
 
@@ -67,12 +83,12 @@ function parsePeriodDate(value: string) {
   return new Date(value.replace(" ", "T"));
 }
 
-function toNumber(value: string) {
+function toNumber(value: string | number) {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-function toEnergyRow(row: RawCsvRow): EnergyRow {
+export function toEnergyRow(row: EnergyRecordInput): EnergyRow {
   const periodDt = parsePeriodDate(row.period_dt);
   const captureDt = parseCaptureDate(row.capture_dt);
   const periodDateTime = row.period_dt.replace(" ", "T");
@@ -100,10 +116,21 @@ function toEnergyRow(row: RawCsvRow): EnergyRow {
   };
 }
 
-export async function loadEnergyRows() {
-  const csv = await readFile(CSV_PATH, "utf8");
+function isRawEnergyRecord(row: RawCsvRow): row is RawEnergyRecord {
+  return Boolean(
+    row.capture_dt &&
+    row.charge_label &&
+    row.period_dt &&
+    row.kwh !== undefined &&
+    row.tariff !== undefined &&
+    row.cost !== undefined &&
+    row.balance !== undefined
+  );
+}
 
-  return parseCsv(csv)
+export function parseEnergyCsv(text: string) {
+  return parseCsv(text)
+    .filter(isRawEnergyRecord)
     .map(toEnergyRow)
     .sort((left, right) => left.periodTimestamp - right.periodTimestamp);
 }

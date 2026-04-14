@@ -74,7 +74,7 @@ export function DataTable({ rows }: DataTableProps) {
       />
 
       <Card>
-        <CardHeader title="Transactions" eyebrow="CSV" />
+        <CardHeader title="Transactions" eyebrow="Supabase" />
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] border-collapse text-left text-sm">
             <thead className="border-b border-line bg-canvas text-xs uppercase tracking-[0.16em] text-muted">

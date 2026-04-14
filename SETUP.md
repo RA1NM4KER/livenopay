@@ -4,7 +4,13 @@ This guide covers the local Android setup needed for refreshing `livemopay_energ
 
 ## Capture Flow
 
-The dashboard includes a `Refresh capture` button that calls `POST /api/capture`. That endpoint runs:
+Capture is local-only. The deployed dashboard reads Supabase and does not run Android/ADB commands.
+
+To capture fresh rows and sync them to Supabase, run this on the local machine with Android/ADB access:
+
+    python3 refresh_and_sync.py
+
+The refresh script runs:
 
     python3 capture_livemopay.py
 
@@ -57,7 +63,7 @@ If the phone asks whether to allow USB debugging, tap `Allow`. The device should
 6. open LiveMopay
 7. tap the bottom `Ledger` tab
 8. leave the app on the Ledger summary page, where the orange `Ledger` button is visible
-9. click `Refresh capture` in this dashboard
+9. run `python3 refresh_and_sync.py`
 
 Once capture starts, do not touch the phone until it finishes. The script is reading and scrolling the Android UI, so manual taps or scrolling can make it capture the wrong screen or miss rows.
 
@@ -70,7 +76,7 @@ Use this if you do not want to connect a real phone:
 3. install LiveMopay inside the emulator and log in
 4. tap the bottom `Ledger` tab
 5. leave the app on the Ledger summary page, where the orange `Ledger` button is visible
-6. click `Refresh capture` in this dashboard
+6. run `python3 refresh_and_sync.py`
 
 Once capture starts, do not touch the emulator until it finishes.
 
@@ -83,23 +89,29 @@ It is okay if you already tapped the orange `Ledger` button and are looking at t
 3. it taps the orange `Ledger` button
 4. it verifies that transaction rows are visible before scanning
 
-If the phone, emulator, permissions, or ADB path are not ready, the dashboard still loads from the existing CSV and reports the capture failure in the UI.
+If the phone, emulator, permissions, or ADB path are not ready, the local refresh command reports the capture failure and the deployed dashboard keeps showing the last data that reached Supabase.
 
 ## Refresh Modes
 
 The capture script loads the existing CSV before scanning, skips rows that are already present, appends newly discovered rows, and stops after several scrolls without new entries.
 
-Use the dropdown beside `Refresh capture` for a full recapture. That runs:
+For a full recapture followed by sync, run:
+
+    python3 refresh_and_sync.py --full
+
+That passes `--full` to:
 
     python3 capture_livemopay.py --full
 
 Full recapture ignores the existing CSV and rebuilds it from the Android history it can scroll through.
 
-You can also run capture manually:
+To run capture manually without syncing:
 
     python3 capture_livemopay.py
 
-Then refresh the browser. The app uses dynamic server rendering so it re-reads the CSV cleanly.
+To sync the existing CSV without touching Android/ADB:
+
+    python3 refresh_and_sync.py --skip-capture
 
 To rebuild the CSV from existing XML dumps without connecting to Android:
 

@@ -14,10 +14,17 @@ import { formatCurrency, formatKwh, formatTariff, longDateTime, shortDate } from
 import type { QuickRange } from "@/lib/types";
 import { FilterBar } from "./filter-bar";
 import { Insights } from "./insights";
-import { RefreshCapture } from "./refresh-capture";
 import type { DashboardShellProps } from "./types";
 
-export function DashboardShell({ rows }: DashboardShellProps) {
+function syncLabel(value?: string) {
+  if (!value) {
+    return "Never synced";
+  }
+
+  return longDateTime(value);
+}
+
+export function DashboardShell({ rows, sync }: DashboardShellProps) {
   const initialRange = useMemo(() => defaultRange(rows), [rows]);
   const [from, setFrom] = useState(initialRange.from);
   const [to, setTo] = useState(initialRange.to);
@@ -53,7 +60,13 @@ export function DashboardShell({ rows }: DashboardShellProps) {
             A clearer view of your LiveMopay usage and spend.
           </h2>
         </div>
-        <RefreshCapture />
+        <div className="rounded-lg border border-line bg-paper px-4 py-3 text-sm">
+          <p className="font-medium text-ink">Last synced</p>
+          <p className="mt-1 text-muted">{syncLabel(sync.lastSyncedAt)}</p>
+          {typeof sync.rowsInCsv === "number" ? (
+            <p className="mt-1 text-xs text-muted">{sync.rowsInCsv} rows synced from CSV</p>
+          ) : null}
+        </div>
       </div>
 
       <FilterBar

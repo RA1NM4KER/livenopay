@@ -1,7 +1,8 @@
-import type { EnergyRow, Insight, QuickRange } from "@/lib/types";
+import type { EnergyRow, Insight, QuickRange, SyncMetadata } from "@/lib/types";
 
 export type DashboardShellProps = {
   rows: EnergyRow[];
+  sync: SyncMetadata;
 };
 
 export type InsightsProps = {
@@ -20,10 +21,4 @@ export type FilterBarProps = {
   quickRange: QuickRange;
   onDateChange: (from: string, to: string) => void;
   onQuickRange: (range: QuickRange) => void;
-};
-
-export type CaptureResult = {
-  type?: "progress" | "done" | "error" | "log";
-  message: string;
-  detail?: string;
 };

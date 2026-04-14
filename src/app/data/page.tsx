@@ -1,11 +1,11 @@
 import { DataTable } from "@/components/data/data-table";
 import { AppShell } from "@/components/layout/app-shell";
-import { loadEnergyRows } from "@/lib/csv";
+import { loadEnergyData } from "@/lib/energy-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function DataPage() {
-  const rows = await loadEnergyRows();
+  const { rows } = await loadEnergyData();
 
   return (
     <AppShell>

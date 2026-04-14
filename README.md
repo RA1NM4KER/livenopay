@@ -1,85 +1,105 @@
 # Livenopay
 
-A personal local-first tool for extracting and analyzing LiveMopay electricity usage, spend, and balance.
+A personal tool for extracting LiveMopay electricity ledger rows locally, syncing them to Supabase, and viewing usage, spend, balance, fixed charges, and tariffs in a deployed Next.js dashboard.
 
-## Why
+## Architecture
 
-LiveMopay shows the data, but not in a way that is easy to export or analyze. Livenopay pulls the ledger into a local CSV and turns it into a calmer dashboard for spend, usage, balance, fixed charges, and tariffs.
+Livenopay now separates ingestion from presentation:
 
-## Run
+- local machine: runs Android/ADB capture through `capture_livemopay.py`
+- local machine: syncs the resulting `livemopay_energy.csv` to Supabase with `refresh_and_sync.py`
+- Supabase: source of truth for dashboard reads
+- deployed Next.js app: reads Supabase only and never triggers Android/ADB
+
+There are no job queues, polling workers, remote command systems, or localhost dependencies for viewing the dashboard.
+
+## Supabase Schema
+
+Apply the migration in:
+
+    supabase/migrations/20260414000000_livenopay_energy.sql
+
+It creates:
+
+- `energy_rows` with the same core shape as the CSV: `capture_dt`, `charge_label`, `period_dt`, `kwh`, `tariff`, `cost`, `balance`
+- a natural unique key on `charge_label`, `period_dt`, `cost`, and `balance`
+- `capture_runs` for sync metadata used by the dashboard's last synced indicator
+
+The unique key matches the existing local capture dedupe strategy, so rerunning sync is idempotent and avoids duplicate rows.
+
+## Environment
+
+For the deployed dashboard:
+
+    SUPABASE_URL=...
+    SUPABASE_ANON_KEY=...
+
+For local sync:
+
+    SUPABASE_URL=...
+    SUPABASE_SERVICE_ROLE_KEY=...
+
+You can put these in `.env.local` for local development. Do not expose the service role key in the browser or deployed public client environment.
+
+## Run the Dashboard
 
     npm install
     npm run dev
 
 Open `http://localhost:3000`.
 
-## Data
+The dashboard and data table read from Supabase through `src/lib/energy-data.ts`. They do not read `livemopay_energy.csv` directly.
 
-The app reads `livemopay_energy.csv` from the repo root on the server side.
+## Refresh Data
 
-Expected columns:
+On the local machine that has Android/ADB configured, run:
 
-- `capture_dt`
-- `charge_label`
-- `period_dt`
-- `kwh`
-- `tariff`
-- `cost`
-- `balance`
+    python3 refresh_and_sync.py
 
-Rows are normalized in `src/lib/csv.ts`, then summarized in `src/lib/analytics.ts`. Fixed daily charges are included in spend and balance analysis, but excluded from pure kWh, hourly usage, and tariff analysis. Top-ups appear in the data table and balance history, but are not counted as electricity spend.
+or:
 
-## Dashboard
+    npm run refresh
 
-The dashboard includes:
+That command:
 
-- total spend
-- total kWh
-- average daily spend
-- average daily kWh
-- latest balance
-- highest spend day
-- highest usage day
-- daily spend trends
-- daily usage trends
-- cumulative spend
-- hourly usage and spend patterns
-- tariff band changes over time
-- raw data table with filters
+1. runs `python3 capture_livemopay.py`
+2. reads the refreshed `livemopay_energy.csv`
+3. upserts all CSV rows into Supabase
+4. records a `capture_runs` row for last synced metadata
 
-## Capture flow
+For a full local recapture before syncing:
 
-The dashboard can refresh the CSV from LiveMopay with the `Refresh capture` button. Locally, that runs:
+    python3 refresh_and_sync.py --full
 
-    python3 capture_livemopay.py
+To sync the existing CSV without touching Android/ADB:
 
-It needs ADB and either a connected Android phone or an Android emulator. The recommended path is a real Android phone with USB debugging enabled.
+    python3 refresh_and_sync.py --skip-capture
 
-Use the dropdown beside `Refresh capture` for a full recapture. That runs:
+## Data Semantics
 
-    python3 capture_livemopay.py --full
+Rows are normalized in `src/lib/csv.ts`, then summarized in `src/lib/analytics.ts`.
 
-Full recapture ignores the existing CSV and rebuilds it from the Android history it can scroll through. See [SETUP.md](./SETUP.md) for the full phone, emulator, and ADB setup.
+Analytics behavior is preserved:
 
-You can also run capture manually:
+- fixed daily charges are included in total spend
+- fixed daily charges are excluded from kWh, hourly usage, and tariff analysis
+- top-ups appear in raw data and balance history context
+- top-ups are excluded from electricity spend
 
-    python3 capture_livemopay.py
+## Capture Setup
 
-Then refresh the browser. The app uses dynamic server rendering so it re-reads the CSV cleanly.
+`capture_livemopay.py` remains local-only and still depends on ADB plus a connected Android phone or emulator. See [SETUP.md](./SETUP.md) for the Android setup.
 
-## Project structure
+The deployed dashboard cannot run capture. Refreshing data is a manual local command by design.
 
-- `src/app` - App Router pages and local API routes
+## Project Structure
+
+- `src/app` - App Router pages
 - `src/components/dashboard` - dashboard controls and insight sections
 - `src/components/charts` - Recharts chart components
-- `src/components/data` - CSV data table
+- `src/components/data` - Supabase-backed data table
 - `src/components/ui` - shared presentation components
-- `src/lib` - parser, filtering, formatting, and analytics logic
-
-## Notes
-
-This is a local-first personal tool:
-
-- the source of truth is the CSV in the repo
-- capture runs from the local machine
-- the dashboard still works from the existing CSV if capture is unavailable
+- `src/lib` - Supabase access, CSV normalization, filtering, formatting, and analytics
+- `supabase/migrations` - database schema
+- `capture_livemopay.py` - local Android capture
+- `refresh_and_sync.py` - local capture and Supabase sync

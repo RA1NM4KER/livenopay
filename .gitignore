@@ -3,6 +3,8 @@ node_modules
 out
 dist
 .DS_Store
+.env*
+!.env.example
 *.log
 .idea
 __pycache__

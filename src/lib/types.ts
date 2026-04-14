@@ -15,6 +15,12 @@ export type EnergyRow = {
   balance: number;
 };
 
+export type SyncMetadata = {
+  lastSyncedAt?: string;
+  rowsInCsv?: number;
+  rowsSynced?: number;
+};
+
 export type QuickRange = "7d" | "30d" | "90d" | "all";
 
 export type DailyPoint = {
