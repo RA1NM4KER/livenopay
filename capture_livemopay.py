@@ -290,7 +290,7 @@ def open_ledger_history_from_current_screen():
 
     tap_ledger_history_fallback(root)
     root = confirm_transaction_screen("view_prepare_0003.xml")
-    if root:
+    if root is not None:
         return
 
     raise SystemExit(SETUP_MESSAGE)

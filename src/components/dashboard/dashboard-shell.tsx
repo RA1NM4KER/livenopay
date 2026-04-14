@@ -16,12 +16,18 @@ import { FilterBar } from "./filter-bar";
 import { Insights } from "./insights";
 import type { DashboardShellProps } from "./types";
 
+const syncFormatter = new Intl.DateTimeFormat("en-ZA", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Africa/Johannesburg"
+});
+
 function syncLabel(value?: string) {
   if (!value) {
     return "Never synced";
   }
 
-  return longDateTime(value);
+  return `${syncFormatter.format(new Date(value))} UTC+2`;
 }
 
 export function DashboardShell({ rows, sync }: DashboardShellProps) {
