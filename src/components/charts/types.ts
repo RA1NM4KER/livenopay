@@ -6,6 +6,7 @@ export type ChartShellProps = {
   eyebrow?: string;
   action?: ReactNode;
   footer?: ReactNode;
+  fullScreenChildren?: ReactNode;
   children: ReactNode;
 };
 

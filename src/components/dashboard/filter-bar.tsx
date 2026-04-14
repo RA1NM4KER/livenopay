@@ -7,9 +7,9 @@ const ranges: QuickRange[] = ["7d", "30d", "90d", "all"];
 
 function IsoDateInput({ label, value, onChange }: IsoDateInputProps) {
   return (
-    <label className="flex items-center gap-2 text-sm text-muted">
+    <label className="flex w-full flex-col gap-2 text-sm text-muted sm:w-auto sm:flex-row sm:items-center">
       {label}
-      <span className="relative inline-flex h-9 w-44 items-center justify-between rounded-md border border-line bg-paper px-3 text-sm text-ink transition focus-within:border-accent">
+      <span className="relative inline-flex h-9 w-full items-center justify-between rounded-md border border-line bg-paper px-3 text-sm text-ink transition focus-within:border-accent sm:w-44">
         <span>{value}</span>
         <svg
           aria-hidden="true"
@@ -39,8 +39,8 @@ function IsoDateInput({ label, value, onChange }: IsoDateInputProps) {
 
 export function FilterBar({ from, to, quickRange, onDateChange, onQuickRange }: FilterBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-paper px-3 py-3">
-      <div className="flex rounded-md bg-canvas p-1">
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-paper px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="grid grid-cols-4 rounded-md bg-canvas p-1 sm:flex">
         {ranges.map((range) => (
           <button
             className={`rounded px-3 py-1.5 text-sm transition ${

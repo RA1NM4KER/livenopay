@@ -11,10 +11,10 @@ export function Insights({ insights }: InsightsProps) {
   return (
     <Card>
       <CardHeader title="Signals" eyebrow="Insights" />
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="snap-rail flex snap-x gap-3 overflow-x-auto p-4 md:grid md:grid-cols-2 xl:grid-cols-3">
         {insights.map((insight) => (
           <article
-            className={`rounded-lg border border-line p-4 ${toneClass[insight.tone ?? "neutral"]}`}
+            className={`min-w-[16rem] snap-start rounded-lg border border-line p-4 md:min-w-0 ${toneClass[insight.tone ?? "neutral"]}`}
             key={insight.title}
           >
             <h3 className="text-sm font-semibold text-ink">{insight.title}</h3>

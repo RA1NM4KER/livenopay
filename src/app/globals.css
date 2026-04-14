@@ -74,3 +74,11 @@ select {
 .recharts-tooltip-wrapper {
   outline: none;
 }
+
+.snap-rail {
+  scrollbar-width: none;
+}
+
+.snap-rail::-webkit-scrollbar {
+  display: none;
+}

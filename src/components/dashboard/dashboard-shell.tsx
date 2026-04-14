@@ -56,17 +56,17 @@ export function DashboardShell({ rows, sync }: DashboardShellProps) {
   return (
     <div className="flex flex-1 flex-col gap-5 py-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm text-muted">
             {metrics.dateStart && metrics.dateEnd
               ? `${shortDate(metrics.dateStart)} to ${shortDate(metrics.dateEnd)}`
               : "No data loaded"}
           </p>
-          <h2 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          <h2 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight text-ink sm:text-4xl">
             A clearer view of your LiveMopay usage and spend.
           </h2>
         </div>
-        <div className="rounded-lg border border-line bg-paper px-4 py-3 text-sm">
+        <div className="w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm sm:w-auto">
           <p className="font-medium text-ink">Last synced</p>
           <p className="mt-1 text-muted">{syncLabel(sync.lastSyncedAt)}</p>
           {typeof sync.rowsInCsv === "number" ? (
@@ -83,7 +83,7 @@ export function DashboardShell({ rows, sync }: DashboardShellProps) {
         onQuickRange={updateQuickRange}
       />
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="snap-rail -mx-3 flex snap-x gap-4 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 sm:pb-0 lg:grid-cols-4 [&>section]:min-w-[16rem] [&>section]:snap-start sm:[&>section]:min-w-0">
         <MetricCard
           label="Total spend"
           value={formatCurrency(metrics.totalSpend)}
@@ -130,14 +130,14 @@ export function DashboardShell({ rows, sync }: DashboardShellProps) {
         />
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
+      <section className="snap-rail -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0">
         <DailySpendChart data={analytics.daily} />
         <DailyKwhChart data={analytics.daily} />
       </section>
 
       <DayBreakdownChart rows={rows} />
 
-      <section className="grid gap-5 lg:grid-cols-2">
+      <section className="snap-rail -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0">
         <CumulativeSpendChart data={analytics.daily} />
         <TariffChart data={analytics.tariffTimeline} />
         <HourlyChart data={analytics.hourly} metric="spend" title="Total energy spend by hour" />
