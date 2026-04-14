@@ -13,6 +13,21 @@ Livenopay now separates ingestion from presentation:
 
 There are no job queues, polling workers, remote command systems, or localhost dependencies for viewing the dashboard.
 
+## Who Can Use This
+
+This repo is set up as a personal deployable tool, not a shared hosted product.
+
+If someone else wants to use it, they should run their own instance:
+
+1. create their own Supabase project
+2. apply the Supabase migration from this repo
+3. deploy their own Next.js dashboard with their own Supabase read env vars
+4. run `refresh_and_sync.py` locally on the machine that can access their Android phone or emulator
+
+The deployed dashboard only reads Supabase. It does not know how to capture someone else's LiveMopay data, and it cannot trigger Android/ADB remotely.
+
+To turn this into a product for multiple users, the architecture would need more work: authentication, per-user data isolation, a proper ingestion/onboarding story, and a backend that does not expose service-role access to clients. That is intentionally out of scope for this personal version.
+
 ## Supabase Schema
 
 Apply the migration in:
