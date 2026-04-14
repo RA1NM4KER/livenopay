@@ -1,99 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardHeader } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
 import { formatCurrency, formatKwh } from "@/lib/format";
 import { ExpandChartButton, FullscreenChart } from "./chart-shell";
 import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
 import { DaySummaryCard } from "./day-summary-card";
 import type { DayBreakdownChartProps } from "./types";
-
-type DateSelectorProps = {
-  dates: string[];
-  onChange: (date: string) => void;
-  value: string;
-};
-
-function DateSelector({ dates, onChange, value }: DateSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen]);
-
-  return (
-    <div className="relative w-auto" ref={containerRef}>
-      <button
-        aria-expanded={isOpen}
-        aria-haspopup="dialog"
-        className="flex h-9 w-auto items-center justify-between gap-3 whitespace-nowrap rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent"
-        onClick={() => setIsOpen((current) => !current)}
-        type="button"
-      >
-        <span>{value}</span>
-        <svg
-          aria-hidden="true"
-          className="h-4 w-4 text-muted"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          viewBox="0 0 24 24"
-        >
-          <path d="M8 2v4" />
-          <path d="M16 2v4" />
-          <rect height="18" rx="2" width="18" x="3" y="4" />
-          <path d="M3 10h18" />
-        </svg>
-      </button>
-      {isOpen ? (
-        <div
-          className="absolute right-0 z-30 mt-2 max-h-72 w-max min-w-full overflow-auto rounded-lg border border-line bg-paper p-2 shadow-soft"
-          role="dialog"
-        >
-          <div className="grid gap-1">
-            {dates.map((date) => (
-              <button
-                className={`whitespace-nowrap rounded-md px-3 py-2 text-left text-sm transition ${
-                  date === value ? "bg-ink text-paper" : "text-ink hover:bg-canvas"
-                }`}
-                key={date}
-                onClick={() => onChange(date)}
-                type="button"
-              >
-                {date}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export function DayBreakdownChart({ rows }: DayBreakdownChartProps) {
   const [selectedDate, setSelectedDate] = useState(rows[rows.length - 1]?.periodDate ?? "");
@@ -108,6 +24,7 @@ export function DayBreakdownChart({ rows }: DayBreakdownChartProps) {
   const fixedSpend = sumRows(fixedRows, "cost");
   const usage = sumRows(energyRows, "kwh");
   const dateOptions = useMemo(() => Array.from(new Set(rows.map((row) => row.periodDate))).sort(), [rows]);
+  const selectableDates = useMemo(() => new Set(dateOptions), [dateOptions]);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 640px)");
@@ -161,7 +78,17 @@ export function DayBreakdownChart({ rows }: DayBreakdownChartProps) {
     </ResponsiveContainer>
   );
 
-  const dateControl = <DateSelector dates={dateOptions} onChange={setSelectedDate} value={selectedDate} />;
+  const dateControl = (
+    <DatePicker
+      closeOnSelect={false}
+      label="Day detail date"
+      max={dateOptions[dateOptions.length - 1]}
+      min={dateOptions[0]}
+      onChange={setSelectedDate}
+      selectableDates={selectableDates}
+      value={selectedDate}
+    />
+  );
 
   return (
     <>
