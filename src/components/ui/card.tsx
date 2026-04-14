@@ -1,11 +1,7 @@
 import type { CardHeaderProps, CardProps } from "./types";
 
 export function Card({ children, className = "" }: CardProps) {
-  return (
-    <section className={`min-w-0 rounded-lg border border-line bg-paper/88 shadow-soft ${className}`}>
-      {children}
-    </section>
-  );
+  return <section className={`min-w-0 rounded-lg border border-line bg-paper/88 ${className}`}>{children}</section>;
 }
 
 export function CardHeader({ title, eyebrow, action }: CardHeaderProps) {
