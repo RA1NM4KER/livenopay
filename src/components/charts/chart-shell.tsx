@@ -176,7 +176,7 @@ export function FullscreenChart({ title, action, onClose, children }: Fullscreen
         onTouchStart={handleTouchStart}
       >
         <div
-          className="h-[72vh] min-h-[28rem] rounded-lg border border-line bg-paper p-3 shadow-soft sm:p-5"
+          className="h-full min-h-[18rem] rounded-lg border border-line bg-paper p-3 shadow-soft sm:min-h-[24rem] sm:p-5"
           style={{ minWidth: "100%", width: `${Math.round(100 * zoom)}%` }}
         >
           {children}
