@@ -272,7 +272,7 @@ def open_ledger_history_from_current_screen():
         setup_added += added
         log(f"Parsed initial visible row list before reset: added={added} candidates={candidate_count}")
         back = find_clickable_node(root, "Back")
-        if back:
+        if back is not None:
             tap_node(back)
         else:
             press_back()
@@ -281,15 +281,15 @@ def open_ledger_history_from_current_screen():
         log("Initial screen does not look like the individual row list")
 
     ledger_button = find_ledger_button(root)
-    if ledger_button and tap_node(ledger_button):
+    if ledger_button is not None and tap_node(ledger_button):
         if confirm_transaction_screen("view_prepare_ledger.xml"):
             return setup_added
 
     ledger_tab = find_clickable_node(root, "Ledger\nTab", starts_with=True)
-    if ledger_tab and tap_node(ledger_tab):
+    if ledger_tab is not None and tap_node(ledger_tab):
         root = load_xml(dump_ui_to(OUT_DIR / "view_prepare_0002.xml"))
         ledger_button = find_ledger_button(root)
-        if ledger_button and tap_node(ledger_button):
+        if ledger_button is not None and tap_node(ledger_button):
             if confirm_transaction_screen("view_prepare_tab_ledger.xml"):
                 return setup_added
 
