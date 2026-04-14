@@ -262,10 +262,15 @@ def has_transaction_rows(root) -> bool:
 
 def open_ledger_history_from_current_screen():
     log("Preparing LiveMopay ledger screen")
-    root = load_xml(dump_ui_to(OUT_DIR / "view_prepare_0000.xml"))
+    initial_snapshot = dump_ui_to(OUT_DIR / "view_prepare_0000.xml")
+    root = load_xml(initial_snapshot)
+    setup_added = 0
 
     if has_transaction_rows(root):
         log("Initial screen already looks like the individual row list")
+        added, candidate_count = parse_xml(initial_snapshot)
+        setup_added += added
+        log(f"Parsed initial visible row list before reset: added={added} candidates={candidate_count}")
         back = find_clickable_node(root, "Back")
         if back:
             tap_node(back)
@@ -278,7 +283,7 @@ def open_ledger_history_from_current_screen():
     ledger_button = find_ledger_button(root)
     if ledger_button and tap_node(ledger_button):
         if confirm_transaction_screen("view_prepare_ledger.xml"):
-            return
+            return setup_added
 
     ledger_tab = find_clickable_node(root, "Ledger\nTab", starts_with=True)
     if ledger_tab and tap_node(ledger_tab):
@@ -286,12 +291,12 @@ def open_ledger_history_from_current_screen():
         ledger_button = find_ledger_button(root)
         if ledger_button and tap_node(ledger_button):
             if confirm_transaction_screen("view_prepare_tab_ledger.xml"):
-                return
+                return setup_added
 
     tap_ledger_history_fallback(root)
     root = confirm_transaction_screen("view_prepare_0003.xml")
     if root is not None:
-        return
+        return setup_added
 
     raise SystemExit(SETUP_MESSAGE)
 
@@ -382,12 +387,17 @@ def find_scrollable_bounds(root):
 def swipe_up(xml_path: Path):
     root = load_xml(xml_path)
     left, top, right, bottom = find_scrollable_bounds(root)
+    height = bottom - top
     x = (left + right) // 2
-    start_y = max(top + 1, bottom - max(80, (bottom - top) // 8))
-    end_y = min(bottom - 1, top + max(80, (bottom - top) // 5))
+    start_y = max(top + 1, bottom - max(120, height // 4))
+    end_y = min(bottom - 1, top + max(120, height // 3))
+
+    if start_y <= end_y:
+        start_y = max(top + 1, bottom - 120)
+        end_y = min(bottom - 1, top + 120)
 
     log(f"Swiping list from {x},{start_y} to {x},{end_y}")
-    run("shell", "input", "swipe", str(x), str(start_y), str(x), str(end_y), "350")
+    run("shell", "input", "swipe", str(x), str(start_y), str(x), str(end_y), "600")
 
 def load_existing_csv():
     if not CSV_PATH.exists():
@@ -443,7 +453,7 @@ def main():
     ensure_device_ready()
 
     if "--no-reset" not in sys.argv:
-        open_ledger_history_from_current_screen()
+        new_count += open_ledger_history_from_current_screen()
 
     for i in range(1, max_iterations + 1):
         xml_path = dump_ui(i)
