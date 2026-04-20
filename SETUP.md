@@ -6,7 +6,21 @@ This guide covers the local Android setup needed for refreshing `livemopay_energ
 
 Capture is local-only. The deployed dashboard reads Supabase and does not run Android/ADB commands.
 
-To capture fresh rows and sync them to Supabase, run this on the local machine with Android/ADB access:
+The easiest current path is the emulator wrapper:
+
+    npm run refresh:emulator
+
+It starts the configured Android emulator if needed, opens LiveMopay, runs capture and sync, then shuts the emulator down by default.
+
+To keep the emulator open after refresh:
+
+    npm run refresh:emulator -- --no-shutdown
+
+To fully rebuild the CSV from the scrollable ledger history:
+
+    npm run refresh:emulator -- --full
+
+You can still run the lower-level refresh directly on a local machine with Android/ADB access:
 
     python3 refresh_and_sync.py
 
@@ -14,7 +28,7 @@ The refresh script runs:
 
     python3 capture_livemopay.py
 
-This assumes local execution with Android platform tools available. The script looks for `adb` in this order:
+This assumes local execution with Android platform tools available. The capture script looks for `adb` in this order:
 
 1. `ADB_PATH`, if you set it
 2. `adb` on your shell path
@@ -53,7 +67,41 @@ After installing, connect the phone and run:
 
 If the phone asks whether to allow USB debugging, tap `Allow`. The device should show as `device`, not `unauthorized`.
 
-## Recommended: Use Your Android Phone
+## Recommended: Use Android Studio Emulator
+
+Use this if you want the most repeatable refresh flow.
+
+1. install Android Studio
+2. create an Android virtual device
+3. install LiveMopay inside the emulator and log in
+4. copy `.env.example` to `.env.local`
+5. set `LIVENOPAY_AVD_NAME` in `.env.local` to your emulator's AVD name
+6. run `npm run refresh:emulator`
+
+The wrapper uses these optional `.env.local` values:
+
+    LIVENOPAY_AVD_NAME=Your_AVD_Name
+    LIVENOPAY_PACKAGE_NAME=livemopay.co.za
+    LIVENOPAY_ACTIVITY_NAME=com.example.property_wallet.MainActivity
+    EMULATOR_CMD=/path/to/emulator
+    ADB_PATH=/path/to/adb
+    ADB_SERIAL=emulator-5554
+
+Most people should only need `LIVENOPAY_AVD_NAME`. The package and activity are configurable in case LiveMopay changes its Android entry point. `ADB_SERIAL` is useful when you have more than one Android device or emulator connected.
+
+The capture script also reads `.env.local` directly. These optional values control output locations and scan behavior:
+
+    LIVENOPAY_CSV_PATH=livemopay_energy.csv
+    LIVENOPAY_DUMPS_DIR=livemopay_dumps
+    LIVENOPAY_CAPTURE_LOG=livemopay_capture.log
+    LIVENOPAY_MAX_ITERATIONS=500
+    LIVENOPAY_MAX_STAGNANT_ROUNDS=4
+    LIVENOPAY_SCREEN_WAIT_ATTEMPTS=15
+    LIVENOPAY_SCREEN_WAIT_SECONDS=2.0
+
+Once capture starts, do not touch the emulator until it finishes.
+
+## Alternative: Use Your Android Phone
 
 1. install LiveMopay on your Android phone and log in
 2. connect the phone to your computer with USB
@@ -66,19 +114,6 @@ If the phone asks whether to allow USB debugging, tap `Allow`. The device should
 9. run `python3 refresh_and_sync.py`
 
 Once capture starts, do not touch the phone until it finishes. The script is reading and scrolling the Android UI, so manual taps or scrolling can make it capture the wrong screen or miss rows.
-
-## Advanced: Use Android Studio Emulator
-
-Use this if you do not want to connect a real phone:
-
-1. install Android Studio
-2. create or start an Android emulator
-3. install LiveMopay inside the emulator and log in
-4. tap the bottom `Ledger` tab
-5. leave the app on the Ledger summary page, where the orange `Ledger` button is visible
-6. run `python3 refresh_and_sync.py`
-
-Once capture starts, do not touch the emulator until it finishes.
 
 ## Starting Screen
 

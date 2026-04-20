@@ -1,19 +1,69 @@
+import argparse
 import csv
 import os
 import re
 import shutil
 import subprocess
-import sys
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
+
+def read_dotenv(path: Path):
+    if not path.exists():
+        return
+
+    for raw_line in path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+read_dotenv(Path(".env.local"))
+
+
+def env_path(name: str, default: str) -> Path:
+    return Path(os.environ.get(name, default))
+
+
+def env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+
+    try:
+        return int(value)
+    except ValueError:
+        raise SystemExit(f"INVALID_ENV: {name} must be an integer, got {value!r}")
+
+
+def env_float(name: str, default: float) -> float:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+
+    try:
+        return float(value)
+    except ValueError:
+        raise SystemExit(f"INVALID_ENV: {name} must be a number, got {value!r}")
+
+
 ANDROID_STUDIO_ADB = Path.home() / "Library/Android/sdk/platform-tools/adb"
-OUT_DIR = Path("livemopay_dumps")
-OUT_DIR.mkdir(exist_ok=True)
-CSV_PATH = Path("livemopay_energy.csv")
-LOG_PATH = Path("livemopay_capture.log")
+OUT_DIR = env_path("LIVENOPAY_DUMPS_DIR", "livemopay_dumps")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+CSV_PATH = env_path("LIVENOPAY_CSV_PATH", "livemopay_energy.csv")
+LOG_PATH = env_path("LIVENOPAY_CAPTURE_LOG", "livemopay_capture.log")
+CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+REMOTE_DUMP_PATH = os.environ.get("LIVENOPAY_REMOTE_DUMP_PATH", "/sdcard/view.xml")
+MAX_ITERATIONS = env_int("LIVENOPAY_MAX_ITERATIONS", 500)
+MAX_STAGNANT_ROUNDS = env_int("LIVENOPAY_MAX_STAGNANT_ROUNDS", 4)
+SCREEN_WAIT_ATTEMPTS = env_int("LIVENOPAY_SCREEN_WAIT_ATTEMPTS", 15)
+SCREEN_WAIT_SECONDS = env_float("LIVENOPAY_SCREEN_WAIT_SECONDS", 2.0)
 FIELDNAMES = [
     "capture_dt",
     "charge_label",
@@ -54,6 +104,7 @@ TOPUP_ROW_RE = re.compile(
 seen_keys = set()
 rows = []
 adb_path = None
+adb_serial = None
 
 SETUP_MESSAGE = (
     "SETUP_REQUIRED: Open LiveMopay, go to the Ledger tab, tap the orange Ledger button, "
@@ -63,11 +114,13 @@ SETUP_MESSAGE = (
 def row_key(item):
     return (item["charge_label"], item["period_dt"], item["cost"], item["balance"])
 
+
 def log(message):
     line = f"CAPTURE_LOG: {message}"
     print(line, flush=True)
     with LOG_PATH.open("a") as f:
         f.write(f"{datetime.now().isoformat(timespec='seconds')} {message}\n")
+
 
 def resolve_adb():
     global adb_path
@@ -92,16 +145,42 @@ def resolve_adb():
         "On macOS with Homebrew, run: brew install android-platform-tools"
     )
 
+
+def resolve_adb_serial(devices):
+    configured = os.environ.get("ADB_SERIAL") or os.environ.get("ANDROID_SERIAL")
+    if configured:
+        for serial, state in devices:
+            if serial == configured and state == "device":
+                return serial
+
+        raise SystemExit(
+            f"ADB_SERIAL_NOT_FOUND: {configured} is not connected as a ready device. "
+            "Run `adb devices` and update ADB_SERIAL or ANDROID_SERIAL."
+        )
+
+    ready = [serial for serial, state in devices if state == "device"]
+    return ready[0] if ready else None
+
+
 def run(*args):
-    log(f"adb {' '.join(args)}")
+    command = [resolve_adb()]
+    if adb_serial and args and args[0] not in {"devices", "start-server", "kill-server"}:
+        command.extend(["-s", adb_serial])
+
+    command.extend(args)
+    display = "adb " + " ".join(command[1:])
+    log(display)
     return subprocess.run(
-        [resolve_adb(), *args],
+        command,
         check=True,
         capture_output=True,
         text=True,
     )
 
+
 def ensure_device_ready():
+    global adb_serial
+
     result = run("devices")
     devices = []
     unauthorized = []
@@ -112,13 +191,14 @@ def ensure_device_ready():
             continue
 
         serial, state = parts[0], parts[1]
-        if state == "device":
-            devices.append(serial)
-        elif state == "unauthorized":
+        devices.append((serial, state))
+        if state == "unauthorized":
             unauthorized.append(serial)
 
-    if devices:
-        log(f"Using Android device {devices[0]}")
+    serial = resolve_adb_serial(devices)
+    if serial:
+        adb_serial = serial
+        log(f"Using Android device {adb_serial}")
         return
 
     if unauthorized:
@@ -130,14 +210,18 @@ def ensure_device_ready():
         "NO_ANDROID_DEVICE: Connect an Android phone with USB debugging enabled, or start an Android emulator, then try again."
     )
 
+
 def node_desc(node):
     return (node.attrib.get("content-desc") or "").strip()
+
 
 def is_transaction_desc(desc: str) -> bool:
     return "Energy Charge:" in desc or "Daily " in desc or "Subtotal-" in desc
 
+
 def is_parseable_transaction_desc(desc: str) -> bool:
     return bool(ENERGY_ROW_RE.match(desc) or FIXED_ROW_RE.match(desc) or TOPUP_ROW_RE.match(desc))
+
 
 def node_bounds(node):
     match = BOUNDS_RE.match(node.attrib.get("bounds", ""))
@@ -145,6 +229,7 @@ def node_bounds(node):
         return None
 
     return tuple(int(value) for value in match.groups())
+
 
 def bounds_center(node):
     bounds = node_bounds(node)
@@ -154,16 +239,20 @@ def bounds_center(node):
     left, top, right, bottom = bounds
     return (left + right) // 2, (top + bottom) // 2
 
-def tap_node(node):
+
+def tap_node(node, wait_seconds: float = 1.2):
     center = bounds_center(node)
     if not center:
         log("Could not tap node because bounds were missing")
         return False
 
-    log(f"Tapping {node_desc(node) or node.attrib.get('class', 'node')} at {center[0]},{center[1]}")
+    log(
+        f"Tapping {node_desc(node) or node.attrib.get('class', 'node')} at {center[0]},{center[1]} and waiting {wait_seconds:.1f}s"
+    )
     run("shell", "input", "tap", str(center[0]), str(center[1]))
-    time.sleep(1.2)
+    time.sleep(wait_seconds)
     return True
+
 
 def find_clickable_node(root, desc: str, starts_with: bool = False, contains: bool = False):
     for node in root.iter("node"):
@@ -175,6 +264,7 @@ def find_clickable_node(root, desc: str, starts_with: bool = False, contains: bo
 
     return None
 
+
 def node_size(node):
     bounds = node_bounds(node)
     if not bounds:
@@ -183,6 +273,7 @@ def node_size(node):
     left, top, right, bottom = bounds
     return right - left, bottom - top
 
+
 def is_large_content_button(node):
     size = node_size(node)
     if not size:
@@ -190,6 +281,7 @@ def is_large_content_button(node):
 
     width, height = size
     return width > 300 and height > 45
+
 
 def find_ledger_button(root):
     exact = []
@@ -201,7 +293,10 @@ def find_ledger_button(root):
         if node.attrib.get("clickable") != "true" or "Ledger" not in value:
             continue
 
-        log(f"Found Ledger candidate {value!r} bounds={node.attrib.get('bounds', '')}")
+        if "Tab" in value:
+            continue
+
+        log(f"Found Ledger button candidate {value!r} bounds={node.attrib.get('bounds', '')}")
 
         if value == "Ledger":
             exact.append(node)
@@ -212,6 +307,7 @@ def find_ledger_button(root):
 
     return (exact or preferred or fallback or [None])[0]
 
+
 def root_size(root):
     for node in root.iter("node"):
         size = node_size(node)
@@ -219,6 +315,7 @@ def root_size(root):
             return size
 
     return 1080, 2424
+
 
 def tap_ledger_history_fallback(root):
     width, height = root_size(root)
@@ -228,37 +325,65 @@ def tap_ledger_history_fallback(root):
     run("shell", "input", "tap", str(x), str(y))
     time.sleep(1.2)
 
+
 def press_back():
     log("Pressing Android back")
     run("shell", "input", "keyevent", "4")
     time.sleep(1.2)
 
-def confirm_transaction_screen(snapshot_name: str):
-    root = load_xml(dump_ui_to(OUT_DIR / snapshot_name))
-    if has_transaction_rows(root):
-        log(f"Confirmed transaction rows in {snapshot_name}")
-        return root
-
-    log(f"No parseable transaction rows found in {snapshot_name}")
-    return None
 
 def capture_dt_to_period_dt(value):
     return datetime.strptime(value, "%d/%m/%Y %H:%M").strftime("%Y-%m-%d %H:%M")
 
+
 def dump_ui_to(local: Path) -> Path:
-    remote = "/sdcard/view.xml"
-    run("shell", "uiautomator", "dump", remote)
-    run("pull", remote, str(local))
+    run("shell", "uiautomator", "dump", REMOTE_DUMP_PATH)
+    run("pull", REMOTE_DUMP_PATH, str(local))
     return local
+
 
 def dump_ui(i: int) -> Path:
     return dump_ui_to(OUT_DIR / f"view_{i:04d}.xml")
 
+
 def load_xml(path: Path):
     return ET.parse(path).getroot()
 
+
 def has_transaction_rows(root) -> bool:
     return any(is_parseable_transaction_desc(node_desc(node)) for node in root.iter("node"))
+
+
+def wait_for_condition(
+    check_fn,
+    snapshot_name: str,
+    attempts: int = SCREEN_WAIT_ATTEMPTS,
+    delay_seconds: float = SCREEN_WAIT_SECONDS,
+):
+    for attempt in range(1, attempts + 1):
+        root = load_xml(dump_ui_to(OUT_DIR / snapshot_name))
+        if check_fn(root):
+            log(f"Condition met for {snapshot_name} on attempt {attempt}")
+            return root
+
+        log(f"Condition not met for {snapshot_name} on attempt {attempt}/{attempts}; waiting {delay_seconds:.1f}s")
+        if attempt < attempts:
+            time.sleep(delay_seconds)
+
+    return None
+
+
+def has_ledger_tab(root) -> bool:
+    return find_clickable_node(root, "Ledger\nTab", starts_with=True) is not None
+
+
+def has_orange_ledger_button(root) -> bool:
+    return find_ledger_button(root) is not None
+
+
+def confirm_transaction_screen(snapshot_name: str):
+    return wait_for_condition(has_transaction_rows, snapshot_name)
+
 
 def open_ledger_history_from_current_screen():
     log("Preparing LiveMopay ledger screen")
@@ -280,25 +405,30 @@ def open_ledger_history_from_current_screen():
     else:
         log("Initial screen does not look like the individual row list")
 
-    ledger_button = find_ledger_button(root)
-    if ledger_button is not None and tap_node(ledger_button):
-        if confirm_transaction_screen("view_prepare_ledger.xml"):
-            return setup_added
+    root_wait = wait_for_condition(has_ledger_tab, "view_prepare_wait_ledger.xml")
+    if root_wait is not None:
+        root = root_wait
 
     ledger_tab = find_clickable_node(root, "Ledger\nTab", starts_with=True)
-    if ledger_tab is not None and tap_node(ledger_tab):
-        root = load_xml(dump_ui_to(OUT_DIR / "view_prepare_0002.xml"))
-        ledger_button = find_ledger_button(root)
-        if ledger_button is not None and tap_node(ledger_button):
-            if confirm_transaction_screen("view_prepare_tab_ledger.xml"):
-                return setup_added
+    if ledger_tab is not None and tap_node(ledger_tab, wait_seconds=6.0):
+        root_button = wait_for_condition(has_orange_ledger_button, "view_prepare_0002.xml")
+        if root_button is not None:
+            root = root_button
+
+    ledger_button = find_ledger_button(root)
+    if ledger_button is not None and tap_node(ledger_button, wait_seconds=8.0):
+        root_rows = confirm_transaction_screen("view_prepare_tab_ledger.xml")
+        if root_rows is not None:
+            return setup_added
 
     tap_ledger_history_fallback(root)
+    time.sleep(4.0)
     root = confirm_transaction_screen("view_prepare_0003.xml")
     if root is not None:
         return setup_added
 
     raise SystemExit(SETUP_MESSAGE)
+
 
 def parse_xml(path: Path):
     root = load_xml(path)
@@ -353,6 +483,7 @@ def parse_xml(path: Path):
 
     return added, candidate_count
 
+
 def parse_existing_dumps():
     rows.clear()
     seen_keys.clear()
@@ -362,6 +493,7 @@ def parse_existing_dumps():
 
     save_csv()
     print(f"Done. Wrote {len(rows)} rows to livemopay_energy.csv", flush=True)
+
 
 def find_scrollable_bounds(root):
     candidates = []
@@ -384,6 +516,7 @@ def find_scrollable_bounds(root):
     _, left, top, right, bottom = max(candidates)
     return left, top, right, bottom
 
+
 def swipe_up(xml_path: Path):
     root = load_xml(xml_path)
     left, top, right, bottom = find_scrollable_bounds(root)
@@ -398,6 +531,7 @@ def swipe_up(xml_path: Path):
 
     log(f"Swiping list from {x},{start_y} to {x},{end_y}")
     run("shell", "input", "swipe", str(x), str(start_y), str(x), str(end_y), "600")
+
 
 def load_existing_csv():
     if not CSV_PATH.exists():
@@ -420,6 +554,7 @@ def load_existing_csv():
 
     return loaded
 
+
 def save_csv():
     rows.sort(key=lambda x: x["period_dt"])
     with CSV_PATH.open("w", newline="") as f:
@@ -430,17 +565,22 @@ def save_csv():
         writer.writeheader()
         writer.writerows(rows)
 
+
 def main():
+    parser = argparse.ArgumentParser(description="Capture LiveMopay ledger rows from a local Android device or emulator.")
+    parser.add_argument("--full", action="store_true", help="Rebuild the CSV instead of loading existing rows first.")
+    parser.add_argument("--from-dumps", action="store_true", help="Rebuild the CSV from existing XML dumps only.")
+    parser.add_argument("--no-reset", action="store_true", help="Start scanning from the current screen without navigation.")
+    args = parser.parse_args()
+
     LOG_PATH.write_text("")
 
-    if "--from-dumps" in sys.argv:
+    if args.from_dumps:
         parse_existing_dumps()
         return
 
-    full_recapture = "--full" in sys.argv
+    full_recapture = args.full
     stagnant_rounds = 0
-    max_stagnant_rounds = 4
-    max_iterations = 500
     existing_count = 0 if full_recapture else load_existing_csv()
     new_count = 0
 
@@ -452,10 +592,10 @@ def main():
 
     ensure_device_ready()
 
-    if "--no-reset" not in sys.argv:
+    if not args.no_reset:
         new_count += open_ledger_history_from_current_screen()
 
-    for i in range(1, max_iterations + 1):
+    for i in range(1, MAX_ITERATIONS + 1):
         xml_path = dump_ui(i)
         added, candidate_count = parse_xml(xml_path)
 
@@ -474,7 +614,7 @@ def main():
 
         save_csv()
 
-        if stagnant_rounds >= max_stagnant_rounds:
+        if stagnant_rounds >= MAX_STAGNANT_ROUNDS:
             print("No new rows found for several rounds. Stopping.", flush=True)
             break
 
@@ -485,6 +625,7 @@ def main():
         print(f"Done. Rebuilt {CSV_PATH} with {len(rows)} rows.", flush=True)
     else:
         print(f"Done. Added {new_count} new rows. Wrote {len(rows)} rows to {CSV_PATH}", flush=True)
+
 
 if __name__ == "__main__":
     main()

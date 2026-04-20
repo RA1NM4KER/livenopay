@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "refresh": "python3 refresh_and_sync.py",
+    "refresh:emulator": "scripts/refresh_with_emulator.sh",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write ."

@@ -12,3 +12,4 @@ __pycache__
 livemopay_dumps
 livemopay_energy.csv
 livemopay_capture.log
+supabase/.temp

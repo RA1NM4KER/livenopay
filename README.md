@@ -1,6 +1,12 @@
 # Livenopay
 
-A personal tool for extracting LiveMopay electricity ledger rows locally, syncing them to Supabase, and viewing usage, spend, balance, fixed charges, and tariffs in a deployed Next.js dashboard.
+A personal electricity ledger for LiveMopay users. It captures the in-app ledger from Android, syncs the rows to Supabase, and gives you a dashboard for usage, spend, balance, fixed charges, tariff changes, and raw transaction history.
+
+The intended setup is:
+
+1. run the dashboard anywhere Next.js can deploy
+2. run refresh locally on a machine with Android Studio emulator access
+3. let Supabase sit between the two as the source of truth
 
 ## Architecture
 
@@ -22,7 +28,8 @@ If someone else wants to use it, they should run their own instance:
 1. create their own Supabase project
 2. apply the Supabase migration from this repo
 3. deploy their own Next.js dashboard with their own Supabase read env vars
-4. run `refresh_and_sync.py` locally on the machine that can access their Android phone or emulator
+4. install LiveMopay in their own Android emulator or phone
+5. run the local refresh command that captures their ledger and syncs it to Supabase
 
 The deployed dashboard only reads Supabase. It does not know how to capture someone else's LiveMopay data, and it cannot trigger Android/ADB remotely.
 
@@ -42,6 +49,40 @@ It creates:
 
 The unique key matches the existing local capture dedupe strategy, so rerunning sync is idempotent and avoids duplicate rows.
 
+## Quick Start
+
+1. Install dependencies:
+
+   npm install
+
+2. Create `.env.local` from `.env.example` and set:
+
+   SUPABASE_URL=...
+   SUPABASE_ANON_KEY=...
+   SUPABASE_SERVICE_ROLE_KEY=...
+
+3. Apply the migration in Supabase:
+
+   supabase/migrations/20260414000000_livenopay_energy.sql
+
+4. Install LiveMopay in an Android Studio emulator and log in.
+
+5. Set your Android Studio emulator name in `.env.local`:
+
+   LIVENOPAY_AVD_NAME=Your_AVD_Name
+
+6. Refresh data through the emulator:
+
+   npm run refresh:emulator
+
+7. Start the dashboard:
+
+   npm run dev
+
+Open `http://localhost:3000`.
+
+For the first run, leave the emulator logged into LiveMopay. The refresh command starts the emulator if needed, opens LiveMopay, captures ledger rows, syncs them to Supabase, and shuts the emulator down unless you pass `-- --no-shutdown`.
+
 ## Environment
 
 For the deployed dashboard:
@@ -56,6 +97,25 @@ For local sync:
 
 You can put these in `.env.local` for local development. Do not expose the service role key in the browser or deployed public client environment.
 
+Optional emulator refresh settings:
+
+    LIVENOPAY_AVD_NAME=Your_AVD_Name
+    LIVENOPAY_PACKAGE_NAME=livemopay.co.za
+    LIVENOPAY_ACTIVITY_NAME=com.example.property_wallet.MainActivity
+    EMULATOR_CMD=/path/to/emulator
+    ADB_PATH=/path/to/adb
+    ADB_SERIAL=emulator-5554
+
+Optional capture tuning:
+
+    LIVENOPAY_CSV_PATH=livemopay_energy.csv
+    LIVENOPAY_DUMPS_DIR=livemopay_dumps
+    LIVENOPAY_CAPTURE_LOG=livemopay_capture.log
+    LIVENOPAY_MAX_ITERATIONS=500
+    LIVENOPAY_MAX_STAGNANT_ROUNDS=4
+    LIVENOPAY_SCREEN_WAIT_ATTEMPTS=15
+    LIVENOPAY_SCREEN_WAIT_SECONDS=2.0
+
 ## Run the Dashboard
 
     npm install
@@ -67,7 +127,17 @@ The dashboard and data table read from Supabase through `src/lib/energy-data.ts`
 
 ## Refresh Data
 
-On the local machine that has Android/ADB configured, run:
+The recommended path is the emulator wrapper:
+
+    npm run refresh:emulator
+
+Pass refresh options after `--`:
+
+    npm run refresh:emulator -- --full
+    npm run refresh:emulator -- --no-shutdown
+    npm run refresh:emulator -- --skip-capture
+
+On a local machine where LiveMopay is already open on a connected Android device or emulator, you can also run the lower-level command:
 
     python3 refresh_and_sync.py
 
