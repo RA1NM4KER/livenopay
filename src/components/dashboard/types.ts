@@ -1,4 +1,5 @@
 import type { EnergyRow, Insight, QuickRange, SyncMetadata } from "@/lib/types";
+import type { QuickRangePreset } from "@/lib/filters";
 
 export type DashboardShellProps = {
   rows: EnergyRow[];
@@ -20,5 +21,5 @@ export type FilterBarProps = {
   to: string;
   quickRange: QuickRange;
   onDateChange: (from: string, to: string) => void;
-  onQuickRange: (range: QuickRange) => void;
+  onQuickRange: (range: QuickRangePreset) => void;
 };

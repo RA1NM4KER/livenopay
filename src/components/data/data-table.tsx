@@ -4,19 +4,15 @@ import { useMemo, useState } from "react";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { filterRowsByRange } from "@/lib/analytics";
-import { defaultRange, quickRangeFromLatest } from "@/lib/filters";
+import { useFilterUrlState } from "@/lib/use-filter-url-state";
 import { formatCurrency } from "@/lib/format";
-import type { QuickRange } from "@/lib/types";
 import { amountClassFor, kwhDisplayFor, tariffDisplayFor } from "./row-formatting";
 import { SortHeader } from "./sort-header";
 import { matchesSearch, nextSortDirection, sortRows } from "./table-sorting";
 import type { DataTableProps, SortDirection, SortKey } from "./types";
 
 export function DataTable({ rows }: DataTableProps) {
-  const initialRange = useMemo(() => defaultRange(rows), [rows]);
-  const [from, setFrom] = useState(initialRange.from);
-  const [to, setTo] = useState(initialRange.to);
-  const [quickRange, setQuickRange] = useState<QuickRange>(initialRange.quickRange);
+  const { from, to, quickRange, onDateChange, onQuickRange } = useFilterUrlState(rows);
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("captured");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -32,19 +28,6 @@ export function DataTable({ rows }: DataTableProps) {
   function updateSort(nextKey: SortKey) {
     setSortDirection((direction) => nextSortDirection(sortKey, nextKey, direction));
     setSortKey(nextKey);
-  }
-
-  function updateDates(nextFrom: string, nextTo: string) {
-    setFrom(nextFrom);
-    setTo(nextTo);
-    setQuickRange("all");
-  }
-
-  function updateQuickRange(range: QuickRange) {
-    const nextRange = quickRangeFromLatest(rows, range);
-    setFrom(nextRange.from);
-    setTo(nextRange.to);
-    setQuickRange(nextRange.quickRange);
   }
 
   return (
@@ -65,13 +48,7 @@ export function DataTable({ rows }: DataTableProps) {
         </label>
       </div>
 
-      <FilterBar
-        from={from}
-        to={to}
-        quickRange={quickRange}
-        onDateChange={updateDates}
-        onQuickRange={updateQuickRange}
-      />
+      <FilterBar from={from} to={to} quickRange={quickRange} onDateChange={onDateChange} onQuickRange={onQuickRange} />
 
       <Card>
         <CardHeader title="Transactions" eyebrow="Supabase" />

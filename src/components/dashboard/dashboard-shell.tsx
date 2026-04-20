@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CumulativeSpendChart } from "@/components/charts/cumulative-spend-chart";
 import { DayBreakdownChart } from "@/components/charts/day-breakdown-chart";
 import { DailyKwhChart } from "@/components/charts/daily-kwh-chart";
@@ -9,9 +9,8 @@ import { HourlyChart } from "@/components/charts/hourly-chart";
 import { TariffChart } from "@/components/charts/tariff-chart";
 import { MetricCard } from "@/components/ui/metric-card";
 import { createAnalytics, filterRowsByRange } from "@/lib/analytics";
-import { defaultRange, quickRangeFromLatest } from "@/lib/filters";
+import { useFilterUrlState } from "@/lib/use-filter-url-state";
 import { formatCurrency, formatKwh, formatTariff, longDateTime, shortDate } from "@/lib/format";
-import type { QuickRange } from "@/lib/types";
 import { FilterBar } from "./filter-bar";
 import { Insights } from "./insights";
 import type { DashboardShellProps } from "./types";
@@ -31,25 +30,9 @@ function syncLabel(value?: string) {
 }
 
 export function DashboardShell({ rows, sync }: DashboardShellProps) {
-  const initialRange = useMemo(() => defaultRange(rows), [rows]);
-  const [from, setFrom] = useState(initialRange.from);
-  const [to, setTo] = useState(initialRange.to);
-  const [quickRange, setQuickRange] = useState<QuickRange>(initialRange.quickRange);
+  const { from, to, quickRange, onDateChange, onQuickRange } = useFilterUrlState(rows);
 
   const analytics = useMemo(() => createAnalytics(filterRowsByRange(rows, from, to)), [from, rows, to]);
-
-  function updateDates(nextFrom: string, nextTo: string) {
-    setFrom(nextFrom);
-    setTo(nextTo);
-    setQuickRange("all");
-  }
-
-  function updateQuickRange(range: QuickRange) {
-    const nextRange = quickRangeFromLatest(rows, range);
-    setFrom(nextRange.from);
-    setTo(nextRange.to);
-    setQuickRange(nextRange.quickRange);
-  }
 
   const metrics = analytics.metrics;
 
@@ -75,13 +58,7 @@ export function DashboardShell({ rows, sync }: DashboardShellProps) {
         </div>
       </div>
 
-      <FilterBar
-        from={from}
-        to={to}
-        quickRange={quickRange}
-        onDateChange={updateDates}
-        onQuickRange={updateQuickRange}
-      />
+      <FilterBar from={from} to={to} quickRange={quickRange} onDateChange={onDateChange} onQuickRange={onQuickRange} />
 
       <section className="snap-rail -mx-3 flex snap-x gap-4 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 sm:pb-0 lg:grid-cols-4 [&>section]:min-w-[16rem] [&>section]:snap-start sm:[&>section]:min-w-0">
         <MetricCard

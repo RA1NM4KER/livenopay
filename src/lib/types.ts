@@ -21,7 +21,7 @@ export type SyncMetadata = {
   rowsSynced?: number;
 };
 
-export type QuickRange = "7d" | "30d" | "90d" | "all";
+export type QuickRange = "pastWeek" | "pastMonth" | "past3Months" | "thisMonth" | "thisWeek" | "allTime" | "custom";
 
 export type DailyPoint = {
   date: string;
