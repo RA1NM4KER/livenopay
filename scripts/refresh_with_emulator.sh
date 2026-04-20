@@ -15,8 +15,10 @@ fi
 AVD_NAME="${LIVENOPAY_AVD_NAME:-}"
 PACKAGE_NAME="${LIVENOPAY_PACKAGE_NAME:-livemopay.co.za}"
 ACTIVITY_NAME="${LIVENOPAY_ACTIVITY_NAME:-com.example.property_wallet.MainActivity}"
-EMULATOR_CMD="${EMULATOR_CMD:-$HOME/Library/Android/sdk/emulator/emulator}"
-ADB_CMD="${ADB_PATH:-adb}"
+ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}"
+EMULATOR_CMD="${EMULATOR_CMD:-$ANDROID_SDK_ROOT/emulator/emulator}"
+ADB_CMD="${ADB_PATH:-$ANDROID_SDK_ROOT/platform-tools/adb}"
+PYTHON_CMD="${PYTHON_CMD:-/opt/homebrew/bin/python3}"
 
 FULL=0
 SKIP_CAPTURE=0
@@ -122,7 +124,7 @@ run_refresh() {
     export ADB_SERIAL="$EMULATOR_SERIAL"
   fi
 
-  python3 refresh_and_sync.py "${args[@]}"
+  "$PYTHON_CMD" refresh_and_sync.py "${args[@]}"
 }
 
 shutdown_emulator() {
