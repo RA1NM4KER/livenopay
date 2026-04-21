@@ -1,4 +1,4 @@
-import type { EnergyRow, QuickRange } from "./types";
+import type { QuickRange } from "./types";
 
 export type QuickRangePreset = Exclude<QuickRange, "custom">;
 
@@ -52,9 +52,9 @@ function subtractMonths(date: Date, months: number) {
   return result;
 }
 
-export function defaultRange(rows: EnergyRow[]) {
-  const latest = rows[rows.length - 1]?.periodDate;
-  const earliest = rows[0]?.periodDate;
+export function defaultRange(bounds: { from?: string; to?: string }) {
+  const earliest = bounds.from;
+  const latest = bounds.to;
 
   return {
     from: earliest ?? "",

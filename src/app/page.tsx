@@ -1,8 +1,8 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { AppShell } from "@/components/layout/app-shell";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { dateRangeQueryUpdates, parseDateRangeQuery } from "@/lib/filter-query-params";
-import { defaultRange } from "@/lib/filters";
-import { loadEnergyData } from "@/lib/energy-data";
+import { loadDashboardDailyRollups, loadDashboardHourlyRollups, loadDashboardSummary } from "@/lib/dashboard-data";
 import { applyQueryUpdates, queryHref } from "@/lib/url-query";
 import { redirect } from "next/navigation";
 
@@ -32,22 +32,24 @@ function toUrlSearchParams(input: Record<string, string | string[] | undefined>)
 export default async function Home({ searchParams }: HomeProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const urlSearchParams = toUrlSearchParams(resolvedSearchParams);
-  const { rows, sync } = await loadEnergyData();
+  const [summary, dailyRows, hourlyRows] = await Promise.all([
+    loadDashboardSummary(),
+    loadDashboardDailyRollups(),
+    loadDashboardHourlyRollups()
+  ]);
   const { from, to } = parseDateRangeQuery(urlSearchParams);
-  const defaultDateRange = defaultRange(rows);
 
-  if ((!from || !to) && defaultDateRange.from && defaultDateRange.to) {
-    const nextParams = applyQueryUpdates(
-      urlSearchParams,
-      dateRangeQueryUpdates(defaultDateRange.from, defaultDateRange.to)
-    );
+  if ((!from || !to) && summary.dateStart && summary.dateEnd) {
+    const nextParams = applyQueryUpdates(urlSearchParams, dateRangeQueryUpdates(summary.dateStart, summary.dateEnd));
 
     redirect(queryHref("/", nextParams));
   }
 
   return (
     <AppShell>
-      <DashboardShell rows={rows} sync={sync} />
+      <QueryProvider>
+        <DashboardShell dailyRows={dailyRows} hourlyRows={hourlyRows} summary={summary} />
+      </QueryProvider>
     </AppShell>
   );
 }

@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { defaultRange, quickRangeFromDates, quickRangeFromLatest, type QuickRangePreset } from "@/lib/filters";
 import { dateRangeQueryUpdates, parseDateRangeQuery } from "@/lib/filter-query-params";
 import { applyQueryUpdates, queryHref } from "@/lib/url-query";
-import type { EnergyRow, QuickRange } from "@/lib/types";
+import type { QuickRange } from "@/lib/types";
 
 type FilterUrlState = {
   from: string;
@@ -16,10 +16,10 @@ type FilterUrlState = {
 };
 
 function resolveStateFromQuery(
-  rows: EnergyRow[],
+  dateBounds: { from?: string; to?: string },
   searchParams: URLSearchParams
 ): Omit<FilterUrlState, "onDateChange" | "onQuickRange"> {
-  const fallback = defaultRange(rows);
+  const fallback = defaultRange(dateBounds);
   const { from, to } = parseDateRangeQuery(searchParams);
 
   if (!from || !to) {
@@ -41,14 +41,14 @@ function resolveStateFromQuery(
   };
 }
 
-export function useFilterUrlState(rows: EnergyRow[]): FilterUrlState {
+export function useFilterUrlState(dateBounds: { from?: string; to?: string }): FilterUrlState {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const state = useMemo(() => {
-    return resolveStateFromQuery(rows, new URLSearchParams(searchParams.toString()));
-  }, [rows, searchParams]);
+    return resolveStateFromQuery(dateBounds, new URLSearchParams(searchParams.toString()));
+  }, [dateBounds, searchParams]);
 
   const updateSearchParams = (updates: Record<string, string | null>) => {
     const next = applyQueryUpdates(searchParams, updates);

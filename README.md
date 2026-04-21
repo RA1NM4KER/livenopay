@@ -6,7 +6,7 @@ The intended setup is:
 
 1. run the dashboard anywhere Next.js can deploy
 2. run refresh locally on a machine with Android Studio emulator access
-3. let Supabase sit between the two as the source of truth
+3. let Supabase sit between the two as the source of truth and rollup engine
 
 ## Architecture
 
@@ -41,11 +41,18 @@ Apply the migration in:
 
     supabase/migrations/20260414000000_livenopay_energy.sql
 
-It creates:
+They create:
 
 - `energy_rows` with the same core shape as the CSV: `capture_dt`, `charge_label`, `period_dt`, `kwh`, `tariff`, `cost`, `balance`
 - a natural unique key on `charge_label`, `period_dt`, `cost`, and `balance`
 - `capture_runs` for sync metadata used by the dashboard's last synced indicator
+- `energy_day_rollups`, `energy_hourly_rollups`, and `energy_interval_rollups` for dashboard metrics and charts
+- `dashboard_summary` for last sync metadata and latest balance context
+
+Apply both migrations in order:
+
+    supabase/migrations/20260414000000_livenopay_energy.sql
+    supabase/migrations/20260421000000_livenopay_rollups.sql
 
 The unique key matches the existing local capture dedupe strategy, so rerunning sync is idempotent and avoids duplicate rows.
 
@@ -61,9 +68,10 @@ The unique key matches the existing local capture dedupe strategy, so rerunning 
    SUPABASE_ANON_KEY=...
    SUPABASE_SERVICE_ROLE_KEY=...
 
-3. Apply the migration in Supabase:
+3. Apply the migrations in Supabase:
 
    supabase/migrations/20260414000000_livenopay_energy.sql
+   supabase/migrations/20260421000000_livenopay_rollups.sql
 
 4. Install LiveMopay in an Android Studio emulator and log in.
 
@@ -123,7 +131,7 @@ Optional capture tuning:
 
 Open `http://localhost:3000`.
 
-The dashboard and data table read from Supabase through `src/lib/energy-data.ts`. They do not read `livemopay_energy.csv` directly.
+The dashboard reads rollups through `src/lib/dashboard-data.ts` and the data table reads paginated rows through `src/lib/energy-data.ts`. Neither reads `livemopay_energy.csv` directly.
 
 ## Refresh Data
 
@@ -151,6 +159,7 @@ That command:
 2. reads the refreshed `livemopay_energy.csv`
 3. upserts all CSV rows into Supabase
 4. records a `capture_runs` row for last synced metadata
+5. refreshes rollup tables through a capture-run trigger so dashboard reads stay lightweight
 
 For a full local recapture before syncing:
 

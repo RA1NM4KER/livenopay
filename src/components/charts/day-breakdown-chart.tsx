@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
@@ -11,20 +12,51 @@ import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
 import { DaySummaryCard } from "./day-summary-card";
 import type { DayBreakdownChartProps } from "./types";
 
-export function DayBreakdownChart({ rows }: DayBreakdownChartProps) {
-  const [selectedDate, setSelectedDate] = useState(rows[rows.length - 1]?.periodDate ?? "");
+type IntervalApiResponse = {
+  rows: Array<{
+    periodDate: string;
+    periodTime: string;
+    spend: number;
+    kwh: number;
+  }>;
+};
+
+async function fetchIntervals(periodDate: string) {
+  const response = await fetch(`/api/day-intervals?periodDate=${encodeURIComponent(periodDate)}`, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || "Failed to load day intervals.");
+  }
+
+  return (await response.json()) as IntervalApiResponse;
+}
+
+export function DayBreakdownChart({ initialSelectedDate, dateOptions, dailyRows }: DayBreakdownChartProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCompactAxis, setIsCompactAxis] = useState(false);
-  const dayRows = rows.filter((row) => row.periodDate === selectedDate);
-  const energyRows = dayRows.filter((row) => row.chargeKind === "energy");
-  const fixedRows = dayRows.filter((row) => row.chargeKind === "fixed");
+  const [selectedDate, setSelectedDate] = useState(initialSelectedDate ?? dateOptions[dateOptions.length - 1] ?? "");
+  const selectableDates = useMemo(() => new Set(dateOptions), [dateOptions]);
+  const { data } = useQuery({
+    queryKey: ["day-intervals", selectedDate],
+    queryFn: () => fetchIntervals(selectedDate),
+    enabled: Boolean(selectedDate)
+  });
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const intervalData = buildIntervalPoints(rows, selectedDate);
   const axisDomains = useMemo(() => buildStableAxisDomains(rows), [rows]);
-  const energySpend = sumRows(energyRows, "cost");
-  const fixedSpend = sumRows(fixedRows, "cost");
-  const usage = sumRows(energyRows, "kwh");
-  const dateOptions = useMemo(() => Array.from(new Set(rows.map((row) => row.periodDate))).sort(), [rows]);
-  const selectableDates = useMemo(() => new Set(dateOptions), [dateOptions]);
+  const energySpend = sumRows(rows, "spend");
+  const usage = sumRows(rows, "kwh");
+  const fixedSpend = dailyRows.find((row) => row.periodDate === selectedDate)?.fixedSpend ?? 0;
+
+  useEffect(() => {
+    const nextSelectedDate = initialSelectedDate ?? dateOptions[dateOptions.length - 1] ?? "";
+    if (nextSelectedDate) {
+      setSelectedDate(nextSelectedDate);
+    }
+  }, [dateOptions, initialSelectedDate]);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 640px)");

@@ -1,10 +1,11 @@
-import type { EnergyRow, Insight, QuickRange, SyncMetadata } from "@/lib/types";
+import type { DailyRollupRow, DashboardSummary, HourlyRollupRow, Insight, QuickRange } from "@/lib/types";
 import type { QuickRangePreset } from "@/lib/filters";
 import type { ReactNode } from "react";
 
 export type DashboardShellProps = {
-  rows: EnergyRow[];
-  sync: SyncMetadata;
+  dailyRows: DailyRollupRow[];
+  hourlyRows: HourlyRollupRow[];
+  summary: DashboardSummary;
 };
 
 export type InsightsProps = {

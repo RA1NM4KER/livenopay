@@ -1,5 +1,14 @@
 import { formatCurrency, formatKwh, formatPercent, formatTariff, shortDate } from "./format";
-import type { Analytics, DailyPoint, EnergyRow, HourlyPoint, Insight, TariffPoint, UsageHourPeak } from "./types";
+import type {
+  Analytics,
+  DailyPoint,
+  DailyRollupRow,
+  HourlyPoint,
+  HourlyRollupRow,
+  Insight,
+  TariffPoint,
+  UsageHourPeak
+} from "./types";
 
 function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
@@ -19,90 +28,92 @@ function maxBy<T>(items: T[], getValue: (item: T) => number) {
   }, undefined);
 }
 
-function buildDaily(rows: EnergyRow[]): DailyPoint[] {
-  const grouped = new Map<string, EnergyRow[]>();
+function filterByRange<T extends { periodDate: string }>(rows: T[], from?: string, to?: string) {
+  return rows.filter((row) => {
+    if (from && row.periodDate < from) {
+      return false;
+    }
 
-  rows.forEach((row) => {
-    const bucket = grouped.get(row.periodDate) ?? [];
-    bucket.push(row);
-    grouped.set(row.periodDate, bucket);
+    return !(to && row.periodDate > to);
   });
+}
 
+function buildDaily(rows: DailyRollupRow[]): DailyPoint[] {
   let cumulativeSpend = 0;
 
-  return Array.from(grouped.entries())
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([date, items]) => {
-      const energyItems = items.filter((item) => item.chargeKind === "energy");
-      const spendItems = items.filter((item) => item.chargeKind === "energy" || item.chargeKind === "fixed");
-      const spend = sum(spendItems.map((item) => item.cost));
-      const kwh = sum(energyItems.map((item) => item.kwh));
-      const weightedTariff = kwh > 0 ? sum(energyItems.map((item) => item.kwh * item.tariff)) / kwh : 0;
-      const energyIntervals = new Set(energyItems.map((item) => item.periodTime)).size;
-      const isComplete = energyIntervals >= 48;
-      const fixedSpend = sum(items.filter((item) => item.chargeKind === "fixed").map((item) => item.cost));
-      const energySpend = sum(energyItems.map((item) => item.cost));
-      cumulativeSpend += spend;
+  return rows
+    .slice()
+    .sort((left, right) => left.periodDate.localeCompare(right.periodDate))
+    .map((row) => {
+      cumulativeSpend += row.totalSpend;
 
       return {
-        date,
-        spend: round(spend),
-        kwh: round(kwh),
-        averageTariff: round(weightedTariff),
-        balance: items[items.length - 1]?.balance ?? 0,
+        date: row.periodDate,
+        spend: round(row.totalSpend),
+        kwh: round(row.energyKwh),
+        averageTariff: round(row.weightedTariff),
+        balance: round(row.balanceEnd),
         cumulativeSpend: round(cumulativeSpend),
-        energyIntervals,
-        isComplete,
+        energyIntervals: row.energyIntervals,
+        isComplete: row.isComplete,
         projectedSpend:
-          !isComplete && energyIntervals > 0 ? round((energySpend / energyIntervals) * 48 + fixedSpend) : undefined,
-        projectedKwh: !isComplete && energyIntervals > 0 ? round((kwh / energyIntervals) * 48) : undefined
+          !row.isComplete && row.energyIntervals > 0
+            ? round((row.energySpend / row.energyIntervals) * 48 + row.fixedSpend)
+            : undefined,
+        projectedKwh:
+          !row.isComplete && row.energyIntervals > 0 ? round((row.energyKwh / row.energyIntervals) * 48) : undefined
       };
     });
 }
 
-function buildHourly(rows: EnergyRow[]): HourlyPoint[] {
-  const energyRows = rows.filter((row) => row.chargeKind === "energy");
+function buildHourly(rows: HourlyRollupRow[]): HourlyPoint[] {
+  const grouped = new Map<number, HourlyRollupRow[]>();
+
+  rows.forEach((row) => {
+    const bucket = grouped.get(row.hour) ?? [];
+    bucket.push(row);
+    grouped.set(row.hour, bucket);
+  });
 
   return Array.from({ length: 24 }, (_, hour) => {
-    const items = energyRows.filter((row) => row.hour === hour);
+    const items = grouped.get(hour) ?? [];
 
     return {
       hour: `${String(hour).padStart(2, "0")}:00`,
-      spend: round(sum(items.map((item) => item.cost))),
+      spend: round(sum(items.map((item) => item.spend))),
       kwh: round(sum(items.map((item) => item.kwh))),
-      intervals: items.length
+      intervals: sum(items.map((item) => item.intervals))
     };
   });
 }
 
-function buildHighestUsageHour(rows: EnergyRow[]): UsageHourPeak | undefined {
-  const grouped = new Map<string, EnergyRow[]>();
+function buildHighestUsageHour(rows: HourlyRollupRow[]): UsageHourPeak | undefined {
+  const grouped = new Map<string, { spend: number; kwh: number }>();
 
-  rows
-    .filter((row) => row.chargeKind === "energy")
-    .forEach((row) => {
-      const hour = `${String(row.hour).padStart(2, "0")}:00`;
-      const key = `${row.periodDate}|${hour}`;
-      const bucket = grouped.get(key) ?? [];
-      bucket.push(row);
-      grouped.set(key, bucket);
-    });
+  rows.forEach((row) => {
+    const hour = `${String(row.hour).padStart(2, "0")}:00`;
+    const key = `${row.periodDate}|${hour}`;
+    const bucket = grouped.get(key) ?? { spend: 0, kwh: 0 };
+    bucket.spend += row.spend;
+    bucket.kwh += row.kwh;
+    grouped.set(key, bucket);
+  });
 
-  const hourlyPeaks = Array.from(grouped.entries()).map(([key, items]) => {
+  const hourlyPeaks = Array.from(grouped.entries()).map(([key, item]) => {
     const [date, hour] = key.split("|");
 
     return {
       date,
       hour,
-      spend: round(sum(items.map((item) => item.cost))),
-      kwh: round(sum(items.map((item) => item.kwh)))
+      spend: round(item.spend),
+      kwh: round(item.kwh)
     };
   });
 
   return maxBy(hourlyPeaks, (item) => item.kwh);
 }
 
-function buildDailyTariffTimeline(rows: EnergyRow[]): TariffPoint[] {
+function buildDailyTariffTimeline(rows: DailyRollupRow[]): TariffPoint[] {
   return buildDaily(rows)
     .filter((day) => day.kwh > 0)
     .map((day) => ({
@@ -134,13 +145,12 @@ function previousTrend(daily: DailyPoint[]) {
 }
 
 function buildInsights(
-  rows: EnergyRow[],
+  dailyRows: DailyRollupRow[],
   daily: DailyPoint[],
   hourly: HourlyPoint[],
   tariffTimeline: TariffPoint[]
 ): Insight[] {
-  const energyRows = rows.filter((row) => row.chargeKind === "energy");
-  const fixedSpend = sum(rows.filter((row) => row.chargeKind === "fixed").map((row) => row.cost));
+  const fixedSpend = sum(dailyRows.map((day) => day.fixedSpend));
   const topSpendHour = maxBy(hourly, (hour) => hour.spend);
   const totalSpend = sum(hourly.map((hour) => hour.spend));
   const topHours = hourly
@@ -150,7 +160,7 @@ function buildInsights(
   const topHourShare = totalSpend > 0 ? sum(topHours.map((hour) => hour.spend)) / totalSpend : 0;
   const trend = previousTrend(daily);
   const highestSpendDay = maxBy(daily, (day) => day.spend);
-  const highestTariff = maxBy(energyRows, (row) => row.tariff);
+  const highestTariff = maxBy(dailyRows, (row) => row.peakTariff);
 
   const insights: Insight[] = [];
 
@@ -187,7 +197,7 @@ function buildInsights(
   if (tariffTimeline.length > 1 && highestTariff) {
     insights.push({
       title: "Tariff movement",
-      body: `${tariffTimeline.length} tariff band changes appear in range. Highest observed tariff is ${formatTariff(highestTariff.tariff)}.`
+      body: `${tariffTimeline.length} tariff band changes appear in range. Highest observed tariff is ${formatTariff(highestTariff.peakTariff)}.`
     });
   }
 
@@ -201,27 +211,30 @@ function buildInsights(
   return insights;
 }
 
-export function createAnalytics(rows: EnergyRow[]): Analytics {
-  const daily = buildDaily(rows);
-  const hourly = buildHourly(rows);
-  const tariffTimeline = buildDailyTariffTimeline(rows);
-  const spendRows = rows.filter((row) => row.chargeKind === "energy" || row.chargeKind === "fixed");
-  const totalSpend = round(sum(spendRows.map((row) => row.cost)));
-  const energyRows = rows.filter((row) => row.chargeKind === "energy");
-  const fixedRows = rows.filter((row) => row.chargeKind === "fixed");
-  const totalEnergySpend = round(sum(energyRows.map((row) => row.cost)));
-  const totalFixedSpend = round(sum(fixedRows.map((row) => row.cost)));
-  const totalKwh = round(sum(energyRows.map((row) => row.kwh)));
+export function createAnalytics(
+  dailyRows: DailyRollupRow[],
+  hourlyRows: HourlyRollupRow[],
+  from?: string,
+  to?: string
+): Analytics {
+  const filteredDailyRows = filterByRange(dailyRows, from, to);
+  const filteredHourlyRows = filterByRange(hourlyRows, from, to);
+  const daily = buildDaily(filteredDailyRows);
+  const hourly = buildHourly(filteredHourlyRows);
+  const tariffTimeline = buildDailyTariffTimeline(filteredDailyRows);
+  const totalSpend = round(sum(filteredDailyRows.map((row) => row.totalSpend)));
+  const totalEnergySpend = round(sum(filteredDailyRows.map((row) => row.energySpend)));
+  const totalFixedSpend = round(sum(filteredDailyRows.map((row) => row.fixedSpend)));
+  const totalKwh = round(sum(filteredDailyRows.map((row) => row.energyKwh)));
   const energyCostPerKwh = totalKwh > 0 ? round(totalEnergySpend / totalKwh) : 0;
   const allInCostPerKwh = totalKwh > 0 ? round(totalSpend / totalKwh) : 0;
   const dayCount = daily.length || 1;
   const highestSpendDay = maxBy(daily, (day) => day.spend);
   const highestUsageDay = maxBy(daily, (day) => day.kwh);
-  const highestUsageHour = buildHighestUsageHour(rows);
-  const latest = rows[rows.length - 1];
+  const highestUsageHour = buildHighestUsageHour(filteredHourlyRows);
+  const latest = filteredDailyRows[filteredDailyRows.length - 1];
 
   return {
-    rows,
     daily,
     hourly,
     tariffTimeline,
@@ -237,22 +250,12 @@ export function createAnalytics(rows: EnergyRow[]): Analytics {
       highestSpendDay,
       highestUsageDay,
       highestUsageHour,
-      latestBalance: latest?.balance,
-      latestPeriod: latest?.periodDateTime,
+      latestBalance: latest?.balanceEnd,
+      latestPeriod: latest?.latestPeriod,
       dateStart: daily[0]?.date,
       dateEnd: daily[daily.length - 1]?.date,
       dayCount
     },
-    insights: buildInsights(rows, daily, hourly, tariffTimeline)
+    insights: buildInsights(filteredDailyRows, daily, hourly, tariffTimeline)
   };
-}
-
-export function filterRowsByRange(rows: EnergyRow[], from?: string, to?: string) {
-  return rows.filter((row) => {
-    if (from && row.periodDate < from) {
-      return false;
-    }
-
-    return !(to && row.periodDate > to);
-  });
 }

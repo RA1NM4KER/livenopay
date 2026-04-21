@@ -1,4 +1,4 @@
-import type { EnergyRow } from "./types";
+import type { IntervalRollupRow } from "./types";
 
 export type IntervalPoint = {
   time: string;
@@ -11,11 +11,11 @@ export type DayBreakdownDomains = {
   kwh: number;
 };
 
-export function buildIntervalPoints(rows: EnergyRow[], selectedDate: string) {
-  const energyRows = rows.filter((row) => row.chargeKind === "energy" && row.periodDate === selectedDate);
-  const byTime = new Map<string, EnergyRow[]>();
+export function buildIntervalPoints(rows: IntervalRollupRow[], selectedDate: string) {
+  const dayRows = rows.filter((row) => row.periodDate === selectedDate);
+  const byTime = new Map<string, IntervalRollupRow[]>();
 
-  energyRows.forEach((row) => {
+  dayRows.forEach((row) => {
     const bucket = byTime.get(row.periodTime) ?? [];
     bucket.push(row);
     byTime.set(row.periodTime, bucket);
@@ -29,25 +29,23 @@ export function buildIntervalPoints(rows: EnergyRow[], selectedDate: string) {
 
     return {
       time,
-      spend: round(items.reduce((total, row) => total + row.cost, 0)),
+      spend: round(items.reduce((total, row) => total + row.spend, 0)),
       kwh: round(items.reduce((total, row) => total + row.kwh, 0))
     };
   });
 }
 
-export function buildStableAxisDomains(rows: EnergyRow[]): DayBreakdownDomains {
+export function buildStableAxisDomains(rows: IntervalRollupRow[]): DayBreakdownDomains {
   const intervalTotals = new Map<string, { spend: number; kwh: number }>();
 
-  rows
-    .filter((row) => row.chargeKind === "energy")
-    .forEach((row) => {
-      const key = `${row.periodDate}-${row.periodTime}`;
-      const total = intervalTotals.get(key) ?? { spend: 0, kwh: 0 };
+  rows.forEach((row) => {
+    const key = `${row.periodDate}-${row.periodTime}`;
+    const total = intervalTotals.get(key) ?? { spend: 0, kwh: 0 };
 
-      total.spend += row.cost;
-      total.kwh += row.kwh;
-      intervalTotals.set(key, total);
-    });
+    total.spend += row.spend;
+    total.kwh += row.kwh;
+    intervalTotals.set(key, total);
+  });
 
   const values = Array.from(intervalTotals.values());
   const maxSpend = Math.max(0, ...values.map((value) => value.spend));
@@ -59,7 +57,7 @@ export function buildStableAxisDomains(rows: EnergyRow[]): DayBreakdownDomains {
   };
 }
 
-export function sumRows(rows: EnergyRow[], key: "cost" | "kwh") {
+export function sumRows(rows: IntervalRollupRow[], key: "spend" | "kwh") {
   return rows.reduce((total, row) => total + row[key], 0);
 }
 

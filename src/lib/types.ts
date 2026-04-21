@@ -21,6 +21,15 @@ export type SyncMetadata = {
   rowsSynced?: number;
 };
 
+export type DashboardSummary = SyncMetadata & {
+  dateStart?: string;
+  dateEnd?: string;
+  latestBalance?: number;
+  latestPeriod?: string;
+  maxIntervalSpend?: number;
+  maxIntervalKwh?: number;
+};
+
 export type QuickRange = "pastWeek" | "pastMonth" | "past3Months" | "thisMonth" | "thisWeek" | "allTime" | "custom";
 
 export type DailyPoint = {
@@ -50,6 +59,37 @@ export type UsageHourPeak = {
   kwh: number;
 };
 
+export type DailyRollupRow = {
+  periodDate: string;
+  energySpend: number;
+  fixedSpend: number;
+  topupAmount: number;
+  totalSpend: number;
+  energyKwh: number;
+  weightedTariff: number;
+  peakTariff: number;
+  allInRate: number;
+  balanceEnd: number;
+  latestPeriod?: string;
+  energyIntervals: number;
+  isComplete: boolean;
+};
+
+export type HourlyRollupRow = {
+  periodDate: string;
+  hour: number;
+  spend: number;
+  kwh: number;
+  intervals: number;
+};
+
+export type IntervalRollupRow = {
+  periodDate: string;
+  periodTime: string;
+  spend: number;
+  kwh: number;
+};
+
 export type TariffPoint = {
   periodDateTime: string;
   dateLabel: string;
@@ -66,7 +106,6 @@ export type Insight = {
 };
 
 export type Analytics = {
-  rows: EnergyRow[];
   daily: DailyPoint[];
   hourly: HourlyPoint[];
   tariffTimeline: TariffPoint[];
