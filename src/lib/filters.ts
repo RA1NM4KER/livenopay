@@ -11,10 +11,6 @@ export const quickRangeOptions: Array<{ label: string; value: QuickRangePreset }
   { label: "This week", value: "thisWeek" }
 ];
 new Set(quickRangeOptions.map((option) => option.value));
-function parseIsoDate(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
 
 function formatIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -67,20 +63,17 @@ export function defaultRange(rows: EnergyRow[]) {
   };
 }
 
-export function quickRangeFromLatest(rows: EnergyRow[], range: QuickRange) {
-  const latest = rows[rows.length - 1]?.periodDate;
-
-  if (!latest || range === "allTime" || range === "custom") {
-    return defaultRange(rows);
+export function quickRangeFromLatest(range: QuickRange) {
+  if (range === "allTime" || range === "custom") {
+    return {
+      from: "",
+      to: "",
+      quickRange: range
+    };
   }
 
-  const latestDate = parseIsoDate(latest);
   const today = startOfDay(new Date());
   const to = formatIsoDate(today);
-
-  if (Number.isNaN(latestDate.getTime())) {
-    return defaultRange(rows);
-  }
 
   if (range === "pastWeek") {
     const from = new Date(today);
@@ -134,15 +127,19 @@ export function quickRangeFromLatest(rows: EnergyRow[], range: QuickRange) {
   }
 
   return {
-    from: rows[0]?.periodDate ?? latest,
-    to: latest,
+    from: "",
+    to: "",
     quickRange: range
   };
 }
 
-export function quickRangeFromDates(rows: EnergyRow[], from: string, to: string): QuickRange {
+export function quickRangeFromDates(from: string, to: string): QuickRange {
+  if (!from && !to) {
+    return "allTime";
+  }
+
   for (const option of quickRangeOptions) {
-    const candidate = quickRangeFromLatest(rows, option.value);
+    const candidate = quickRangeFromLatest(option.value);
 
     if (candidate.quickRange === option.value && candidate.from === from && candidate.to === to) {
       return option.value;

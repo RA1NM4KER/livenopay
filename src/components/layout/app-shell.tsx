@@ -1,12 +1,32 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { parseDateRangeQuery, filterQueryParamKeys } from "@/lib/filter-query-params";
+import { queryHref } from "@/lib/url-query";
 import { ThemeToggle } from "./theme-toggle";
 import type { AppShellProps } from "./types";
 
 export function AppShell({ children }: AppShellProps) {
+  const searchParams = useSearchParams();
+  const { from, to } = parseDateRangeQuery(new URLSearchParams(searchParams.toString()));
+  const sharedDateParams = new URLSearchParams();
+
+  if (from) {
+    sharedDateParams.set(filterQueryParamKeys.from, from);
+  }
+
+  if (to) {
+    sharedDateParams.set(filterQueryParamKeys.to, to);
+  }
+
+  const dashboardHref = queryHref("/", sharedDateParams);
+  const dataHref = queryHref("/data", sharedDateParams);
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 py-4 sm:px-6 sm:py-5 lg:px-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5 sm:items-center">
-        <Link href="/" className="group min-w-0">
+        <Link href={dashboardHref} className="group min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted sm:tracking-[0.26em]">Livenopay</p>
           <h1 className="mt-1 text-xl font-semibold tracking-tight text-ink sm:text-2xl">Electricity ledger</h1>
         </Link>
@@ -14,13 +34,13 @@ export function AppShell({ children }: AppShellProps) {
           <nav className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-paper p-1 text-sm text-muted sm:flex-none">
             <Link
               className="flex-1 rounded-md px-3 py-2 text-center transition hover:bg-canvas hover:text-ink sm:flex-none"
-              href="/"
+              href={dashboardHref}
             >
               Dashboard
             </Link>
             <Link
               className="flex-1 rounded-md px-3 py-2 text-center transition hover:bg-canvas hover:text-ink sm:flex-none"
-              href="/data"
+              href={dataHref}
             >
               Data
             </Link>

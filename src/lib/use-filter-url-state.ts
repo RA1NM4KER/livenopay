@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { defaultRange, quickRangeFromDates, quickRangeFromLatest, type QuickRangePreset } from "@/lib/filters";
+import { dateRangeQueryUpdates, parseDateRangeQuery } from "@/lib/filter-query-params";
+import { applyQueryUpdates, queryHref } from "@/lib/url-query";
 import type { EnergyRow, QuickRange } from "@/lib/types";
 
 type FilterUrlState = {
@@ -13,24 +15,29 @@ type FilterUrlState = {
   onQuickRange: (range: QuickRangePreset) => void;
 };
 
-const fromParamKey = "from";
-const toParamKey = "to";
-
 function resolveStateFromQuery(
   rows: EnergyRow[],
   searchParams: URLSearchParams
 ): Omit<FilterUrlState, "onDateChange" | "onQuickRange"> {
-  const from = searchParams.get(fromParamKey) ?? "";
-  const to = searchParams.get(toParamKey) ?? "";
+  const fallback = defaultRange(rows);
+  const { from, to } = parseDateRangeQuery(searchParams);
 
   if (!from || !to) {
-    return defaultRange(rows);
+    return fallback;
+  }
+
+  if (from === fallback.from && to === fallback.to) {
+    return {
+      from,
+      to,
+      quickRange: "allTime"
+    };
   }
 
   return {
     from,
     to,
-    quickRange: quickRangeFromDates(rows, from, to)
+    quickRange: quickRangeFromDates(from, to)
   };
 }
 
@@ -43,46 +50,18 @@ export function useFilterUrlState(rows: EnergyRow[]): FilterUrlState {
     return resolveStateFromQuery(rows, new URLSearchParams(searchParams.toString()));
   }, [rows, searchParams]);
 
-  const replaceQuery = (next: URLSearchParams) => {
-    const query = next.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  const updateSearchParams = (updates: Record<string, string | null>) => {
+    const next = applyQueryUpdates(searchParams, updates);
+    router.replace(queryHref(pathname, next), { scroll: false });
   };
 
   const onQuickRange = (range: QuickRangePreset) => {
-    const next = new URLSearchParams(searchParams.toString());
-    const nextRange = quickRangeFromLatest(rows, range);
-
-    if (nextRange.from) {
-      next.set(fromParamKey, nextRange.from);
-    } else {
-      next.delete(fromParamKey);
-    }
-
-    if (nextRange.to) {
-      next.set(toParamKey, nextRange.to);
-    } else {
-      next.delete(toParamKey);
-    }
-
-    replaceQuery(next);
+    const nextRange = quickRangeFromLatest(range);
+    updateSearchParams(dateRangeQueryUpdates(nextRange.from, nextRange.to));
   };
 
   const onDateChange = (from: string, to: string) => {
-    const next = new URLSearchParams(searchParams.toString());
-
-    if (from) {
-      next.set(fromParamKey, from);
-    } else {
-      next.delete(fromParamKey);
-    }
-
-    if (to) {
-      next.set(toParamKey, to);
-    } else {
-      next.delete(toParamKey);
-    }
-
-    replaceQuery(next);
+    updateSearchParams(dateRangeQueryUpdates(from, to));
   };
 
   return {

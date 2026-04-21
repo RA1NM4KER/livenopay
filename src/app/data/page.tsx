@@ -1,15 +1,15 @@
 import { DataTable } from "@/components/data/data-table";
 import { AppShell } from "@/components/layout/app-shell";
-import { loadEnergyData } from "@/lib/energy-data";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 export const dynamic = "force-dynamic";
 
-export default async function DataPage() {
-  const { rows } = await loadEnergyData();
-
+export default function DataPage() {
   return (
     <AppShell>
-      <DataTable rows={rows} />
+      <QueryProvider>
+        <DataTable />
+      </QueryProvider>
     </AppShell>
   );
 }

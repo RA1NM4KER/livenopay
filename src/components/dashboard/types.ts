@@ -1,5 +1,6 @@
 import type { EnergyRow, Insight, QuickRange, SyncMetadata } from "@/lib/types";
 import type { QuickRangePreset } from "@/lib/filters";
+import type { ReactNode } from "react";
 
 export type DashboardShellProps = {
   rows: EnergyRow[];
@@ -22,4 +23,6 @@ export type FilterBarProps = {
   quickRange: QuickRange;
   onDateChange: (from: string, to: string) => void;
   onQuickRange: (range: QuickRangePreset) => void;
+  extraControls?: ReactNode;
+  rightControls?: ReactNode;
 };
