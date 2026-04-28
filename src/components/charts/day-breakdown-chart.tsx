@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
 import { formatCurrency, formatKwh } from "@/lib/format";
-import { ExpandChartButton, FullscreenChart } from "./chart-shell";
+import { ExpandChartButton, ExpandProvider, FullscreenChart } from "./chart-shell";
 import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
 import { DaySummaryCard } from "./day-summary-card";
 import type { DayBreakdownChartProps } from "./types";
@@ -40,7 +40,6 @@ export function DayBreakdownChart({
   dailyRows,
   globalDomains
 }: DayBreakdownChartProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isCompactAxis, setIsCompactAxis] = useState(false);
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate ?? dateOptions[dateOptions.length - 1] ?? "");
   const selectableDates = useMemo(() => new Set(dateOptions), [dateOptions]);
@@ -129,7 +128,7 @@ export function DayBreakdownChart({
   );
 
   return (
-    <>
+    <ExpandProvider>
       <Card>
         <CardHeader
           title="Day detail"
@@ -137,7 +136,7 @@ export function DayBreakdownChart({
           action={
             <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
               {dateControl}
-              <ExpandChartButton onClick={() => setIsExpanded(true)} />
+              <ExpandChartButton />
             </div>
           }
         />
@@ -150,11 +149,9 @@ export function DayBreakdownChart({
           </aside>
         </div>
       </Card>
-      {isExpanded ? (
-        <FullscreenChart title="Day detail" action={dateControl} onClose={() => setIsExpanded(false)}>
-          {renderChart(3)}
-        </FullscreenChart>
-      ) : null}
-    </>
+      <FullscreenChart title="Day detail" action={dateControl}>
+        {renderChart(3)}
+      </FullscreenChart>
+    </ExpandProvider>
   );
 }

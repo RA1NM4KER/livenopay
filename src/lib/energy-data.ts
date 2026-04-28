@@ -219,6 +219,23 @@ async function loadSyncMetadata(): Promise<SyncMetadata> {
   };
 }
 
+export async function loadExportRows(query: Omit<EnergyRowsPageQuery, "page" | "pageSize">): Promise<EnergyRow[]> {
+  const basePath = queryPathForPage(query);
+  const rows: EnergyRecordInput[] = [];
+
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const page = await supabaseFetch<EnergyRecordInput[]>(basePath, {
+      headers: { Range: `${offset}-${offset + PAGE_SIZE - 1}` }
+    });
+
+    rows.push(...page);
+
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  return rows.map(toEnergyRow);
+}
+
 export async function loadEnergyData(): Promise<EnergyData> {
   const [rows, sync] = await Promise.all([loadRowsFromSupabase(), loadSyncMetadata()]);
 

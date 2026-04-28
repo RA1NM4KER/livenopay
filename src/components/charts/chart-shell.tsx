@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type TouchEvent
+} from "react";
 import { Card, CardHeader } from "@/components/ui/card";
 import type { ChartShellProps } from "./types";
 
@@ -16,16 +25,40 @@ function touchDistance(touches: TouchEvent<HTMLDivElement>["touches"]) {
   return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
 }
 
-type ExpandChartButtonProps = {
-  onClick: () => void;
+type ExpandContextValue = {
+  isExpanded: boolean;
+  expand: () => void;
+  collapse: () => void;
 };
 
-export function ExpandChartButton({ onClick }: ExpandChartButtonProps) {
+const ExpandContext = createContext<ExpandContextValue | null>(null);
+
+function useExpand() {
+  const ctx = useContext(ExpandContext);
+  if (!ctx) throw new Error("useExpand must be used within ExpandProvider");
+  return ctx;
+}
+
+export function ExpandProvider({ children }: { children: ReactNode }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const value = useMemo(
+    () => ({
+      isExpanded,
+      expand: () => setIsExpanded(true),
+      collapse: () => setIsExpanded(false)
+    }),
+    [isExpanded]
+  );
+  return <ExpandContext.Provider value={value}>{children}</ExpandContext.Provider>;
+}
+
+export function ExpandChartButton() {
+  const { expand } = useExpand();
   return (
     <button
       aria-label="Maximize chart"
       className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-line bg-paper text-ink transition hover:bg-canvas"
-      onClick={onClick}
+      onClick={expand}
       type="button"
     >
       <svg
@@ -65,22 +98,27 @@ function IconButton({ label, onClick, children, variant = "default" }: IconButto
   );
 }
 
-type FullscreenChartProps = {
+export function FullscreenChart({
+  title,
+  action,
+  children
+}: {
   title: string;
   action?: ReactNode;
-  onClose: () => void;
   children: ReactNode;
-};
-
-export function FullscreenChart({ title, action, onClose, children }: FullscreenChartProps) {
+}) {
+  const { isExpanded, collapse } = useExpand();
   const [zoom, setZoom] = useState(1);
   const pinchStart = useRef<{ distance: number; zoom: number } | null>(null);
 
   useEffect(() => {
+    if (!isExpanded) {
+      setZoom(1);
+      return;
+    }
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
+      if (event.key === "Escape") collapse();
     };
 
     document.body.style.overflow = "hidden";
@@ -90,7 +128,9 @@ export function FullscreenChart({ title, action, onClose, children }: Fullscreen
       document.body.style.overflow = "";
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [onClose]);
+  }, [isExpanded, collapse]);
+
+  if (!isExpanded) return null;
 
   const updateZoom = (value: number) => setZoom(clampZoom(value));
 
@@ -101,10 +141,7 @@ export function FullscreenChart({ title, action, onClose, children }: Fullscreen
   };
 
   const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
-    if (event.touches.length !== 2 || !pinchStart.current) {
-      return;
-    }
-
+    if (event.touches.length !== 2 || !pinchStart.current) return;
     event.preventDefault();
     updateZoom((touchDistance(event.touches) / pinchStart.current.distance) * pinchStart.current.zoom);
   };
@@ -155,7 +192,7 @@ export function FullscreenChart({ title, action, onClose, children }: Fullscreen
               <path d="M5 12h14" />
             </svg>
           </IconButton>
-          <IconButton label="Close chart" onClick={onClose} variant="dark">
+          <IconButton label="Close chart" onClick={collapse} variant="dark">
             <svg
               aria-hidden="true"
               className="h-4 w-4"
@@ -186,12 +223,11 @@ export function FullscreenChart({ title, action, onClose, children }: Fullscreen
   );
 }
 
-export function ChartShell({ title, eyebrow, action, footer, fullScreenChildren, children }: ChartShellProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function ChartShellInner({ title, eyebrow, action, footer, fullScreenChildren, children }: ChartShellProps) {
   const controls = (
     <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
       {action}
-      <ExpandChartButton onClick={() => setIsExpanded(true)} />
+      <ExpandChartButton />
     </div>
   );
 
@@ -202,11 +238,15 @@ export function ChartShell({ title, eyebrow, action, footer, fullScreenChildren,
         <div className="h-64 px-1 py-4 sm:h-72 sm:px-4">{children}</div>
         {footer ? <div className="border-t border-line px-4 py-3 sm:px-5">{footer}</div> : null}
       </Card>
-      {isExpanded ? (
-        <FullscreenChart title={title} onClose={() => setIsExpanded(false)}>
-          {fullScreenChildren ?? children}
-        </FullscreenChart>
-      ) : null}
+      <FullscreenChart title={title}>{fullScreenChildren ?? children}</FullscreenChart>
     </>
+  );
+}
+
+export function ChartShell(props: ChartShellProps) {
+  return (
+    <ExpandProvider>
+      <ChartShellInner {...props} />
+    </ExpandProvider>
   );
 }

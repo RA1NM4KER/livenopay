@@ -6,6 +6,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { FilterBar } from "@/components/dashboard/filter-bar";
 import { DropdownSelect, type DropdownOption } from "@/components/ui/dropdown-select";
+import { ExportButton } from "@/components/ui/export-button";
 import { Card } from "@/components/ui/card";
 import { type ChargeTypeFilter } from "@/lib/data-table-query-params";
 import { useDataTableUrlState } from "@/lib/use-data-table-url-state";
@@ -306,9 +307,19 @@ export function DataTable() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 pt-6 ">
-      <div>
-        <p className="text-sm text-muted">{totalLabel}</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Raw energy rows</h2>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted">{totalLabel}</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Raw energy rows</h2>
+        </div>
+        <ExportButton
+          from={displayFrom}
+          to={displayTo}
+          chargeType={chargeType !== "all" ? chargeType : undefined}
+          search={searchQuery || undefined}
+          sort={sortKey !== "captured" ? sortKey : undefined}
+          dir={sortDirection !== "desc" ? sortDirection : undefined}
+        />
       </div>
 
       <FilterBar
