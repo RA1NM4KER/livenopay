@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ThemeChoice } from "./types";
 
-const storageKey = "livenopay-theme";
+const storageKey = "electricity-ledger-theme";
 
 function applyTheme(choice: ThemeChoice) {
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;

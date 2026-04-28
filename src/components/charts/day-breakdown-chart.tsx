@@ -34,7 +34,12 @@ async function fetchIntervals(periodDate: string) {
   return (await response.json()) as IntervalApiResponse;
 }
 
-export function DayBreakdownChart({ initialSelectedDate, dateOptions, dailyRows }: DayBreakdownChartProps) {
+export function DayBreakdownChart({
+  initialSelectedDate,
+  dateOptions,
+  dailyRows,
+  globalDomains
+}: DayBreakdownChartProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCompactAxis, setIsCompactAxis] = useState(false);
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate ?? dateOptions[dateOptions.length - 1] ?? "");
@@ -46,7 +51,8 @@ export function DayBreakdownChart({ initialSelectedDate, dateOptions, dailyRows 
   });
   const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const intervalData = buildIntervalPoints(rows, selectedDate);
-  const axisDomains = useMemo(() => buildStableAxisDomains(rows), [rows]);
+  const perDayDomains = useMemo(() => buildStableAxisDomains(rows), [rows]);
+  const axisDomains = globalDomains ?? perDayDomains;
   const energySpend = sumRows(rows, "spend");
   const usage = sumRows(rows, "kwh");
   const fixedSpend = dailyRows.find((row) => row.periodDate === selectedDate)?.fixedSpend ?? 0;

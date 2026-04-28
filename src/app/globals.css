@@ -4,41 +4,41 @@
 
 :root {
   color-scheme: light;
-  --color-canvas: 247 246 242;
-  --color-paper: 255 254 250;
-  --color-ink: 36 35 31;
-  --color-muted: 119 115 106;
-  --color-line: 228 224 215;
-  --color-accent: 111 127 107;
-  --color-accent-soft: 223 230 217;
-  --color-amber-soft: 236 224 199;
-  --color-rose-soft: 234 217 211;
-  --color-success: 47 143 70;
-  --color-fixed: 47 111 163;
-  --color-projection: 143 118 105;
-  --color-spend: 199 185 145;
-  --color-usage: 191 201 182;
-  --shadow-soft: 0 18px 50px rgba(36, 35, 31, 0.07);
+  --color-canvas: 246 246 246;
+  --color-paper: 255 255 255;
+  --color-ink: 24 24 24;
+  --color-muted: 108 108 108;
+  --color-line: 224 224 224;
+  --color-accent: 226 74 67;
+  --color-accent-soft: 252 232 231;
+  --color-amber-soft: 254 243 219;
+  --color-rose-soft: 252 232 231;
+  --color-success: 34 139 58;
+  --color-fixed: 37 99 163;
+  --color-projection: 140 115 102;
+  --color-spend: 226 74 67;
+  --color-usage: 99 120 145;
+  --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.08);
   background: rgb(var(--color-canvas));
 }
 
 .dark {
   color-scheme: dark;
-  --color-canvas: 25 25 23;
-  --color-paper: 33 33 30;
-  --color-ink: 237 234 225;
-  --color-muted: 166 160 148;
-  --color-line: 62 60 54;
-  --color-accent: 152 164 145;
-  --color-accent-soft: 58 67 55;
-  --color-amber-soft: 71 61 43;
-  --color-rose-soft: 70 52 49;
-  --color-success: 106 176 119;
-  --color-fixed: 121 163 196;
-  --color-projection: 180 151 135;
-  --color-spend: 186 166 115;
-  --color-usage: 130 151 124;
-  --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.28);
+  --color-canvas: 18 18 18;
+  --color-paper: 26 26 26;
+  --color-ink: 238 238 238;
+  --color-muted: 156 156 156;
+  --color-line: 46 46 46;
+  --color-accent: 226 74 67;
+  --color-accent-soft: 60 24 22;
+  --color-amber-soft: 66 54 28;
+  --color-rose-soft: 60 24 22;
+  --color-success: 74 176 100;
+  --color-fixed: 90 148 210;
+  --color-projection: 175 148 132;
+  --color-spend: 226 74 67;
+  --color-usage: 99 140 180;
+  --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.35);
 }
 
 * {

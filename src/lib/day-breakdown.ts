@@ -57,6 +57,13 @@ export function buildStableAxisDomains(rows: IntervalRollupRow[]): DayBreakdownD
   };
 }
 
+export function buildGlobalDomains(maxSpend: number, maxKwh: number): DayBreakdownDomains {
+  return {
+    spend: roundedCeiling(maxSpend, 1),
+    kwh: roundedCeiling(maxKwh, 0.5)
+  };
+}
+
 export function sumRows(rows: IntervalRollupRow[], key: "spend" | "kwh") {
   return rows.reduce((total, row) => total + row[key], 0);
 }

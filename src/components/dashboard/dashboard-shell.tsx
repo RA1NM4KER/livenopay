@@ -9,6 +9,7 @@ import { HourlyChart } from "@/components/charts/hourly-chart";
 import { TariffChart } from "@/components/charts/tariff-chart";
 import { MetricCard } from "@/components/ui/metric-card";
 import { createAnalytics } from "@/lib/analytics";
+import { buildGlobalDomains } from "@/lib/day-breakdown";
 import { useFilterUrlState } from "@/lib/use-filter-url-state";
 import { formatCurrency, formatKwh, formatTariff, longDateTime, shortDate } from "@/lib/format";
 import { FilterBar } from "./filter-bar";
@@ -40,21 +41,19 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
     [dailyRows]
   );
 
+  const globalDomains =
+    summary.maxIntervalSpend !== undefined && summary.maxIntervalKwh !== undefined
+      ? buildGlobalDomains(summary.maxIntervalSpend, summary.maxIntervalKwh)
+      : undefined;
+
   const metrics = analytics.metrics;
 
   return (
     <div className="flex flex-1 flex-col gap-5 py-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm text-muted">
-            {metrics.dateStart && metrics.dateEnd
-              ? `${shortDate(metrics.dateStart)} to ${shortDate(metrics.dateEnd)}`
-              : "No data loaded"}
-          </p>
-          <h2 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight text-ink sm:text-4xl">
-            A clearer view of your LiveMopay usage and spend.
-          </h2>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className=" text-2xl font-semibold tracking-tight text-ink sm:text-4xl">
+          A clearer view of your LiveMopay usage and spend.
+        </h2>
         <div className="w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm sm:w-auto">
           <p className="font-medium text-ink">Last synced</p>
           <p className="mt-1 text-muted">{syncLabel(summary.lastSyncedAt)}</p>
@@ -121,6 +120,7 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
       <DayBreakdownChart
         dailyRows={dailyRows}
         dateOptions={dateOptions}
+        globalDomains={globalDomains}
         initialSelectedDate={summary.dateEnd ?? dateOptions[dateOptions.length - 1]}
       />
 

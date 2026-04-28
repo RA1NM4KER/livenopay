@@ -4,8 +4,8 @@ import type { RootLayoutProps } from "./types";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Livenopay",
-  description: "Local LiveMopay electricity analytics"
+  title: "Electricity Ledger",
+  description: "Your electricity usage, your data, your control."
 };
 
 export default function RootLayout({ children }: RootLayoutProps) {
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           dangerouslySetInnerHTML={{
             __html: `
 try {
-  var theme = localStorage.getItem("livenopay-theme") || "system";
+  var theme = localStorage.getItem("electricity-ledger-theme") || "system";
   var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   var resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
   document.documentElement.classList.toggle("dark", resolved === "dark");
