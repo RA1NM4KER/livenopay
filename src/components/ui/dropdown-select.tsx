@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import type { ReactNode } from "react";
 
 export type DropdownOption = {
   label: string;
   value: string;
   disabled?: boolean;
+  icon?: ReactNode;
 };
 
 type DropdownSelectProps = {
@@ -29,9 +31,11 @@ export function DropdownSelect({
   menuPlacement = "bottom"
 }: DropdownSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const activeLabel = useMemo(() => {
-    return options.find((option) => option.value === value)?.label ?? fallbackLabel ?? value;
-  }, [fallbackLabel, options, value]);
+  const activeOption = useMemo(() => {
+    return options.find((option) => option.value === value);
+  }, [options, value]);
+  const activeLabel = activeOption?.label ?? fallbackLabel ?? value;
+  const activeIcon = activeOption?.icon;
 
   return (
     <div
@@ -55,7 +59,10 @@ export function DropdownSelect({
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
-        <span className="whitespace-nowrap">{activeLabel}</span>
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
+          {activeIcon}
+          {activeLabel}
+        </span>
         <ChevronDown
           aria-hidden="true"
           className={`h-4 w-4 shrink-0 text-muted transition ${isOpen ? "rotate-180" : ""}`}
@@ -75,7 +82,7 @@ export function DropdownSelect({
             return (
               <button
                 aria-selected={isActive}
-                className={`w-full rounded px-3 py-2 text-left text-sm transition ${
+                className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm transition ${
                   option.disabled
                     ? "cursor-not-allowed text-muted/60"
                     : isActive
@@ -95,6 +102,7 @@ export function DropdownSelect({
                 role="option"
                 type="button"
               >
+                {option.icon}
                 {option.label}
               </button>
             );

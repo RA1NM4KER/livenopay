@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Moon, Monitor, Sun } from "lucide-react";
+import { DropdownSelect } from "@/components/ui/dropdown-select";
 import type { ThemeChoice } from "./types";
 
 const storageKey = "electricity-ledger-theme";
@@ -12,6 +14,12 @@ function applyTheme(choice: ThemeChoice) {
   document.documentElement.classList.toggle("dark", resolved === "dark");
   document.documentElement.dataset.theme = choice;
 }
+
+const themeOptions = [
+  { value: "light", label: "Light", icon: <Sun size={14} /> },
+  { value: "system", label: "System", icon: <Monitor size={14} /> },
+  { value: "dark", label: "Dark", icon: <Moon size={14} /> }
+];
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<ThemeChoice>("system");
@@ -27,34 +35,28 @@ export function ThemeToggle() {
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      if (theme === "system") {
-        applyTheme("system");
-      }
+      if (theme === "system") applyTheme("system");
     };
 
     media.addEventListener("change", handleChange);
     return () => media.removeEventListener("change", handleChange);
   }, [theme]);
 
-  function updateTheme(nextTheme: ThemeChoice) {
-    setTheme(nextTheme);
-    window.localStorage.setItem(storageKey, nextTheme);
-    applyTheme(nextTheme);
+  function updateTheme(value: string) {
+    const next = value as ThemeChoice;
+    setTheme(next);
+    window.localStorage.setItem(storageKey, next);
+    applyTheme(next);
   }
 
   return (
-    <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-2 py-1 text-sm text-muted">
-      <span className="sr-only">Theme</span>
-      <select
-        aria-label="Theme"
-        className="h-8 rounded-md bg-transparent px-2 text-sm text-ink outline-none transition focus:bg-canvas"
-        onChange={(event) => updateTheme(event.target.value as ThemeChoice)}
-        value={theme}
-      >
-        <option value="system">System</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-      </select>
-    </label>
+    <DropdownSelect
+      ariaLabel="Theme"
+      value={theme}
+      options={themeOptions}
+      onChange={updateTheme}
+      className="w-28"
+      menuPlacement="bottom"
+    />
   );
 }
