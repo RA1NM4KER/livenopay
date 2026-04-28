@@ -46,7 +46,7 @@ export function AppShell({ children }: AppShellProps) {
             className="hidden h-20 w-auto flex-shrink-0 dark:block sm:h-24"
           />
         </Link>
-        <div className="flex items-end gap-12">
+        <div className="flex w-full items-end justify-between sm:w-auto sm:justify-start sm:gap-12">
           <nav className="-mb-px flex items-center gap-1 text-sm">
             <Link
               href={dashboardHref}

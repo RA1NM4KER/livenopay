@@ -59,7 +59,7 @@ export function DropdownSelect({
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
+        <span className="flex min-w-0 items-center gap-1.5 truncate">
           {activeIcon}
           {activeLabel}
         </span>

@@ -142,7 +142,7 @@ export function DayBreakdownChart({
         />
         <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[1fr_18rem]">
           <div className="h-72 sm:h-80">{renderChart(isCompactAxis ? 7 : 3)}</div>
-          <aside className="grid content-start gap-3">
+          <aside className="grid content-start grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-1">
             <DaySummaryCard label="Energy spend" value={formatCurrency(energySpend)} />
             <DaySummaryCard label="Energy usage" value={formatKwh(usage)} />
             <DaySummaryCard label="Fixed charges" value={formatCurrency(fixedSpend)} />

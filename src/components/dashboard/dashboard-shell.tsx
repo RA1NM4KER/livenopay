@@ -56,16 +56,21 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
         </h2>
         <div className="w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm sm:w-auto">
           <p className="font-medium text-ink">Last synced</p>
-          <p className="mt-1 text-muted">{syncLabel(summary.lastSyncedAt)}</p>
+          <div className="mt-1 flex items-baseline justify-between gap-2 sm:block">
+            <p className="text-muted">{syncLabel(summary.lastSyncedAt)}</p>
+            {typeof summary.rowsInCsv === "number" ? (
+              <p className="text-xs text-muted sm:hidden">{summary.rowsInCsv} rows</p>
+            ) : null}
+          </div>
           {typeof summary.rowsInCsv === "number" ? (
-            <p className="mt-1 text-xs text-muted">{summary.rowsInCsv} rows synced from CSV</p>
+            <p className="mt-1 hidden text-xs text-muted sm:block">{summary.rowsInCsv} rows synced from CSV</p>
           ) : null}
         </div>
       </div>
 
       <FilterBar from={from} to={to} quickRange={quickRange} onDateChange={onDateChange} onQuickRange={onQuickRange} />
 
-      <section className="snap-rail -mx-3 flex snap-x gap-4 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:px-0 sm:pb-0 lg:grid-cols-4 [&>section]:min-w-[16rem] [&>section]:snap-start sm:[&>section]:min-w-0">
+      <section className="snap-rail flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0">
         <MetricCard
           label="Total spend"
           value={formatCurrency(metrics.totalSpend)}

@@ -309,7 +309,7 @@ export function DataTable() {
     <div className="flex min-h-0 flex-1 flex-col gap-5 pt-6 ">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-sm text-muted">{totalLabel}</p>
+          <p className="hidden text-sm text-muted sm:block">{totalLabel}</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Raw energy rows</h2>
         </div>
         <ExportButton

@@ -29,6 +29,7 @@ const calendarClassNames = {
 } satisfies Partial<ClassNames>;
 
 export type DatePickerProps = {
+  buttonClassName?: string;
   closeOnSelect?: boolean;
   label?: string;
   max?: string;
@@ -60,6 +61,7 @@ export function formatIsoDate(date: Date) {
 }
 
 export function DatePicker({
+  buttonClassName,
   closeOnSelect = true,
   label,
   max,
@@ -147,7 +149,7 @@ export function DatePicker({
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-label={label}
-        className="flex h-9 w-auto items-center justify-between gap-3 whitespace-nowrap rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent"
+        className={`flex h-9 w-auto items-center justify-between gap-3 whitespace-nowrap rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent${buttonClassName ? ` ${buttonClassName}` : ""}`}
         onClick={() => {
           setIsOpen((current) => !current);
         }}
