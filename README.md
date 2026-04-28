@@ -1,6 +1,12 @@
-# Livenopay
+# Electricity Ledger
 
-A personal electricity ledger for LiveMopay users. It captures the in-app ledger from Android, syncs the rows to Supabase, and gives you a dashboard for usage, spend, balance, fixed charges, tariff changes, and raw transaction history.
+**Your power. Your data. Your rules.**
+
+LiveMopay currently doesn't let you download your data. It only shows data for the current month, and when a new month starts, the history is gone. If you want to understand your usage over time — spot trends, track tariff changes, see which days cost the most — you're stuck squinting at charts that barely work on mobile and can't tell you anything beyond the last 30 days.
+
+This is the only way I found to get that data out.
+
+It captures the in-app ledger from Android, syncs the rows to Supabase, and gives you a proper dashboard: usage, spend, balance, fixed charges, tariff changes, 30-minute interval breakdowns, and raw transaction history — going back as far as you've been syncing.
 
 The intended setup is:
 
