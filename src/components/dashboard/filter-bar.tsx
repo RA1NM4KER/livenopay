@@ -71,7 +71,7 @@ function FilterBarContent({
         ) : null}
       </div>
 
-      {/* Desktop (unchanged) */}
+      {/* Desktop */}
       <div className="hidden sm:flex sm:flex-wrap sm:items-center sm:gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <RangeDropdown quickRange={quickRange} onQuickRange={onQuickRange} />

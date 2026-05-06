@@ -80,7 +80,7 @@ start_emulator_if_needed() {
   fi
 
   echo "Starting emulator: $AVD_NAME"
-  "$EMULATOR_CMD" "@${AVD_NAME}" >/tmp/livenopay-emulator.log 2>&1 &
+  "$EMULATOR_CMD" "@${AVD_NAME}" -no-snapshot-load -no-snapshot-save >/tmp/livenopay-emulator.log 2>&1 &
   local emulator_pid=$!
 
   for _ in {1..90}; do
