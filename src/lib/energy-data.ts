@@ -35,6 +35,7 @@ export type EnergyRowsPage = {
   total: number;
   page: number;
   pageSize: number;
+  sync: SyncMetadata;
   bounds: {
     from: string;
     to: string;
@@ -176,14 +177,15 @@ export async function loadEnergyRowsPage(query: EnergyRowsPageQuery): Promise<En
   const offset = (page - 1) * pageSize;
   const path = queryPathForPage(query);
 
-  const [response, bounds] = await Promise.all([
+  const [response, bounds, sync] = await Promise.all([
     supabaseResponse(path, {
       headers: {
         Prefer: "count=exact",
         Range: `${offset}-${offset + pageSize - 1}`
       }
     }),
-    loadEnergyDateBounds()
+    loadEnergyDateBounds(),
+    loadSyncMetadata()
   ]);
 
   const pageRows = (await response.json()) as EnergyRecordInput[];
@@ -192,6 +194,7 @@ export async function loadEnergyRowsPage(query: EnergyRowsPageQuery): Promise<En
     total: contentRangeTotal(response.headers.get("content-range")),
     page,
     pageSize,
+    sync,
     bounds
   };
 }

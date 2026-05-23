@@ -1,11 +1,35 @@
 import type { Metadata } from "next";
+import type { Viewport } from "next";
 import Script from "next/script";
+import { PwaRegistrar } from "@/components/pwa/pwa-registrar";
 import type { RootLayoutProps } from "./types";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Electricity Ledger",
-  description: "Your electricity usage, your data, your control."
+  description: "Your electricity usage, your data, your control.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Electricity Ledger"
+  },
+  icons: {
+    icon: [{ url: "/icon.png", sizes: "1024x1024", type: "image/png" }],
+    apple: [{ url: "/icon.png", sizes: "1024x1024", type: "image/png" }]
+  }
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  colorScheme: "light dark",
+  themeColor: [
+    { color: "#f6f6f6", media: "(prefers-color-scheme: light)" },
+    { color: "#121212", media: "(prefers-color-scheme: dark)" }
+  ]
 };
 
 export default function RootLayout({ children }: RootLayoutProps) {
@@ -27,6 +51,7 @@ try {
 `
           }}
         />
+        <PwaRegistrar />
         {children}
       </body>
     </html>

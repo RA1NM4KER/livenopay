@@ -10,9 +10,9 @@ import { ExportButton } from "@/components/ui/export-button";
 import { Card } from "@/components/ui/card";
 import { type ChargeTypeFilter } from "@/lib/data-table-query-params";
 import { useDataTableUrlState } from "@/lib/use-data-table-url-state";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, longDateTime } from "@/lib/format";
 import { buildEnergyRowsUrl } from "@/lib/endpoints";
-import type { EnergyRow } from "@/lib/types";
+import type { EnergyRow, SyncMetadata } from "@/lib/types";
 import { amountClassFor, kwhDisplayFor, tariffDisplayFor } from "./row-formatting";
 import type { SortDirection, SortKey } from "./types";
 
@@ -34,6 +34,7 @@ type EnergyRowsApiResponse = {
   total: number;
   page: number;
   pageSize: number;
+  sync: SyncMetadata;
   bounds: {
     from: string;
     to: string;
@@ -68,6 +69,14 @@ async function fetchEnergyRows(params: URLSearchParams) {
   }
 
   return (await response.json()) as EnergyRowsApiResponse;
+}
+
+function syncSummaryLabel(sync?: SyncMetadata) {
+  if (!sync?.lastSyncedAt) {
+    return undefined;
+  }
+
+  return `last synced ${longDateTime(sync.lastSyncedAt)}`;
 }
 
 export function DataTable() {
@@ -292,6 +301,8 @@ export function DataTable() {
   );
 
   const totalLabel = isLoading ? "Loading rows..." : `${totalRows} rows`;
+  const syncLabel = syncSummaryLabel(data?.sync);
+  const summaryLabel = isLoading ? totalLabel : syncLabel ? `${totalLabel}, ${syncLabel}` : totalLabel;
   const hasPreviousPage = page > 1;
   const hasNextPage = page < pageCount;
 
@@ -307,20 +318,22 @@ export function DataTable() {
   }, [data?.bounds.from, data?.bounds.to, from, onDateChange, to]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5 pt-6 ">
+    <div className="flex min-h-0 flex-1 flex-col gap-5 pt-3 sm:pt-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="hidden text-sm text-muted sm:block">{totalLabel}</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Raw energy rows</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Raw energy rows</h2>
         </div>
-        <ExportButton
-          from={displayFrom}
-          to={displayTo}
-          chargeType={chargeType !== "all" ? chargeType : undefined}
-          search={searchQuery || undefined}
-          sort={sortKey !== "captured" ? sortKey : undefined}
-          dir={sortDirection !== "desc" ? sortDirection : undefined}
-        />
+        <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+          <p className="hidden text-right text-sm text-muted sm:block">{summaryLabel}</p>
+          <ExportButton
+            from={displayFrom}
+            to={displayTo}
+            chargeType={chargeType !== "all" ? chargeType : undefined}
+            search={searchQuery || undefined}
+            sort={sortKey !== "captured" ? sortKey : undefined}
+            dir={sortDirection !== "desc" ? sortDirection : undefined}
+          />
+        </div>
       </div>
 
       <FilterBar
