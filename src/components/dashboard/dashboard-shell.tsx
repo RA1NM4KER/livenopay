@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { AssistantPanel } from "@/components/assistant/assistant-panel";
 import { CumulativeSpendChart } from "@/components/charts/cumulative-spend-chart";
 import { DayBreakdownChart } from "@/components/charts/day-breakdown-chart";
 import { DailyKwhChart } from "@/components/charts/daily-kwh-chart";
@@ -68,7 +69,15 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
         </div>
       </div>
 
-      <FilterBar from={from} to={to} quickRange={quickRange} onDateChange={onDateChange} onQuickRange={onQuickRange} />
+      <FilterBar
+        from={from}
+        to={to}
+        quickRange={quickRange}
+        onDateChange={onDateChange}
+        onQuickRange={onQuickRange}
+        rightControls={<AssistantPanel from={from} to={to} compact />}
+        rightControlsExpanded
+      />
 
       <section className="snap-rail flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0">
         <MetricCard

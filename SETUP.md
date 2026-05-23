@@ -2,6 +2,8 @@
 
 This guide covers the local Android setup needed for refreshing `livemopay_energy.csv` from LiveMopay.
 
+If you are setting up the full dashboard, make sure you also apply all three Supabase migrations from `README.md`. The local Android steps here are only for capture and refresh.
+
 ## Capture Flow
 
 Capture is local-only. The deployed dashboard reads Supabase and does not run Android/ADB commands.
@@ -88,6 +90,13 @@ The wrapper uses these optional `.env.local` values:
     ADB_SERIAL=emulator-5554
 
 Most people should only need `LIVENOPAY_AVD_NAME`. The package and activity are configurable in case LiveMopay changes its Android entry point. `ADB_SERIAL` is useful when you have more than one Android device or emulator connected.
+
+If you also want the in-app dashboard assistant, add these optional server-side values to `.env.local`:
+
+    OPENAI_API_KEY=your-openai-api-key
+    OPENAI_MODEL=gpt-4.1-mini
+
+The assistant is optional. Capture, sync, and the dashboard itself still work without it.
 
 The capture script also reads `.env.local` directly. These optional values control output locations and scan behavior:
 

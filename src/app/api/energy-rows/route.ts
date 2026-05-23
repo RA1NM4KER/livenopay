@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { loadEnergyRowsPage } from "@/lib/energy-data";
 import { parseDataTableQuery } from "@/lib/data-table-query-params";
+import { enforceRateLimit, getRateLimitIdentifier, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    const identifier = getRateLimitIdentifier(request, "energy-rows");
+    const rateLimit = await enforceRateLimit(identifier);
+    const rateHeaders = rateLimitHeaders(rateLimit);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { message: "Rate limit exceeded. Please try again later." },
+        { status: 429, headers: rateHeaders }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const parsed = parseDataTableQuery(searchParams);
 
@@ -20,7 +32,7 @@ export async function GET(request: Request) {
       pageSize: parsed.pageSize
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: rateHeaders });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load energy rows.";
     return NextResponse.json({ message }, { status: 500 });

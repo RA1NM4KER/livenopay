@@ -8,6 +8,8 @@ This is the only way I found to get that data out.
 
 It captures the in-app ledger from Android, syncs the rows to Supabase, and gives you a proper dashboard: usage, spend, balance, fixed charges, tariff changes, 30-minute interval breakdowns, and raw transaction history — going back as far as you've been syncing.
 
+It also includes an in-app assistant on the dashboard that can answer grounded questions about the currently selected date range: comparisons, top usage periods, top-up activity, spikes, and balance patterns.
+
 The intended setup is:
 
 1. run the dashboard anywhere Next.js can deploy
@@ -55,10 +57,11 @@ They create:
 - `energy_day_rollups`, `energy_hourly_rollups`, and `energy_interval_rollups` for dashboard metrics and charts
 - `dashboard_summary` for last sync metadata and latest balance context
 
-Apply both migrations in order:
+Apply the migrations in order:
 
     supabase/migrations/20260414000000_livenopay_energy.sql
     supabase/migrations/20260421000000_livenopay_rollups.sql
+    supabase/migrations/20260523000000_livenopay_sort_timestamps.sql
 
 The unique key matches the existing local capture dedupe strategy, so rerunning sync is idempotent and avoids duplicate rows.
 
@@ -74,10 +77,16 @@ The unique key matches the existing local capture dedupe strategy, so rerunning 
    SUPABASE_ANON_KEY=...
    SUPABASE_SERVICE_ROLE_KEY=...
 
+   If you want the dashboard assistant:
+
+   OPENAI_API_KEY=...
+   OPENAI_MODEL=gpt-4.1-mini
+
 3. Apply the migrations in Supabase:
 
    supabase/migrations/20260414000000_livenopay_energy.sql
    supabase/migrations/20260421000000_livenopay_rollups.sql
+   supabase/migrations/20260523000000_livenopay_sort_timestamps.sql
 
 4. Install LiveMopay in an Android Studio emulator and log in.
 
@@ -109,6 +118,11 @@ For local sync:
     SUPABASE_URL=...
     SUPABASE_SERVICE_ROLE_KEY=...
 
+Optional dashboard assistant:
+
+    OPENAI_API_KEY=...
+    OPENAI_MODEL=gpt-4.1-mini
+
 You can put these in `.env.local` for local development. Do not expose the service role key in the browser or deployed public client environment.
 
 Optional emulator refresh settings:
@@ -138,6 +152,25 @@ Optional capture tuning:
 Open `http://localhost:3000`.
 
 The dashboard reads rollups through `src/lib/dashboard-data.ts` and the data table reads paginated rows through `src/lib/energy-data.ts`. Neither reads `livemopay_energy.csv` directly.
+
+If `OPENAI_API_KEY` is configured, the dashboard assistant sends questions to the server-side `/api/assistant` route and answers using structured tools over your Supabase data for the currently selected date range. It does not run arbitrary SQL from the browser.
+
+## Assistant
+
+The assistant is a grounded analyst for the active dashboard date range. It only answers using the tool results below and never invents numbers or dates.
+
+Available tools:
+
+1. `get_scope_overview` - totals, peaks, balance, and generated insights for the active range
+2. `get_balance_runout` - estimate when the current balance runs out and whether it covers month-end
+3. `compare_previous_period` - compare the active range to the immediately preceding range of equal length
+4. `compare_calendar_months` - compare the latest calendar month in scope to the prior month and return month-by-month breakdowns
+5. `get_top_days` - highest days by spend, usage, or average tariff
+6. `get_top_hours` - highest hours by spend or usage
+7. `explain_day` - explain a single day with daily rollups plus top half-hour intervals
+8. `get_recent_topups` - list recent top-ups in the active range
+
+These tools read Supabase rollups and export rows only, so responses stay consistent with the dashboard tables and charts.
 
 ## Refresh Data
 
@@ -195,10 +228,13 @@ The deployed dashboard cannot run capture. Refreshing data is a manual local com
 ## Project Structure
 
 - `src/app` - App Router pages
+- `src/app/api/assistant` - server-side assistant route
+- `src/components/assistant` - dashboard assistant launcher and dialog UI
 - `src/components/dashboard` - dashboard controls and insight sections
 - `src/components/charts` - Recharts chart components
 - `src/components/data` - Supabase-backed data table
 - `src/components/ui` - shared presentation components
+- `src/lib/assistant` - assistant prompt, tool loop, and grounded analytics tools
 - `src/lib` - Supabase access, CSV normalization, filtering, formatting, and analytics
 - `supabase/migrations` - database schema
 - `capture_livemopay.py` - local Android capture

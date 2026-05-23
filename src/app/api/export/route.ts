@@ -1,11 +1,23 @@
 import { loadExportRows } from "@/lib/energy-data";
 import { toCSVString, toXLSXBuffer } from "@/lib/export";
 import type { EnergyRowsPageQuery } from "@/lib/energy-data";
+import { enforceRateLimit, getRateLimitIdentifier, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    const identifier = getRateLimitIdentifier(request, "export");
+    const rateLimit = await enforceRateLimit(identifier);
+    const rateHeaders = rateLimitHeaders(rateLimit);
+
+    if (!rateLimit.allowed) {
+      return new Response(JSON.stringify({ message: "Rate limit exceeded. Please try again later." }), {
+        status: 429,
+        headers: { "Content-Type": "application/json", ...rateHeaders }
+      });
+    }
+
     const { searchParams } = new URL(request.url);
     const format = searchParams.get("format") ?? "csv";
 
@@ -28,7 +40,8 @@ export async function GET(request: Request) {
       return new Response(buffer as unknown as BodyInit, {
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="${filename}.xlsx"`
+          "Content-Disposition": `attachment; filename="${filename}.xlsx"`,
+          ...rateHeaders
         }
       });
     }
@@ -37,7 +50,8 @@ export async function GET(request: Request) {
     return new Response(csv, {
       headers: {
         "Content-Type": "text/csv;charset=utf-8;",
-        "Content-Disposition": `attachment; filename="${filename}.csv"`
+        "Content-Disposition": `attachment; filename="${filename}.csv"`,
+        ...rateHeaders
       }
     });
   } catch (error) {

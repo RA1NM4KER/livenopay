@@ -1,5 +1,6 @@
 "use client";
 
+import { Maximize2, Minimize2, X, ZoomIn, ZoomOut } from "lucide-react";
 import {
   createContext,
   useContext,
@@ -11,6 +12,7 @@ import {
   type TouchEvent
 } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
+import { FullscreenDialog } from "@/components/ui/fullscreen-dialog";
 import type { ChartShellProps } from "./types";
 
 const minZoom = 1;
@@ -61,19 +63,7 @@ export function ExpandChartButton() {
       onClick={expand}
       type="button"
     >
-      <svg
-        aria-hidden="true"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        viewBox="0 0 24 24"
-      >
-        <path d="M15 3h6v6" />
-        <path d="M9 21H3v-6" />
-        <path d="m21 3-7 7" />
-        <path d="m3 21 7-7" />
-      </svg>
+      <Maximize2 className="h-4 w-4" />
     </button>
   );
 }
@@ -114,21 +104,8 @@ export function FullscreenChart({
   useEffect(() => {
     if (!isExpanded) {
       setZoom(1);
-      return;
     }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") collapse();
-    };
-
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [isExpanded, collapse]);
+  }, [isExpanded]);
 
   if (!isExpanded) return null;
 
@@ -147,79 +124,41 @@ export function FullscreenChart({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-canvas/96 backdrop-blur-sm">
-      <div className="flex items-center justify-between gap-3 border-b border-line bg-paper/95 px-4 py-3 sm:px-6">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Chart</p>
-          <h2 className="mt-1 truncate text-lg font-semibold text-ink sm:text-xl">{title}</h2>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+    <FullscreenDialog
+      bodyClassName="min-h-0 flex-1 touch-pan-x touch-pan-y overflow-auto p-3 sm:p-5"
+      closeButtonVariant="dark"
+      closeIcon={X}
+      closeLabel="Close chart"
+      contentClassName="h-full"
+      eyebrow="Chart"
+      headerAction={
+        <>
           {action}
           <IconButton label="Zoom out" onClick={() => updateZoom(zoom - 0.25)}>
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              viewBox="0 0 24 24"
-            >
-              <path d="M5 12h14" />
-            </svg>
+            <ZoomOut className="h-4 w-4" />
           </IconButton>
           <IconButton label="Fit chart" onClick={() => updateZoom(1)}>
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              viewBox="0 0 24 24"
-            >
-              <rect height="14" rx="2" width="14" x="5" y="5" />
-            </svg>
+            <Minimize2 className="h-4 w-4" />
           </IconButton>
           <IconButton label="Zoom in" onClick={() => updateZoom(zoom + 0.25)}>
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 5v14" />
-              <path d="M5 12h14" />
-            </svg>
+            <ZoomIn className="h-4 w-4" />
           </IconButton>
-          <IconButton label="Close chart" onClick={collapse} variant="dark">
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              viewBox="0 0 24 24"
-            >
-              <path d="M18 6 6 18" />
-              <path d="m6 6 12 12" />
-            </svg>
-          </IconButton>
-        </div>
-      </div>
+        </>
+      }
+      isOpen={isExpanded}
+      onClose={collapse}
+      panelClassName="max-w-none"
+      title={title}
+    >
       <div
-        className="min-h-0 flex-1 touch-pan-x touch-pan-y overflow-auto p-3 sm:p-5"
+        className="h-full min-h-[18rem] rounded-lg border border-line bg-paper p-3 shadow-soft sm:min-h-[24rem] sm:p-5"
         onTouchMove={handleTouchMove}
         onTouchStart={handleTouchStart}
+        style={{ minWidth: "100%", width: `${Math.round(100 * zoom)}%` }}
       >
-        <div
-          className="h-full min-h-[18rem] rounded-lg border border-line bg-paper p-3 shadow-soft sm:min-h-[24rem] sm:p-5"
-          style={{ minWidth: "100%", width: `${Math.round(100 * zoom)}%` }}
-        >
-          {children}
-        </div>
+        {children}
       </div>
-    </div>
+    </FullscreenDialog>
   );
 }
 

@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { type ChargeTypeFilter } from "@/lib/data-table-query-params";
 import { useDataTableUrlState } from "@/lib/use-data-table-url-state";
 import { formatCurrency } from "@/lib/format";
+import { buildEnergyRowsUrl } from "@/lib/endpoints";
 import type { EnergyRow } from "@/lib/types";
 import { amountClassFor, kwhDisplayFor, tariffDisplayFor } from "./row-formatting";
 import type { SortDirection, SortKey } from "./types";
@@ -59,7 +60,7 @@ function nextSortLabel(direction: SortDirection, active: boolean) {
 }
 
 async function fetchEnergyRows(params: URLSearchParams) {
-  const response = await fetch(`/api/energy-rows?${params.toString()}`, { cache: "no-store" });
+  const response = await fetch(buildEnergyRowsUrl(params), { cache: "no-store" });
 
   if (!response.ok) {
     const body = await response.text();
@@ -310,7 +311,7 @@ export function DataTable() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="hidden text-sm text-muted sm:block">{totalLabel}</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Raw energy rows</h2>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Raw energy rows</h2>
         </div>
         <ExportButton
           from={displayFrom}

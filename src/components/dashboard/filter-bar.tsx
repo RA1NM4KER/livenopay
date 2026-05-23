@@ -40,7 +40,8 @@ function FilterBarContent({
   onDateChange,
   onQuickRange,
   extraControls,
-  rightControls
+  rightControls,
+  rightControlsExpanded = false
 }: FilterBarProps) {
   return (
     <div className="rounded-lg border border-line bg-paper px-3 py-3">
@@ -79,7 +80,9 @@ function FilterBarContent({
           <IsoDateInput label="To" value={to} onChange={(value) => onDateChange(from, value)} />
           {extraControls}
         </div>
-        {rightControls ? <div className="ml-auto">{rightControls}</div> : null}
+        {rightControls ? (
+          <div className={rightControlsExpanded ? "ml-auto w-full max-w-[19.5rem]" : "ml-auto"}>{rightControls}</div>
+        ) : null}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
+import { buildDayIntervalsUrl } from "@/lib/endpoints";
 import { formatCurrency, formatKwh } from "@/lib/format";
 import { ExpandChartButton, ExpandProvider, FullscreenChart } from "./chart-shell";
 import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
@@ -22,7 +23,7 @@ type IntervalApiResponse = {
 };
 
 async function fetchIntervals(periodDate: string) {
-  const response = await fetch(`/api/day-intervals?periodDate=${encodeURIComponent(periodDate)}`, {
+  const response = await fetch(buildDayIntervalsUrl(periodDate), {
     cache: "no-store"
   });
 

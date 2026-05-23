@@ -26,4 +26,5 @@ export type FilterBarProps = {
   onQuickRange: (range: QuickRangePreset) => void;
   extraControls?: ReactNode;
   rightControls?: ReactNode;
+  rightControlsExpanded?: boolean;
 };
