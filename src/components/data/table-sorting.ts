@@ -36,6 +36,25 @@ export function sortRows(rows: EnergyRow[], sortKey: SortKey, sortDirection: Sor
       return directed;
     }
 
+    if (sortKey === "captured") {
+      const periodTieBreak =
+        sortDirection === "asc"
+          ? left.periodTimestamp - right.periodTimestamp
+          : right.periodTimestamp - left.periodTimestamp;
+
+      if (periodTieBreak !== 0) {
+        return periodTieBreak;
+      }
+    }
+
+    if (sortKey === "period") {
+      if (right.captureTimestamp !== left.captureTimestamp) {
+        return right.captureTimestamp - left.captureTimestamp;
+      }
+
+      return right.ledgerTimestamp - left.ledgerTimestamp;
+    }
+
     if (right.ledgerTimestamp !== left.ledgerTimestamp) {
       return right.ledgerTimestamp - left.ledgerTimestamp;
     }

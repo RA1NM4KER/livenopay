@@ -42,14 +42,14 @@ export type EnergyRowsPage = {
 };
 
 const sortColumnByKey: Record<SortKey, string> = {
-  period: "period_dt",
+  period: "period_ts",
   type: "charge_label",
   band: "charge_label",
   kwh: "kwh",
   tariff: "tariff",
   amount: "cost",
   balance: "balance",
-  captured: "capture_dt"
+  captured: "capture_ts"
 };
 
 function supabaseConfig() {
@@ -111,13 +111,26 @@ function searchFilterOrClause(value: string) {
   return `charge_label.ilike.*${escaped}*,period_dt.ilike.*${escaped}*,capture_dt.ilike.*${escaped}*`;
 }
 
+function orderClauseForQuery(sortKey?: SortKey, sortDirection?: SortDirection) {
+  const resolvedSortKey = sortKey ?? "captured";
+  const mappedSortColumn = sortColumnByKey[resolvedSortKey];
+  const mappedSortDirection = sortDirection === "asc" ? "asc" : "desc";
+
+  if (resolvedSortKey === "captured") {
+    return `${mappedSortColumn}.${mappedSortDirection},period_ts.${mappedSortDirection}`;
+  }
+
+  if (resolvedSortKey === "period") {
+    return `${mappedSortColumn}.${mappedSortDirection},capture_ts.desc`;
+  }
+
+  return `${mappedSortColumn}.${mappedSortDirection},capture_ts.desc,period_ts.desc`;
+}
+
 function queryPathForPage({ from, to, chargeType, search, sortKey, sortDirection }: EnergyRowsPageQuery) {
   const params = new URLSearchParams();
   params.set("select", "capture_dt,charge_label,period_dt,kwh,tariff,cost,balance");
-
-  const mappedSortColumn = sortColumnByKey[sortKey ?? "captured"];
-  const mappedSortDirection = sortDirection === "asc" ? "asc" : "desc";
-  params.set("order", `${mappedSortColumn}.${mappedSortDirection},period_dt.asc,capture_dt.asc`);
+  params.set("order", orderClauseForQuery(sortKey, sortDirection));
 
   if (from) {
     params.append("period_dt", `gte.${from} 00:00:00`);
@@ -188,7 +201,7 @@ async function loadRowsFromSupabase() {
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const page = await supabaseFetch<EnergyRecordInput[]>(
-      `/energy_rows?select=capture_dt,charge_label,period_dt,kwh,tariff,cost,balance&order=period_dt.asc,capture_dt.asc`,
+      `/energy_rows?select=capture_dt,charge_label,period_dt,kwh,tariff,cost,balance&order=period_ts.asc,capture_ts.asc`,
       {
         headers: {
           Range: `${offset}-${offset + PAGE_SIZE - 1}`

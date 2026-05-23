@@ -73,7 +73,7 @@ FIELDNAMES = [
     "cost",
     "balance",
 ]
-MONEY_RE = r'-?\d+(?:\.\d+)?'
+MONEY_RE = r'-?[\d,]+(?:\.\d+)?'
 BOUNDS_RE = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 
 ENERGY_ROW_RE = re.compile(
@@ -472,6 +472,10 @@ def parse_xml(path: Path):
 
         if not m:
             continue
+
+        for field in ("kwh", "tariff", "cost", "balance"):
+            if field in item:
+                item[field] = item[field].replace(",", "")
 
         key = row_key(item)
         if key in seen_keys:

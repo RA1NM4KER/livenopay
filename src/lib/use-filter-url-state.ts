@@ -56,6 +56,11 @@ export function useFilterUrlState(dateBounds: { from?: string; to?: string }): F
   };
 
   const onQuickRange = (range: QuickRangePreset) => {
+    if (range === "allTime" && dateBounds.from && dateBounds.to) {
+      updateSearchParams(dateRangeQueryUpdates(dateBounds.from, dateBounds.to));
+      return;
+    }
+
     const nextRange = quickRangeFromLatest(range);
     updateSearchParams(dateRangeQueryUpdates(nextRange.from, nextRange.to));
   };
