@@ -63,9 +63,6 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
               <p className="text-xs text-muted sm:hidden">{summary.rowsInCsv} rows</p>
             ) : null}
           </div>
-          {typeof summary.rowsInCsv === "number" ? (
-            <p className="mt-1 hidden text-xs text-muted sm:block">{summary.rowsInCsv} rows synced from CSV</p>
-          ) : null}
         </div>
       </div>
 
