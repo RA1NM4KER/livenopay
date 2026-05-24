@@ -11,6 +11,8 @@ export type ExportButtonProps = {
   search?: string;
   sort?: string;
   dir?: string;
+  iconOnly?: boolean;
+  className?: string;
 };
 
 const formats = [
@@ -38,7 +40,16 @@ function filenameFromDisposition(header: string | null) {
   }
 }
 
-export function ExportButton({ from, to, chargeType, search, sort, dir }: ExportButtonProps) {
+export function ExportButton({
+  from,
+  to,
+  chargeType,
+  search,
+  sort,
+  dir,
+  iconOnly = false,
+  className
+}: ExportButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -100,7 +111,9 @@ export function ExportButton({ from, to, chargeType, search, sort, dir }: Export
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-busy={isLoading}
-        className="inline-flex h-9 items-center gap-2 rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+        className={`inline-flex h-9 items-center gap-2 rounded-md border border-line bg-paper text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent disabled:cursor-not-allowed disabled:opacity-60 ${
+          iconOnly ? "px-2" : "px-3"
+        } ${className ?? ""}`}
         disabled={isLoading}
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
@@ -110,7 +123,7 @@ export function ExportButton({ from, to, chargeType, search, sort, dir }: Export
         ) : (
           <Download aria-hidden="true" className="h-4 w-4 text-muted" />
         )}
-        <span>Export</span>
+        {iconOnly ? <span className="sr-only">Export</span> : <span>Export</span>}
         <ChevronDown aria-hidden="true" className={`h-4 w-4 text-muted transition ${isOpen ? "rotate-180" : ""}`} />
       </button>
 

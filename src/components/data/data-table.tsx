@@ -318,8 +318,8 @@ export function DataTable() {
   }, [data?.bounds.from, data?.bounds.to, from, onDateChange, to]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5 pt-3 sm:pt-6">
-      <div className="flex items-end justify-between gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-5 pt-6">
+      <div className="hidden items-end justify-between gap-4 sm:flex">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Raw energy rows</h2>
         </div>
@@ -346,7 +346,7 @@ export function DataTable() {
         rightControls={searchFilterControl}
       />
 
-      <Card className="flex h-[66vh] flex-col overflow-hidden">
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-line bg-canvas text-xs uppercase tracking-[0.16em] text-muted shadow-[0_1px_0_rgb(var(--color-line))]">

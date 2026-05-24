@@ -6,17 +6,17 @@ import type { RootLayoutProps } from "./types";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Electricity Ledger",
+  title: "LiveNoPay",
   description: "Your electricity usage, your data, your control.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Electricity Ledger"
+    title: "LiveNoPay"
   },
   icons: {
-    icon: [{ url: "/icon.png", sizes: "1024x1024", type: "image/png" }],
-    apple: [{ url: "/icon.png", sizes: "1024x1024", type: "image/png" }]
+    icon: [{ url: "/app-icon", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/apple-icon", sizes: "512x512", type: "image/png" }]
   }
 };
 

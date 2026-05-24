@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Electricity Ledger",
-    short_name: "Ledger",
+    name: "LiveNoPay",
+    short_name: "LiveNoPay",
     description: "Track electricity usage, spend, tariffs, and balance from your phone or desktop.",
     start_url: "/",
     scope: "/",
@@ -13,14 +13,14 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#e24a43",
     icons: [
       {
-        src: "/icon.png",
-        sizes: "1024x1024",
+        src: "/app-icon",
+        sizes: "512x512",
         type: "image/png",
         purpose: "any"
       },
       {
-        src: "/icon.png",
-        sizes: "1024x1024",
+        src: "/app-icon",
+        sizes: "512x512",
         type: "image/png",
         purpose: "maskable"
       }

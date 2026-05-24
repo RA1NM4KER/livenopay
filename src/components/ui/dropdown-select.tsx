@@ -19,6 +19,7 @@ type DropdownSelectProps = {
   fallbackLabel?: string;
   className?: string;
   menuPlacement?: "bottom" | "top";
+  hideLabelOnMobile?: boolean;
 };
 
 export function DropdownSelect({
@@ -28,7 +29,8 @@ export function DropdownSelect({
   onChange,
   fallbackLabel,
   className = "w-36",
-  menuPlacement = "bottom"
+  menuPlacement = "bottom",
+  hideLabelOnMobile = false
 }: DropdownSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const activeOption = useMemo(() => {
@@ -36,6 +38,8 @@ export function DropdownSelect({
   }, [options, value]);
   const activeLabel = activeOption?.label ?? fallbackLabel ?? value;
   const activeIcon = activeOption?.icon;
+  const labelClassName = hideLabelOnMobile ? "sr-only sm:not-sr-only" : undefined;
+  const layoutClassName = hideLabelOnMobile ? "justify-center gap-2 sm:justify-between sm:gap-0" : "justify-between";
 
   return (
     <div
@@ -55,13 +59,13 @@ export function DropdownSelect({
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
-        className={`inline-flex h-9 items-center justify-between rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent ${className}`}
+        className={`inline-flex h-9 items-center ${layoutClassName} rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent ${className}`}
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
         <span className="flex min-w-0 items-center gap-1.5 truncate">
-          {activeIcon}
-          {activeLabel}
+          {activeIcon ? <span className="shrink-0">{activeIcon}</span> : null}
+          <span className={labelClassName}>{activeLabel}</span>
         </span>
         <ChevronDown
           aria-hidden="true"
@@ -88,7 +92,7 @@ export function DropdownSelect({
                     : isActive
                       ? "bg-canvas text-ink"
                       : "text-muted hover:bg-canvas hover:text-ink"
-                }`}
+                } ${hideLabelOnMobile ? "justify-center gap-0 sm:justify-start sm:gap-2" : ""}`}
                 disabled={option.disabled}
                 key={option.value}
                 onClick={() => {
@@ -102,8 +106,8 @@ export function DropdownSelect({
                 role="option"
                 type="button"
               >
-                {option.icon}
-                {option.label}
+                {option.icon ? <span className="shrink-0">{option.icon}</span> : null}
+                <span className={labelClassName}>{option.label}</span>
               </button>
             );
           })}

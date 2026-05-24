@@ -8,7 +8,7 @@ import { queryHref } from "@/lib/url-query";
 import { ThemeToggle } from "./theme-toggle";
 import type { AppShellProps } from "./types";
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, mobileHeaderActions, lockViewport }: AppShellProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { from, to } = parseDateRangeQuery(new URLSearchParams(searchParams.toString()));
@@ -24,11 +24,14 @@ export function AppShell({ children }: AppShellProps) {
 
   const dashboardHref = queryHref("/", sharedDateParams);
   const dataHref = queryHref("/data", sharedDateParams);
+  const mainClassName = `mx-auto flex w-full max-w-7xl flex-col px-3 pt-2 sm:px-6 sm:pt-2 sm:pb-5 lg:px-8 ${
+    lockViewport ? "h-[100svh] min-h-0 overflow-hidden" : "min-h-screen"
+  }`;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-3 pt-2 sm:px-6 sm:pt-2 sm:pb-5 lg:px-8">
+    <main className={mainClassName}>
       <header className="flex flex-wrap items-end justify-between border-b border-line">
-        <Link href={dashboardHref} className="group flex min-w-0 items-center">
+        <Link href={dashboardHref} className="group hidden md:flex min-w-0 items-center">
           <Image
             src="/logo.png"
             alt="Electricity Ledger"
@@ -67,7 +70,8 @@ export function AppShell({ children }: AppShellProps) {
               Data
             </Link>
           </nav>
-          <div className="self-center pb-2">
+          <div className="flex items-center gap-2 pb-2">
+            {mobileHeaderActions ? <div className="sm:hidden">{mobileHeaderActions}</div> : null}
             <ThemeToggle />
           </div>
         </div>

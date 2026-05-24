@@ -16,9 +16,9 @@ function applyTheme(choice: ThemeChoice) {
 }
 
 const themeOptions = [
-  { value: "light", label: "Light", icon: <Sun size={14} /> },
-  { value: "system", label: "System", icon: <Monitor size={14} /> },
-  { value: "dark", label: "Dark", icon: <Moon size={14} /> }
+  { value: "light", label: "Light", icon: <Sun size={16} strokeWidth={2} /> },
+  { value: "system", label: "System", icon: <Monitor size={16} strokeWidth={2} /> },
+  { value: "dark", label: "Dark", icon: <Moon size={16} strokeWidth={2} /> }
 ];
 
 export function ThemeToggle() {
@@ -55,8 +55,9 @@ export function ThemeToggle() {
       value={theme}
       options={themeOptions}
       onChange={updateTheme}
-      className="w-28"
+      className="px-2 sm:w-28 sm:px-3"
       menuPlacement="bottom"
+      hideLabelOnMobile
     />
   );
 }
