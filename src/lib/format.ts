@@ -28,6 +28,10 @@ export function shortDate(date: string) {
   return date.slice(0, 10);
 }
 
+export function chartDate(date: string) {
+  return date.slice(5, 10);
+}
+
 export function longDateTime(value: string) {
   return value.replace("T", " ").slice(0, 16);
 }

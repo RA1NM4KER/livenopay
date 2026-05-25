@@ -1,7 +1,7 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { formatKwh, shortDate } from "@/lib/format";
+import { chartDate, formatKwh } from "@/lib/format";
 import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
 import { ChartShell } from "./chart-shell";
 import { ProjectedBarShape } from "./projected-bar-shape";
@@ -18,7 +18,7 @@ export function DailyKwhChart({ data }: DailyChartProps) {
       <ResponsiveContainer height="100%" width="100%">
         <BarChart data={chartData} margin={chartMargin}>
           <CartesianGrid stroke={chartColors.line} vertical={false} />
-          <XAxis dataKey="date" tickFormatter={shortDate} tickLine={false} axisLine={false} />
+          <XAxis dataKey="date" tickFormatter={chartDate} tickLine={false} axisLine={false} />
           <YAxis tickFormatter={(value) => `${value}`} tickLine={false} axisLine={false} width={42} />
           <Tooltip
             contentStyle={chartTooltipStyle}
@@ -26,7 +26,7 @@ export function DailyKwhChart({ data }: DailyChartProps) {
               formatKwh(Number(value)),
               name === "projectedKwhRemainder" ? "Projected remaining" : "Usage"
             ]}
-            labelFormatter={(label) => shortDate(String(label))}
+            labelFormatter={(label) => chartDate(String(label))}
           />
           <Bar dataKey="kwh" stackId="day" fill={chartColors.usage} radius={[4, 4, 0, 0]} />
           <Bar dataKey="projectedKwhRemainder" stackId="day" fill="transparent" shape={<ProjectedBarShape />} />

@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { formatCurrency, shortDate } from "@/lib/format";
+import { chartDate, formatCurrency } from "@/lib/format";
 import { chartColors, chartMargin } from "./chart-config";
 import { ChartShell } from "./chart-shell";
 import type { DailyChartProps } from "./types";
@@ -36,7 +36,7 @@ export function DailySpendChart({ data }: DailyChartProps) {
       <ResponsiveContainer height="100%" width="100%">
         <ComposedChart data={chartData} margin={chartMargin}>
           <CartesianGrid stroke={chartColors.line} vertical={false} />
-          <XAxis dataKey="date" tickFormatter={shortDate} tickLine={false} axisLine={false} />
+          <XAxis dataKey="date" tickFormatter={chartDate} tickLine={false} axisLine={false} />
           <YAxis tickFormatter={(value) => `R${value}`} tickLine={false} axisLine={false} width={48} />
           <Tooltip
             content={({ active, label }) => {
@@ -53,7 +53,7 @@ export function DailySpendChart({ data }: DailyChartProps) {
 
               return (
                 <div className="rounded-[8px] border border-line bg-paper px-4 py-3 text-sm shadow-soft">
-                  <div className="mb-2 font-medium text-ink">{shortDate(point.date)}</div>
+                  <div className="mb-2 font-medium text-ink">{chartDate(point.date)}</div>
                   {isProjectedPoint ? (
                     <div className="space-y-1 text-muted">
                       <div>Current spend: {formatCurrency(point.spend)}</div>
