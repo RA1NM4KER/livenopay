@@ -15,7 +15,7 @@ type DropdownSelectProps = {
   ariaLabel: string;
   value: string;
   options: DropdownOption[];
-  onChange: (value: string) => void;
+  onChange(value: string): void;
   fallbackLabel?: string;
   className?: string;
   menuPlacement?: "bottom" | "top";
@@ -38,7 +38,7 @@ export function DropdownSelect({
   }, [options, value]);
   const activeLabel = activeOption?.label ?? fallbackLabel ?? value;
   const activeIcon = activeOption?.icon;
-  const labelClassName = hideLabelOnMobile ? "sr-only sm:not-sr-only" : undefined;
+  const triggerLabelClassName = hideLabelOnMobile ? "sr-only sm:not-sr-only" : undefined;
   const layoutClassName = hideLabelOnMobile ? "justify-center gap-2 sm:justify-between sm:gap-0" : "justify-between";
 
   return (
@@ -65,7 +65,7 @@ export function DropdownSelect({
       >
         <span className="flex min-w-0 items-center gap-1.5 truncate">
           {activeIcon ? <span className="shrink-0">{activeIcon}</span> : null}
-          <span className={labelClassName}>{activeLabel}</span>
+          <span className={triggerLabelClassName}>{activeLabel}</span>
         </span>
         <ChevronDown
           aria-hidden="true"
@@ -74,7 +74,7 @@ export function DropdownSelect({
       </button>
       {isOpen ? (
         <div
-          className={`absolute left-0 z-40 min-w-full rounded-md border border-line bg-paper p-1 shadow-soft ${
+          className={`absolute left-1/2 z-40 min-w-full -translate-x-1/2 rounded-md border border-line bg-paper p-1 shadow-soft ${
             menuPlacement === "top" ? "bottom-[calc(100%+0.5rem)]" : "top-[calc(100%+0.5rem)]"
           }`}
           role="listbox"
@@ -107,7 +107,7 @@ export function DropdownSelect({
                 type="button"
               >
                 {option.icon ? <span className="shrink-0">{option.icon}</span> : null}
-                <span className={labelClassName}>{option.label}</span>
+                <span>{option.label}</span>
               </button>
             );
           })}

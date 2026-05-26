@@ -52,14 +52,31 @@ function subtractMonths(date: Date, months: number) {
   return result;
 }
 
+function parseIsoDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month ?? 1) - 1, day ?? 1);
+}
+
 export function defaultRange(bounds: { from?: string; to?: string }) {
   const earliest = bounds.from;
   const latest = bounds.to;
 
+  if (!latest) {
+    return {
+      from: earliest ?? "",
+      to: latest ?? "",
+      quickRange: "allTime" as QuickRange
+    };
+  }
+
+  const latestDate = startOfDay(parseIsoDate(latest));
+  const recentStart = formatIsoDate(subtractMonths(latestDate, 3));
+  const boundedStart = earliest && earliest > recentStart ? earliest : recentStart;
+
   return {
-    from: earliest ?? "",
-    to: latest ?? "",
-    quickRange: "allTime" as QuickRange
+    from: boundedStart,
+    to: latest,
+    quickRange: "past3Months" as QuickRange
   };
 }
 
@@ -147,4 +164,12 @@ export function quickRangeFromDates(from: string, to: string): QuickRange {
   }
 
   return "custom";
+}
+
+export function inferQuickRange(from: string, to: string, bounds?: { from?: string; to?: string }): QuickRange {
+  if (bounds?.from && bounds?.to && from === bounds.from && to === bounds.to) {
+    return "allTime";
+  }
+
+  return quickRangeFromDates(from, to);
 }

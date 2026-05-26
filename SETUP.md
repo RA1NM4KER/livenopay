@@ -1,14 +1,76 @@
 # Livenopay Setup
 
-This guide covers the local Android setup needed for refreshing `livemopay_energy.csv` from LiveMopay.
+This guide now covers both local ingestion paths:
 
-If you are setting up the full dashboard, make sure you also apply all three Supabase migrations from `README.md`. The local Android steps here are only for capture and refresh.
+1. recommended: fetch ledger data from the LiveMopay web app API
+2. fallback: capture ledger data from the Android app with ADB
 
-## Capture Flow
+The ADB path still works, but it is no longer the recommended setup out of the box.
+
+If you are setting up the full dashboard, make sure you also apply all Supabase migrations from `README.md`. The local steps here are only for capture and refresh.
+
+## Recommended: Web API Refresh
+
+The recommended local refresh path is:
+
+    python3 refresh_and_sync.py --source web
+
+This path does not need Android Studio, an emulator, or USB debugging.
+
+It:
+
+1. signs into the LiveMopay web stack
+2. reuses or refreshes a saved auth session
+3. fetches ledger rows from the web API
+4. writes `livemopay_energy.csv`
+5. syncs the rows to Supabase
+
+Add these to `.env.local`:
+
+    SUPABASE_URL=...
+    SUPABASE_SERVICE_ROLE_KEY=...
+    LIVENOPAY_WEB_EMAIL=you@example.com
+    LIVENOPAY_WEB_PASSWORD=your-livewallet-password
+    LIVENOPAY_FIREBASE_API_KEY=your-firebase-web-api-key
+    LIVENOPAY_ACCOUNT_ID=715717
+
+Optional overrides:
+
+    LIVENOPAY_COMPANY_ID=43
+    LIVENOPAY_PROPERTY_ID=13835
+    LIVENOPAY_WEB_BASE_URL=https://app.propertywallet.co.za
+    LIVENOPAY_WEB_PORTAL_ORIGIN=https://app.livewalletportal.co.za
+    LIVENOPAY_WEB_SESSION_PATH=.secrets/livemopay_auth.json
+    LIVENOPAY_WEB_AUTH_HEADER=Authorization
+    LIVENOPAY_WEB_AUTH_SCHEME=Bearer
+    LIVENOPAY_WEB_APP_FLAVOR=livemopay
+    LIVENOPAY_WEB_REFRESH_BUFFER_SECONDS=300
+    LIVENOPAY_WEB_START_DATE=2026-01-01
+    LIVENOPAY_TIMEZONE=Africa/Johannesburg
+
+Run it:
+
+    python3 refresh_and_sync.py --source web
+
+For a full historical rebuild:
+
+    python3 refresh_and_sync.py --source web --full
+
+To sync the existing CSV without refetching:
+
+    python3 refresh_and_sync.py --skip-capture
+
+The session file at `LIVENOPAY_WEB_SESSION_PATH` stores auth tokens locally so refreshes can reuse them.
+
+The deployed dashboard also stays on this path: the in-app sync action calls `/api/sync`, which runs `refresh_and_sync.py --source web`.
+
+## Legacy: Android / ADB Refresh
+
+Use this only if you specifically want the old Android capture flow or the web path stops working for your account.
 
 Capture is local-only. The deployed dashboard reads Supabase and does not run Android/ADB commands.
 
-The easiest current path is the emulator wrapper:
+The easiest Android path is the emulator wrapper:
 
     npm run refresh:emulator
 
@@ -22,9 +84,9 @@ To fully rebuild the CSV from the scrollable ledger history:
 
     npm run refresh:emulator -- --full
 
-You can still run the lower-level refresh directly on a local machine with Android/ADB access:
+You can also run the lower-level refresh directly on a local machine with Android/ADB access:
 
-    python3 refresh_and_sync.py
+    python3 refresh_and_sync.py --source adb
 
 The refresh script runs:
 
@@ -69,9 +131,9 @@ After installing, connect the phone and run:
 
 If the phone asks whether to allow USB debugging, tap `Allow`. The device should show as `device`, not `unauthorized`.
 
-## Recommended: Use Android Studio Emulator
+## Android Studio Emulator
 
-Use this if you want the most repeatable refresh flow.
+Use this if you want the most repeatable Android fallback flow.
 
 1. install Android Studio
 2. create an Android virtual device
@@ -110,7 +172,7 @@ The capture script also reads `.env.local` directly. These optional values contr
 
 Once capture starts, do not touch the emulator until it finishes.
 
-## Alternative: Use Your Android Phone
+## Android Phone
 
 1. install LiveMopay on your Android phone and log in
 2. connect the phone to your computer with USB
@@ -120,7 +182,7 @@ Once capture starts, do not touch the emulator until it finishes.
 6. open LiveMopay
 7. tap the bottom `Ledger` tab
 8. leave the app on the Ledger summary page, where the orange `Ledger` button is visible
-9. run `python3 refresh_and_sync.py`
+9. run `python3 refresh_and_sync.py --source adb`
 
 Once capture starts, do not touch the phone until it finishes. The script is reading and scrolling the Android UI, so manual taps or scrolling can make it capture the wrong screen or miss rows.
 
@@ -135,13 +197,13 @@ It is okay if you already tapped the orange `Ledger` button and are looking at t
 
 If the phone, emulator, permissions, or ADB path are not ready, the local refresh command reports the capture failure and the deployed dashboard keeps showing the last data that reached Supabase.
 
-## Refresh Modes
+## Android Refresh Modes
 
 The capture script loads the existing CSV before scanning, skips rows that are already present, appends newly discovered rows, and stops after several scrolls without new entries.
 
 For a full recapture followed by sync, run:
 
-    python3 refresh_and_sync.py --full
+    python3 refresh_and_sync.py --source adb --full
 
 That passes `--full` to:
 
@@ -161,7 +223,7 @@ To rebuild the CSV from existing XML dumps without connecting to Android:
 
     python3 capture_livemopay.py --from-dumps
 
-## How Capture Works
+## How Android Capture Works
 
 The Android app exposes transaction rows through the UI hierarchy, so this project does not rely on screenshots or OCR for the main extraction flow.
 

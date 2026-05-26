@@ -10,10 +10,12 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from livenopay_web import dedupe_rows, fetch_ledger_rows, write_csv
 CSV_PATH = Path("livemopay_energy.csv")
 CAPTURE_SCRIPT = Path("capture_livemopay.py")
 FIELDNAMES = [
     "capture_dt",
+    "source_ts",
     "charge_label",
     "period_dt",
     "kwh",
@@ -21,6 +23,7 @@ FIELDNAMES = [
     "cost",
     "balance",
 ]
+REQUIRED_FIELDNAMES = [field for field in FIELDNAMES if field != "source_ts"]
 BATCH_SIZE = 500
 
 
@@ -37,6 +40,10 @@ def read_dotenv(path: Path):
         key = key.strip()
         value = value.strip().strip('"').strip("'")
         os.environ.setdefault(key, value)
+
+
+read_dotenv(Path(".env.local"))
+CSV_PATH = Path(os.environ.get("LIVENOPAY_CSV_PATH", str(CSV_PATH)))
 
 
 def now_iso():
@@ -122,6 +129,46 @@ def run_capture(full):
     subprocess.run(command, check=True)
 
 
+def latest_csv_start_date():
+    if not CSV_PATH.exists():
+        return None
+
+    latest_period = None
+    with CSV_PATH.open(newline="") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            value = row.get("period_dt")
+            if not value:
+                continue
+            if latest_period is None or value > latest_period:
+                latest_period = value
+
+    if latest_period is None:
+        return None
+
+    return latest_period.split(" ", 1)[0]
+
+
+def run_web_capture(full):
+    start_date = os.environ.get("LIVENOPAY_WEB_START_DATE")
+    if not start_date:
+        if full:
+            start_date = "2000-01-01"
+        else:
+            start_date = latest_csv_start_date() or datetime.now().strftime("%Y-01-01")
+
+    print(f"Fetching LiveMopay ledger from web API since {start_date}...", flush=True)
+    fetched_rows = fetch_ledger_rows(start_date)
+    if full or not CSV_PATH.exists():
+        rows = fetched_rows
+    else:
+        cutoff = f"{start_date} 00:00"
+        retained_rows = [row for row in read_csv_rows() if row["period_dt"] < cutoff]
+        rows = dedupe_rows(retained_rows + fetched_rows)
+    write_csv(rows, CSV_PATH)
+    print(f"Wrote {len(rows)} rows to {CSV_PATH}", flush=True)
+
+
 def read_csv_rows():
     if not CSV_PATH.exists():
         raise RuntimeError(f"{CSV_PATH} does not exist. Run capture before syncing.")
@@ -132,10 +179,10 @@ def read_csv_rows():
     with CSV_PATH.open(newline="") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
-            if not all(row.get(field) is not None and row.get(field) != "" for field in FIELDNAMES):
+            if not all(row.get(field) is not None and row.get(field) != "" for field in REQUIRED_FIELDNAMES):
                 continue
 
-            clean = {field: row[field] for field in FIELDNAMES}
+            clean = {field: row.get(field, "") for field in FIELDNAMES}
             key = (clean["charge_label"], clean["period_dt"], clean["cost"], clean["balance"])
             if key in seen:
                 continue
@@ -154,9 +201,11 @@ def upsert_rows(rows, run_id):
     for index in range(0, len(rows), BATCH_SIZE):
         batch = []
         for row in rows[index : index + BATCH_SIZE]:
+            source_ts = row.get("source_ts", "").strip()
             batch.append(
                 {
-                    **row,
+                    **{field: row[field] for field in REQUIRED_FIELDNAMES},
+                    **({"source_ts": source_ts} if source_ts else {}),
                     "sync_run_id": run_id,
                     "last_seen_at": synced_at,
                 }
@@ -178,10 +227,11 @@ def main():
     parser = argparse.ArgumentParser(description="Run local LiveMopay capture and sync the CSV to Supabase.")
     parser.add_argument("--skip-capture", action="store_true", help="Sync the existing CSV without touching Android/ADB.")
     parser.add_argument("--full", action="store_true", help="Pass --full to capture_livemopay.py before syncing.")
+    parser.add_argument("--source", choices=("adb", "web"), default="adb", help="Choose the ledger ingestion source.")
     args = parser.parse_args()
 
     supabase_config()
-    mode = "full" if args.full else "incremental"
+    mode = f"{args.source}-full" if args.full else args.source
     if args.skip_capture:
         mode = "csv-only"
 
@@ -189,7 +239,10 @@ def main():
 
     try:
         if not args.skip_capture:
-            run_capture(args.full)
+            if args.source == "web":
+                run_web_capture(args.full)
+            else:
+                run_capture(args.full)
 
         rows = read_csv_rows()
         synced = upsert_rows(rows, run_id)

@@ -5,6 +5,7 @@ dist
 .DS_Store
 .env*
 !.env.example
+.secrets/
 *.log
 .idea
 __pycache__

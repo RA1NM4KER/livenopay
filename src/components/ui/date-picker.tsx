@@ -34,7 +34,7 @@ export type DatePickerProps = {
   label?: string;
   max?: string;
   min?: string;
-  onChange: (date: string) => void;
+  onChange(date: string): void;
   selectableDates?: Set<string>;
   value: string;
 };
@@ -115,10 +115,8 @@ export function DatePicker({
       }
 
       const rect = containerRef.current.getBoundingClientRect();
-      const left = Math.min(
-        window.innerWidth - popoverWidth - popoverMargin,
-        Math.max(popoverMargin, rect.right - popoverWidth)
-      );
+      const centeredLeft = rect.left + rect.width / 2 - popoverWidth / 2;
+      const left = Math.min(window.innerWidth - popoverWidth - popoverMargin, Math.max(popoverMargin, centeredLeft));
       const belowTop = rect.bottom + 8;
       const aboveTop = rect.top - popoverHeight - 8;
       const top =

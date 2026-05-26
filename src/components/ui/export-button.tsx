@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Download, Loader2 } from "lucide-react";
-import { buildExportUrl } from "@/lib/endpoints";
+import { ChevronDown, FileDown } from "lucide-react";
 
 export type ExportButtonProps = {
   from?: string;
@@ -20,26 +19,6 @@ const formats = [
   { value: "xlsx", label: "Download XLSX" }
 ] as const;
 
-function filenameFromDisposition(header: string | null) {
-  if (!header) {
-    return null;
-  }
-
-  const match =
-    /filename\*=UTF-8''([^;]+)/i.exec(header) || /filename="([^"]+)"/i.exec(header) || /filename=([^;]+)/i.exec(header);
-  const raw = match?.[1];
-
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return decodeURIComponent(raw.trim());
-  } catch {
-    return raw.trim();
-  }
-}
-
 export function ExportButton({
   from,
   to,
@@ -51,7 +30,6 @@ export function ExportButton({
   className
 }: ExportButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   function buildUrl(format: string) {
     const params = new URLSearchParams();
@@ -62,37 +40,7 @@ export function ExportButton({
     if (search) params.set("search", search);
     if (sort) params.set("sort", sort);
     if (dir) params.set("dir", dir);
-    return buildExportUrl(params);
-  }
-
-  async function handleExport(format: string) {
-    setIsLoading(true);
-    setIsOpen(false);
-    const url = buildUrl(format);
-
-    try {
-      const response = await fetch(url, { cache: "no-store" });
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => "");
-        throw new Error(body || "Export failed.");
-      }
-
-      const blob = await response.blob();
-      const fallbackName = `electricity-ledger.${format}`;
-      const filename = filenameFromDisposition(response.headers.get("content-disposition")) ?? fallbackName;
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = href;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(href);
-    } finally {
-      setIsLoading(false);
-    }
+    return `/api/export?${params.toString()}`;
   }
 
   return (
@@ -110,39 +58,33 @@ export function ExportButton({
       <button
         aria-expanded={isOpen}
         aria-haspopup="listbox"
-        aria-busy={isLoading}
         className={`inline-flex h-9 items-center gap-2 rounded-md border border-line bg-paper text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent disabled:cursor-not-allowed disabled:opacity-60 ${
           iconOnly ? "px-2" : "px-3"
         } ${className ?? ""}`}
-        disabled={isLoading}
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >
-        {isLoading ? (
-          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin text-muted" />
-        ) : (
-          <Download aria-hidden="true" className="h-4 w-4 text-muted" />
-        )}
+        <FileDown aria-hidden="true" className="h-4 w-4 text-muted" />
         {iconOnly ? <span className="sr-only">Export</span> : <span>Export</span>}
         <ChevronDown aria-hidden="true" className={`h-4 w-4 text-muted transition ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen ? (
         <div
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-40 min-w-[10rem] rounded-md border border-line bg-paper p-1 shadow-soft"
+          className="absolute left-1/2 top-[calc(100%+0.5rem)] z-40 min-w-[9rem] -translate-x-1/2 rounded-md border border-line bg-paper p-1 shadow-soft"
           role="listbox"
           aria-label="Export format"
         >
           {formats.map(({ value, label }) => (
-            <button
-              className="flex w-full items-center rounded px-3 py-2 text-left text-sm text-muted transition hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isLoading}
+            <a
+              className="flex w-full items-center rounded px-2 py-2 text-left text-sm text-muted transition hover:bg-canvas hover:text-ink"
+              download
+              href={buildUrl(value)}
               key={value}
-              onClick={() => void handleExport(value)}
-              type="button"
+              onClick={() => setIsOpen(false)}
             >
               {label}
-            </button>
+            </a>
           ))}
         </div>
       ) : null}

@@ -67,7 +67,10 @@ export function AssistantPanel({ from, to, compact = false }: AssistantPanelProp
 
         if (!result.ok) {
           const body = await result.json().catch(() => ({ message: "Assistant request failed." }));
-          throw new Error(body.message || "Assistant request failed.");
+          setLastResponse(null);
+          setConversation((current) => current.slice(0, Math.max(0, current.length - 1)));
+          setError(body.message || "Assistant request failed.");
+          return;
         }
 
         const payload = (await result.json()) as AssistantResponse;

@@ -22,7 +22,14 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
     from: summary.dateStart,
     to: summary.dateEnd
   });
-  const analytics = useMemo(() => createAnalytics(dailyRows, hourlyRows, from, to), [dailyRows, hourlyRows, from, to]);
+  const analytics = useMemo(
+    () =>
+      createAnalytics(dailyRows, hourlyRows, from, to, {
+        latestBalance: summary.latestBalance,
+        latestPeriod: summary.latestPeriod
+      }),
+    [dailyRows, hourlyRows, from, summary.latestBalance, summary.latestPeriod, to]
+  );
   const dateOptions = useMemo(
     () => Array.from(new Set(dailyRows.map((row) => row.periodDate))).sort((left, right) => left.localeCompare(right)),
     [dailyRows]
@@ -54,13 +61,13 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
         rightControlsExpanded
       />
 
-      <section className="snap-rail flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0">
+      <section className="snap-rail touch-pan-x touch-pan-y flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0">
         {metricCards.map((card) => (
           <MetricCard key={card.label} label={card.label} value={card.value} detail={card.detail} />
         ))}
       </section>
 
-      <section className="snap-rail -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0">
+      <section className="snap-rail touch-pan-x touch-pan-y -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0">
         <DailySpendChart data={analytics.daily} />
         <DailyKwhChart data={analytics.daily} />
       </section>
@@ -72,7 +79,7 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
         initialSelectedDate={summary.dateEnd ?? dateOptions[dateOptions.length - 1]}
       />
 
-      <section className="snap-rail -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0">
+      <section className="snap-rail touch-pan-x touch-pan-y -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0">
         <CumulativeSpendChart data={analytics.daily} />
         <TariffChart data={analytics.tariffTimeline} />
         <HourlyChart data={analytics.hourly} metric="spend" title="Total energy spend by hour" />

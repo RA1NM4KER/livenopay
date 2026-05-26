@@ -3,7 +3,11 @@
 import { ExportButton } from "@/components/ui/export-button";
 import { useDataTableUrlState } from "@/lib/use-data-table-url-state";
 
-export function DataExportAction() {
+type DataExportActionProps = {
+  iconOnly?: boolean;
+};
+
+export function DataExportAction({ iconOnly = true }: DataExportActionProps) {
   const { from, to, chargeType, searchQuery, sortKey, sortDirection } = useDataTableUrlState();
 
   return (
@@ -14,7 +18,7 @@ export function DataExportAction() {
       search={searchQuery || undefined}
       sort={sortKey !== "captured" ? sortKey : undefined}
       dir={sortDirection !== "desc" ? sortDirection : undefined}
-      iconOnly
+      iconOnly={iconOnly}
     />
   );
 }

@@ -1,16 +1,18 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { FilterBar } from "@/components/dashboard/filter-bar";
+import { DataExportAction } from "@/components/data/data-export-action";
+import { DataSyncAction } from "@/components/data/data-sync-action";
 import { DropdownSelect, type DropdownOption } from "@/components/ui/dropdown-select";
-import { ExportButton } from "@/components/ui/export-button";
 import { Card } from "@/components/ui/card";
 import { type ChargeTypeFilter } from "@/lib/data-table-query-params";
+import { inferQuickRange } from "@/lib/filters";
 import { useDataTableUrlState } from "@/lib/use-data-table-url-state";
-import { formatCurrency, longDateTime } from "@/lib/format";
+import { formatCurrency } from "@/lib/format";
 import { buildEnergyRowsUrl } from "@/lib/endpoints";
 import type { EnergyRow, SyncMetadata } from "@/lib/types";
 import { amountClassFor, kwhDisplayFor, tariffDisplayFor } from "./row-formatting";
@@ -71,19 +73,26 @@ async function fetchEnergyRows(params: URLSearchParams) {
   return (await response.json()) as EnergyRowsApiResponse;
 }
 
-function syncSummaryLabel(sync?: SyncMetadata) {
-  if (!sync?.lastSyncedAt) {
-    return undefined;
-  }
-
-  return `last synced ${longDateTime(sync.lastSyncedAt)}`;
+function TableSkeletonRows({ columnCount, rowCount }: { columnCount: number; rowCount: number }) {
+  return (
+    <>
+      {Array.from({ length: rowCount }, (_, rowIndex) => (
+        <tr key={`skeleton-${rowIndex}`}>
+          {Array.from({ length: columnCount }, (_, columnIndex) => (
+            <td className="px-4 py-3" key={`skeleton-${rowIndex}-${columnIndex}`}>
+              <div className="h-4 animate-pulse rounded bg-canvas" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
 }
 
 export function DataTable() {
   const {
     from,
     to,
-    quickRange,
     chargeType,
     searchQuery,
     page,
@@ -99,6 +108,7 @@ export function DataTable() {
     onPageSizeChange
   } = useDataTableUrlState();
   const [searchInput, setSearchInput] = useState(searchQuery);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const queryParams = useMemo(() => {
@@ -139,7 +149,7 @@ export function DataTable() {
     return params;
   }, [chargeType, from, page, pageSize, searchQuery, sortDirection, sortKey, to]);
 
-  const { data, isFetching, isLoading, error } = useQuery({
+  const { data, isFetching, isLoading, error, refetch } = useQuery({
     queryKey: ["energy-rows", queryParams.toString()],
     queryFn: () => fetchEnergyRows(queryParams),
     placeholderData: keepPreviousData
@@ -150,9 +160,7 @@ export function DataTable() {
   const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
   const displayFrom = from || data?.bounds.from || "";
   const displayTo = to || data?.bounds.to || "";
-  const isAllTimeBoundsSelected =
-    Boolean(data?.bounds.from) && Boolean(data?.bounds.to) && from === data?.bounds.from && to === data?.bounds.to;
-  const effectiveQuickRange = quickRange === "custom" && isAllTimeBoundsSelected ? "allTime" : quickRange;
+  const effectiveQuickRange = inferQuickRange(displayFrom, displayTo, data?.bounds);
 
   const handleQuickRangeChange = (
     range: "pastWeek" | "pastMonth" | "past3Months" | "thisMonth" | "thisWeek" | "allTime"
@@ -300,11 +308,37 @@ export function DataTable() {
     </div>
   );
 
-  const totalLabel = isLoading ? "Loading rows..." : `${totalRows} rows`;
-  const syncLabel = syncSummaryLabel(data?.sync);
-  const summaryLabel = isLoading ? totalLabel : syncLabel ? `${totalLabel}, ${syncLabel}` : totalLabel;
+  const handleRefresh = async () => {
+    setIsManualRefreshing(true);
+
+    try {
+      await refetch();
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  };
+
+  const refreshControl = (
+    <button
+      aria-label="Refresh rows"
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm text-muted transition enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+      disabled={isManualRefreshing}
+      onClick={() => {
+        void handleRefresh();
+      }}
+      type="button"
+      title="Refresh rows"
+    >
+      <RefreshCw aria-hidden="true" className={`h-4 w-4 ${isManualRefreshing ? "animate-spin" : ""}`} />
+    </button>
+  );
+
+  const desktopRefreshControl = <div className="hidden sm:block">{refreshControl}</div>;
+  const mobileRefreshControl = <div className="sm:hidden">{refreshControl}</div>;
   const hasPreviousPage = page > 1;
   const hasNextPage = page < pageCount;
+  const showTableSkeleton = isLoading || isManualRefreshing;
+  const skeletonRowCount = Math.min(pageSize, 12);
 
   useEffect(() => {
     const boundsFrom = data?.bounds.from || "";
@@ -324,15 +358,10 @@ export function DataTable() {
           <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Raw energy rows</h2>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-          <p className="hidden text-right text-sm text-muted sm:block">{summaryLabel}</p>
-          <ExportButton
-            from={displayFrom}
-            to={displayTo}
-            chargeType={chargeType !== "all" ? chargeType : undefined}
-            search={searchQuery || undefined}
-            sort={sortKey !== "captured" ? sortKey : undefined}
-            dir={sortDirection !== "desc" ? sortDirection : undefined}
-          />
+          <div className="flex items-center gap-2">
+            <DataSyncAction />
+            <DataExportAction iconOnly={false} />
+          </div>
         </div>
       </div>
 
@@ -346,7 +375,7 @@ export function DataTable() {
         rightControls={searchFilterControl}
       />
 
-      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <Card className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
             <thead className="sticky top-0 z-10 border-b border-line bg-canvas text-xs uppercase tracking-[0.16em] text-muted shadow-[0_1px_0_rgb(var(--color-line))]">
@@ -374,29 +403,35 @@ export function DataTable() {
               ))}
             </thead>
             <tbody className="divide-y divide-line">
-              {table.getRowModel().rows.map((row) => (
-                <tr className="transition hover:bg-canvas/70" key={row.id}>
-                  {row.getVisibleCells().map((cell) => {
-                    const alignClass = columnAlignClass[cell.column.id] ?? "text-left";
+              {showTableSkeleton ? (
+                <TableSkeletonRows columnCount={columns.length} rowCount={skeletonRowCount} />
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <tr className="transition hover:bg-canvas/70" key={row.id}>
+                    {row.getVisibleCells().map((cell) => {
+                      const alignClass = columnAlignClass[cell.column.id] ?? "text-left";
 
-                    return (
-                      <td className={`px-4 py-3 ${alignClass}`} key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                      return (
+                        <td className={`px-4 py-3 ${alignClass}`} key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-line px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="shrink-0 flex flex-col gap-3 border-t border-line px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted">
             Page {Math.min(page, pageCount)} of {pageCount}
+            {!isLoading ? ` · ${totalRows} rows` : ""}
             {isFetching && !isLoading ? " \u00b7 updating..." : ""}
           </p>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
+            {desktopRefreshControl}
             <DropdownSelect
               ariaLabel="Rows per page"
               value={String(pageSize)}
@@ -421,6 +456,7 @@ export function DataTable() {
             >
               Next
             </button>
+            {mobileRefreshControl}
           </div>
         </div>
 

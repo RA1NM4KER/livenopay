@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { defaultRange, quickRangeFromDates, quickRangeFromLatest, type QuickRangePreset } from "@/lib/filters";
+import { defaultRange, inferQuickRange, quickRangeFromLatest, type QuickRangePreset } from "@/lib/filters";
 import { dateRangeQueryUpdates, parseDateRangeQuery } from "@/lib/filter-query-params";
 import { applyQueryUpdates, queryHref } from "@/lib/url-query";
 import type { QuickRange } from "@/lib/types";
@@ -30,14 +30,14 @@ function resolveStateFromQuery(
     return {
       from,
       to,
-      quickRange: "allTime"
+      quickRange: fallback.quickRange
     };
   }
 
   return {
     from,
     to,
-    quickRange: quickRangeFromDates(from, to)
+    quickRange: inferQuickRange(from, to, dateBounds)
   };
 }
 

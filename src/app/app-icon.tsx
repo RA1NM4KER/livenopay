@@ -42,6 +42,8 @@ export default async function AppIcon() {
           width: 408
         }}
       >
+        {/* `ImageResponse` renders Open Graph markup, so `next/image` does not apply here. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img alt="LiveNoPay" height="272" src={logoSrc} width="408" />
       </div>
     </div>,

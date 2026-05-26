@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { quickRangeFromDates, quickRangeFromLatest, type QuickRangePreset } from "@/lib/filters";
+import { inferQuickRange, quickRangeFromLatest, type QuickRangePreset } from "@/lib/filters";
 import { dateRangeQueryUpdates } from "@/lib/filter-query-params";
 import {
   dataTableQueryParamKeys,
@@ -50,7 +50,7 @@ function resolveStateFromQuery(
   return {
     from: parsed.from,
     to: parsed.to,
-    quickRange: quickRangeFromDates(parsed.from, parsed.to),
+    quickRange: inferQuickRange(parsed.from, parsed.to),
     chargeType: parsed.chargeType,
     searchQuery: parsed.search,
     page: parsed.page,

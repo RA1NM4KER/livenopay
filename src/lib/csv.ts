@@ -1,15 +1,4 @@
 import type { EnergyRow } from "./types";
-
-export type RawEnergyRecord = {
-  capture_dt: string;
-  charge_label: string;
-  period_dt: string;
-  kwh: string;
-  tariff: string;
-  cost: string;
-  balance: string;
-};
-
 export type EnergyRecordInput = {
   capture_dt: string;
   charge_label: string;
@@ -19,55 +8,6 @@ export type EnergyRecordInput = {
   cost: string | number;
   balance: string | number;
 };
-
-type RawCsvRow = Record<string, string>;
-
-function parseCsvLine(line: string) {
-  const values: string[] = [];
-  let current = "";
-  let quoted = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-
-    if (char === '"' && quoted && next === '"') {
-      current += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      quoted = !quoted;
-      continue;
-    }
-
-    if (char === "," && !quoted) {
-      values.push(current);
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current);
-  return values;
-}
-
-export function parseCsv(text: string): RawCsvRow[] {
-  const lines = text.trim().split(/\r?\n/).filter(Boolean);
-  const headers = parseCsvLine(lines[0] ?? "");
-
-  return lines.slice(1).map((line) => {
-    const values = parseCsvLine(line);
-    return headers.reduce<RawCsvRow>((row, header, index) => {
-      row[header] = values[index] ?? "";
-      return row;
-    }, {});
-  });
-}
-
 function parseCaptureDate(value: string) {
   const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/);
 
@@ -114,23 +54,4 @@ export function toEnergyRow(row: EnergyRecordInput): EnergyRow {
     cost: toNumber(row.cost),
     balance: toNumber(row.balance)
   };
-}
-
-function isRawEnergyRecord(row: RawCsvRow): row is RawEnergyRecord {
-  return Boolean(
-    row.capture_dt &&
-    row.charge_label &&
-    row.period_dt &&
-    row.kwh !== undefined &&
-    row.tariff !== undefined &&
-    row.cost !== undefined &&
-    row.balance !== undefined
-  );
-}
-
-export function parseEnergyCsv(text: string) {
-  return parseCsv(text)
-    .filter(isRawEnergyRecord)
-    .map(toEnergyRow)
-    .sort((left, right) => left.periodTimestamp - right.periodTimestamp);
 }

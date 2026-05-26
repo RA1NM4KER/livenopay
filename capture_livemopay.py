@@ -66,6 +66,7 @@ SCREEN_WAIT_ATTEMPTS = env_int("LIVENOPAY_SCREEN_WAIT_ATTEMPTS", 15)
 SCREEN_WAIT_SECONDS = env_float("LIVENOPAY_SCREEN_WAIT_SECONDS", 2.0)
 FIELDNAMES = [
     "capture_dt",
+    "source_ts",
     "charge_label",
     "period_dt",
     "kwh",
@@ -73,6 +74,7 @@ FIELDNAMES = [
     "cost",
     "balance",
 ]
+REQUIRED_FIELDNAMES = [field for field in FIELDNAMES if field != "source_ts"]
 MONEY_RE = r'-?[\d,]+(?:\.\d+)?'
 BOUNDS_RE = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 
@@ -473,6 +475,8 @@ def parse_xml(path: Path):
         if not m:
             continue
 
+        item.setdefault("source_ts", "")
+
         for field in ("kwh", "tariff", "cost", "balance"):
             if field in item:
                 item[field] = item[field].replace(",", "")
@@ -545,7 +549,7 @@ def load_existing_csv():
     with CSV_PATH.open(newline="") as f:
         reader = csv.DictReader(f)
         for item in reader:
-            if not all(item.get(field) for field in FIELDNAMES):
+            if not all(item.get(field) for field in REQUIRED_FIELDNAMES):
                 continue
 
             key = row_key(item)
@@ -553,14 +557,13 @@ def load_existing_csv():
                 continue
 
             seen_keys.add(key)
-            rows.append({field: item[field] for field in FIELDNAMES})
+            rows.append({field: item.get(field, "") for field in FIELDNAMES})
             loaded += 1
 
     return loaded
 
 
 def save_csv():
-    rows.sort(key=lambda x: x["period_dt"])
     with CSV_PATH.open("w", newline="") as f:
         writer = csv.DictWriter(
             f,

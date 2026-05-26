@@ -8,8 +8,10 @@ import type { FilterBarProps, IsoDateInputProps } from "./types";
 
 function IsoDateInput({ label, value, onChange, buttonClassName }: IsoDateInputProps & { buttonClassName?: string }) {
   return (
-    <label className="flex min-w-0 flex-col gap-1 text-sm text-muted sm:flex-row sm:items-center sm:gap-1.5">
-      <span className="sr-only sm:not-sr-only">{label}</span>
+    <label className="relative flex min-w-0">
+      <span className="pointer-events-none absolute left-3 top-0 z-10 -translate-y-1/2 bg-paper px-1 text-[0.6rem] font-medium uppercase tracking-[0.18em] text-muted/80">
+        {label}
+      </span>
       <DatePicker label={label} onChange={onChange} value={value} buttonClassName={buttonClassName} />
     </label>
   );

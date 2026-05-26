@@ -1,43 +1,5 @@
 import type { DashboardSummary, DailyRollupRow, HourlyRollupRow, IntervalRollupRow } from "./types";
-
-function supabaseConfig() {
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    throw new Error("Missing SUPABASE_URL and SUPABASE_ANON_KEY for dashboard data access.");
-  }
-
-  return {
-    key,
-    restUrl: `${url.replace(/\/$/, "")}/rest/v1`
-  };
-}
-
-async function supabaseResponse(path: string, init?: RequestInit) {
-  const { key, restUrl } = supabaseConfig();
-  const response = await fetch(`${restUrl}${path}`, {
-    ...init,
-    cache: "no-store",
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      ...(init?.headers ?? {})
-    }
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Supabase request failed (${response.status}): ${detail}`);
-  }
-
-  return response;
-}
-
-async function supabaseFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await supabaseResponse(path, init);
-  return response.json() as Promise<T>;
-}
+import { supabaseFetch, supabaseFetchAllPages } from "./supabase-rest";
 
 function toNumber(value: unknown) {
   const numeric = Number(value ?? 0);
@@ -82,23 +44,21 @@ export async function loadDashboardSummary(): Promise<DashboardSummary> {
 }
 
 export async function loadDashboardDailyRollups(): Promise<DailyRollupRow[]> {
-  const rows = await supabaseFetch<
-    Array<{
-      period_date: string;
-      energy_spend: number | string;
-      fixed_spend: number | string;
-      topup_amount: number | string;
-      total_spend: number | string;
-      energy_kwh: number | string;
-      weighted_tariff: number | string;
-      peak_tariff: number | string;
-      all_in_rate: number | string;
-      balance_end: number | string;
-      latest_period: string | null;
-      energy_intervals: number | string;
-      is_complete: boolean;
-    }>
-  >(
+  const rows = await supabaseFetchAllPages<{
+    period_date: string;
+    energy_spend: number | string;
+    fixed_spend: number | string;
+    topup_amount: number | string;
+    total_spend: number | string;
+    energy_kwh: number | string;
+    weighted_tariff: number | string;
+    peak_tariff: number | string;
+    all_in_rate: number | string;
+    balance_end: number | string;
+    latest_period: string | null;
+    energy_intervals: number | string;
+    is_complete: boolean;
+  }>(
     "/energy_day_rollups?select=period_date,energy_spend,fixed_spend,topup_amount,total_spend,energy_kwh,weighted_tariff,peak_tariff,all_in_rate,balance_end,latest_period,energy_intervals,is_complete&order=period_date.asc"
   );
 
@@ -120,15 +80,13 @@ export async function loadDashboardDailyRollups(): Promise<DailyRollupRow[]> {
 }
 
 export async function loadDashboardHourlyRollups(): Promise<HourlyRollupRow[]> {
-  const rows = await supabaseFetch<
-    Array<{
-      period_date: string;
-      hour: number | string;
-      spend: number | string;
-      kwh: number | string;
-      intervals: number | string;
-    }>
-  >("/energy_hourly_rollups?select=period_date,hour,spend,kwh,intervals&order=period_date.asc,hour.asc");
+  const rows = await supabaseFetchAllPages<{
+    period_date: string;
+    hour: number | string;
+    spend: number | string;
+    kwh: number | string;
+    intervals: number | string;
+  }>("/energy_hourly_rollups?select=period_date,hour,spend,kwh,intervals&order=period_date.asc,hour.asc");
 
   return rows.map((row) => ({
     periodDate: row.period_date,

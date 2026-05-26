@@ -215,7 +215,8 @@ export function createAnalytics(
   dailyRows: DailyRollupRow[],
   hourlyRows: HourlyRollupRow[],
   from?: string,
-  to?: string
+  to?: string,
+  latestSummary?: { latestBalance?: number; latestPeriod?: string }
 ): Analytics {
   const filteredDailyRows = filterByRange(dailyRows, from, to);
   const filteredHourlyRows = filterByRange(hourlyRows, from, to);
@@ -250,8 +251,8 @@ export function createAnalytics(
       highestSpendDay,
       highestUsageDay,
       highestUsageHour,
-      latestBalance: latest?.balanceEnd,
-      latestPeriod: latest?.latestPeriod,
+      latestBalance: latestSummary?.latestBalance ?? latest?.balanceEnd,
+      latestPeriod: latestSummary?.latestPeriod ?? latest?.latestPeriod,
       dateStart: daily[0]?.date,
       dateEnd: daily[daily.length - 1]?.date,
       dayCount

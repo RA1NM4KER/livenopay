@@ -5,7 +5,7 @@ import { useEffect, type ReactNode } from "react";
 
 type FullscreenDialogProps = {
   isOpen: boolean;
-  onClose: () => void;
+  onClose(): void;
   eyebrow?: string;
   title: string;
   headerAction?: ReactNode;
