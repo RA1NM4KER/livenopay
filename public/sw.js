@@ -1,4 +1,4 @@
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL_CACHE = `ledger-shell-${VERSION}`;
 const PAGE_CACHE = `ledger-pages-${VERSION}`;
 const DATA_CACHE = `ledger-data-${VERSION}`;

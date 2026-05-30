@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     title: "LiveNoPay"
   },
   icons: {
-    icon: [{ url: "/app-icon", sizes: "512x512", type: "image/png" }],
+    icon: [{ url: "/icon.png", sizes: "512x512", type: "image/png" }],
     apple: [{ url: "/apple-icon", sizes: "512x512", type: "image/png" }]
   }
 };

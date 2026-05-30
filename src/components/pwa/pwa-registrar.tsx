@@ -11,6 +11,17 @@ export function PwaRegistrar() {
     }
 
     const register = async () => {
+      const isLocalhost =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname === "::1";
+
+      if (isLocalhost) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+        return;
+      }
+
       try {
         const registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL, { scope: "/" });
         registration.update().catch(() => undefined);
