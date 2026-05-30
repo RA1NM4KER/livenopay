@@ -140,6 +140,29 @@ function parseMoney(value: string | null | undefined) {
   return (value || "").trim().replaceAll("R", "").replaceAll(",", "") || "0";
 }
 
+function normalizeNumericString(value: string, scale: number) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return (0).toFixed(scale);
+  }
+
+  const numeric = Number(trimmed);
+  if (!Number.isFinite(numeric)) {
+    return trimmed;
+  }
+
+  return numeric.toFixed(scale);
+}
+
+export function livenopayLedgerKey(row: Pick<LivenopayCsvRow, "charge_label" | "period_dt" | "cost" | "balance">) {
+  return [
+    row.charge_label.trim(),
+    row.period_dt.trim(),
+    normalizeNumericString(row.cost, 2),
+    normalizeNumericString(row.balance, 2)
+  ].join("|");
+}
+
 async function ensureSessionDir() {
   await mkdir(path.dirname(sessionPath), { recursive: true });
 }
@@ -410,7 +433,7 @@ export function dedupeLivenopayRows(rows: LivenopayCsvRow[]) {
   const unique: LivenopayCsvRow[] = [];
 
   for (const row of rows) {
-    const key = [row.charge_label, row.period_dt, row.cost, row.balance].join("|");
+    const key = livenopayLedgerKey(row);
     if (seen.has(key)) {
       continue;
     }
@@ -535,7 +558,7 @@ export async function readLivenopayCsvRows(targetPath = csvPath) {
     const normalized = Object.fromEntries(
       livenopayFieldNames.map((field) => [field, row[field] || ""])
     ) as LivenopayCsvRow;
-    const key = [normalized.charge_label, normalized.period_dt, normalized.cost, normalized.balance].join("|");
+    const key = livenopayLedgerKey(normalized);
 
     if (seen.has(key)) {
       continue;

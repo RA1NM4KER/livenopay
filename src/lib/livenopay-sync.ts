@@ -5,6 +5,7 @@ import {
   dedupeLivenopayRows,
   fetchLivenopayLedgerRows,
   getLivenopayCsvPath,
+  livenopayLedgerKey,
   latestLivenopayCsvStartDate,
   type LivenopayCsvRow,
   readLivenopayCsvRows,
@@ -216,21 +217,35 @@ async function upsertRows(rows: LivenopayCsvRow[], runId: string) {
   let total = 0;
 
   for (let index = 0; index < rows.length; index += BATCH_SIZE) {
-    const batch: SupabaseEnergyRow[] = rows.slice(index, index + BATCH_SIZE).map((row) => {
+    const batchRows = dedupeLivenopayRows(rows.slice(index, index + BATCH_SIZE));
+    const batchSeen = new Set<string>();
+    const batch: SupabaseEnergyRow[] = batchRows.flatMap((row) => {
+      const key = livenopayLedgerKey(row);
+      if (batchSeen.has(key)) {
+        return [];
+      }
+
+      batchSeen.add(key);
       const sourceTs = row.source_ts.trim();
-      return {
-        capture_dt: row.capture_dt,
-        charge_label: row.charge_label,
-        period_dt: row.period_dt,
-        kwh: row.kwh,
-        tariff: row.tariff,
-        cost: row.cost,
-        balance: row.balance,
-        ...(sourceTs ? { source_ts: sourceTs } : {}),
-        sync_run_id: runId,
-        last_seen_at: syncedAt
-      };
+      return [
+        {
+          capture_dt: row.capture_dt,
+          charge_label: row.charge_label,
+          period_dt: row.period_dt,
+          kwh: row.kwh,
+          tariff: row.tariff,
+          cost: row.cost,
+          balance: row.balance,
+          ...(sourceTs ? { source_ts: sourceTs } : {}),
+          sync_run_id: runId,
+          last_seen_at: syncedAt
+        }
+      ];
     });
+
+    if (!batch.length) {
+      continue;
+    }
 
     await requestSupabaseJson(
       "POST",

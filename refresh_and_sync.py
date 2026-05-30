@@ -50,6 +50,28 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+def normalize_numeric_string(value, scale):
+    trimmed = str(value or "").strip()
+    if not trimmed:
+        return f"{0:.{scale}f}"
+
+    try:
+        numeric = float(trimmed)
+    except ValueError:
+        return trimmed
+
+    return f"{numeric:.{scale}f}"
+
+
+def ledger_key(row):
+    return (
+        row["charge_label"].strip(),
+        row["period_dt"].strip(),
+        normalize_numeric_string(row["cost"], 2),
+        normalize_numeric_string(row["balance"], 2),
+    )
+
+
 def supabase_config():
     read_dotenv(Path(".env.local"))
 
@@ -183,7 +205,7 @@ def read_csv_rows():
                 continue
 
             clean = {field: row.get(field, "") for field in FIELDNAMES}
-            key = (clean["charge_label"], clean["period_dt"], clean["cost"], clean["balance"])
+            key = ledger_key(clean)
             if key in seen:
                 continue
 
@@ -199,8 +221,14 @@ def upsert_rows(rows, run_id):
     on_conflict = urllib.parse.quote("charge_label,period_dt,cost,balance", safe=",")
 
     for index in range(0, len(rows), BATCH_SIZE):
+        batch_seen = set()
         batch = []
         for row in rows[index : index + BATCH_SIZE]:
+            key = ledger_key(row)
+            if key in batch_seen:
+                continue
+
+            batch_seen.add(key)
             source_ts = row.get("source_ts", "").strip()
             batch.append(
                 {
