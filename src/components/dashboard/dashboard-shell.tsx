@@ -10,7 +10,6 @@ import { HourlyChart } from "@/components/charts/hourly-chart";
 import { TariffChart } from "@/components/charts/tariff-chart";
 import { MetricCard } from "@/components/ui/metric-card";
 import { createAnalytics } from "@/lib/analytics";
-import { buildGlobalDomains } from "@/lib/day-breakdown";
 import { useFilterUrlState } from "@/lib/use-filter-url-state";
 import { FilterBar } from "./filter-bar";
 import { Insights } from "./insights";
@@ -34,16 +33,6 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
     () => Array.from(new Set(dailyRows.map((row) => row.periodDate))).sort((left, right) => left.localeCompare(right)),
     [dailyRows]
   );
-
-  const globalDomains =
-    summary.maxIntervalSpend !== undefined && summary.maxIntervalKwh !== undefined
-      ? buildGlobalDomains(
-          summary.maxIntervalSpend,
-          summary.maxIntervalKwh,
-          summary.maxWaterIntervalSpend ?? 0,
-          summary.maxWaterIntervalKl ?? 0
-        )
-      : undefined;
 
   const metrics = analytics.metrics;
   const metricCards = buildMetricCards(metrics);
@@ -80,7 +69,6 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
       <DayBreakdownChart
         dailyRows={dailyRows}
         dateOptions={dateOptions}
-        globalDomains={globalDomains}
         initialSelectedDate={summary.dateEnd ?? dateOptions[dateOptions.length - 1]}
       />
 

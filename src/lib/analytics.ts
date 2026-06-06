@@ -18,6 +18,44 @@ function round(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+function getElapsedHalfHourSlots(periodDate: string, latestPeriod?: string) {
+  if (!latestPeriod || !latestPeriod.startsWith(periodDate)) {
+    return 0;
+  }
+
+  const time = latestPeriod.slice(11, 16);
+  const [hourRaw, minuteRaw] = time.split(":");
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return 0;
+  }
+
+  return hour * 2 + (minute >= 30 ? 2 : 1);
+}
+
+function buildProjectedSpend(row: DailyRollupRow) {
+  const elapsedSlots = getElapsedHalfHourSlots(row.periodDate, row.latestPeriod);
+
+  if (elapsedSlots < 12) {
+    return undefined;
+  }
+
+  const intervalSpend = row.energySpend + row.waterSpend;
+  return round((intervalSpend / elapsedSlots) * 48 + row.fixedSpend);
+}
+
+function buildProjectedKwh(row: DailyRollupRow) {
+  const elapsedSlots = getElapsedHalfHourSlots(row.periodDate, row.latestPeriod);
+
+  if (elapsedSlots < 12) {
+    return undefined;
+  }
+
+  return round((row.energyKwh / elapsedSlots) * 48);
+}
+
 function maxBy<T>(items: T[], getValue: (item: T) => number) {
   return items.reduce<T | undefined>((best, item) => {
     if (!best || getValue(item) > getValue(best)) {
@@ -59,12 +97,8 @@ function buildDaily(rows: DailyRollupRow[]): DailyPoint[] {
         energyIntervals: row.energyIntervals,
         waterIntervals: row.waterIntervals,
         isComplete: row.isComplete,
-        projectedSpend:
-          !row.isComplete && row.energyIntervals > 0
-            ? round((row.energySpend / row.energyIntervals) * 48 + row.fixedSpend + row.waterSpend)
-            : undefined,
-        projectedKwh:
-          !row.isComplete && row.energyIntervals > 0 ? round((row.energyKwh / row.energyIntervals) * 48) : undefined
+        projectedSpend: !row.isComplete ? buildProjectedSpend(row) : undefined,
+        projectedKwh: !row.isComplete ? buildProjectedKwh(row) : undefined
       };
     });
 }

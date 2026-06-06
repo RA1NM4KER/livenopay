@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { DailyPoint, DailyRollupRow, HourlyPoint, TariffPoint } from "@/lib/types";
-import type { DayBreakdownDomains } from "@/lib/day-breakdown";
 
 export type ChartShellProps = {
   title: string;
@@ -29,7 +28,6 @@ export type DayBreakdownChartProps = {
   initialSelectedDate?: string;
   dateOptions: string[];
   dailyRows: DailyRollupRow[];
-  globalDomains?: DayBreakdownDomains;
 };
 
 export type ProjectedBarShapeProps = {

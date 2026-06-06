@@ -38,12 +38,7 @@ async function fetchIntervals(periodDate: string) {
   return (await response.json()) as IntervalApiResponse;
 }
 
-export function DayBreakdownChart({
-  initialSelectedDate,
-  dateOptions,
-  dailyRows,
-  globalDomains
-}: DayBreakdownChartProps) {
+export function DayBreakdownChart({ initialSelectedDate, dateOptions, dailyRows }: DayBreakdownChartProps) {
   const [isCompactAxis, setIsCompactAxis] = useState(false);
   const [utility, setUtility] = useState<"electricity" | "water">("electricity");
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate ?? dateOptions[dateOptions.length - 1] ?? "");
@@ -56,7 +51,6 @@ export function DayBreakdownChart({
   const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const intervalData = buildIntervalPoints(rows, selectedDate);
   const perDayDomains = useMemo(() => buildStableAxisDomains(rows), [rows]);
-  const axisDomains = globalDomains ?? perDayDomains;
   const energySpend = sumRows(rows, "spend");
   const usage = sumRows(rows, "kwh");
   const waterSpend = sumRows(rows, "waterSpend");
@@ -69,8 +63,8 @@ export function DayBreakdownChart({
           spendKey: "waterSpend" as const,
           usageKey: "waterKl" as const,
           usageAxisId: "water" as const,
-          spendDomain: axisDomains.waterSpend,
-          usageDomain: axisDomains.waterKl,
+          spendDomain: perDayDomains.waterSpend,
+          usageDomain: perDayDomains.waterKl,
           usageTickFormatter: (value: number) => `${value}`,
           usageFormatter: formatKl,
           usageLabel: "Water usage",
@@ -81,8 +75,8 @@ export function DayBreakdownChart({
           spendKey: "spend" as const,
           usageKey: "kwh" as const,
           usageAxisId: "kwh" as const,
-          spendDomain: axisDomains.spend,
-          usageDomain: axisDomains.kwh,
+          spendDomain: perDayDomains.spend,
+          usageDomain: perDayDomains.kwh,
           usageTickFormatter: (value: number) => `${value}`,
           usageFormatter: formatKwh,
           usageLabel: "Energy usage",
