@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
 import { buildDayIntervalsUrl } from "@/lib/endpoints";
-import { formatCurrency, formatKwh } from "@/lib/format";
+import { formatCurrency, formatKl, formatKwh } from "@/lib/format";
 import { ExpandChartButton, ExpandProvider, FullscreenChart } from "./chart-shell";
 import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
 import { DaySummaryCard } from "./day-summary-card";
@@ -19,6 +19,8 @@ type IntervalApiResponse = {
     periodTime: string;
     spend: number;
     kwh: number;
+    waterSpend: number;
+    waterKl: number;
   }>;
 };
 
@@ -55,6 +57,8 @@ export function DayBreakdownChart({
   const axisDomains = globalDomains ?? perDayDomains;
   const energySpend = sumRows(rows, "spend");
   const usage = sumRows(rows, "kwh");
+  const waterSpend = sumRows(rows, "waterSpend");
+  const waterUsage = sumRows(rows, "waterKl");
   const fixedSpend = dailyRows.find((row) => row.periodDate === selectedDate)?.fixedSpend ?? 0;
 
   useEffect(() => {
@@ -133,7 +137,7 @@ export function DayBreakdownChart({
       <Card>
         <CardHeader
           title="Day detail"
-          eyebrow="30 minute view"
+          eyebrow="30 minute electricity view"
           action={
             <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
               {dateControl}
@@ -143,9 +147,11 @@ export function DayBreakdownChart({
         />
         <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[1fr_18rem]">
           <div className="h-72 sm:h-80">{renderChart(isCompactAxis ? 7 : 3)}</div>
-          <aside className="grid content-start grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-1">
+          <aside className="grid content-start grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-1">
             <DaySummaryCard label="Energy spend" value={formatCurrency(energySpend)} />
             <DaySummaryCard label="Energy usage" value={formatKwh(usage)} />
+            <DaySummaryCard label="Water spend" value={formatCurrency(waterSpend)} />
+            <DaySummaryCard label="Water usage" value={formatKl(waterUsage)} />
             <DaySummaryCard label="Fixed charges" value={formatCurrency(fixedSpend)} />
           </aside>
         </div>

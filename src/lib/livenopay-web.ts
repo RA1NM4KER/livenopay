@@ -5,8 +5,10 @@ import os from "node:os";
 import path from "node:path";
 
 const ENERGY_LABEL_RE = /^(.+?) \((\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)$/;
+const WATER_LABEL_RE = /^(Water:.+?) \((\d{4}-\d{2}-\d{2} \d{2}:\d{2}) to \d{4}-\d{2}-\d{2} \d{2}:\d{2}\)$/;
 const FIXED_LABEL_RE = /^(Daily .+?) - (\d{4}-\d{2}-\d{2})$/;
 const ENERGY_UNITS_RE = /(-?[\d.]+)\s*kWh\s*@\s*R(-?[\d.]+)/;
+const WATER_UNITS_RE = /(-?[\d.]+)\s*kL\s*@\s*R(-?[\d.]+)/;
 const FIXED_UNITS_RE = /(-?[\d.]+)\s*@\s*R(-?[\d.]+)/;
 
 export const livenopayFieldNames = [
@@ -15,6 +17,7 @@ export const livenopayFieldNames = [
   "charge_label",
   "period_dt",
   "kwh",
+  "water_kl",
   "tariff",
   "cost",
   "balance"
@@ -385,6 +388,28 @@ function normalizeLedgerRow(item: LedgerApiRow): LivenopayCsvRow | null {
       charge_label: energyMatch[1],
       period_dt: energyMatch[2],
       kwh: unitsMatch[1],
+      water_kl: "0",
+      tariff: unitsMatch[2],
+      cost: parseMoney(item.debitIncl || item.debit),
+      balance
+    };
+  }
+
+  const waterMatch = description.match(WATER_LABEL_RE);
+  if (waterMatch) {
+    const units = item.unitsDescriptionIncl || item.unitsDescription || "";
+    const unitsMatch = units.match(WATER_UNITS_RE);
+    if (!unitsMatch) {
+      throw new Error(`Could not parse water units from ${JSON.stringify(units)}.`);
+    }
+
+    return {
+      capture_dt: captureDt,
+      source_ts: item.date,
+      charge_label: waterMatch[1],
+      period_dt: waterMatch[2],
+      kwh: "0",
+      water_kl: unitsMatch[1],
       tariff: unitsMatch[2],
       cost: parseMoney(item.debitIncl || item.debit),
       balance
@@ -405,6 +430,7 @@ function normalizeLedgerRow(item: LedgerApiRow): LivenopayCsvRow | null {
       charge_label: fixedMatch[1],
       period_dt: `${fixedMatch[2]} 00:00`,
       kwh: "0",
+      water_kl: "0",
       tariff: unitsMatch[2],
       cost: parseMoney(item.debitIncl || item.debit),
       balance
@@ -419,6 +445,7 @@ function normalizeLedgerRow(item: LedgerApiRow): LivenopayCsvRow | null {
       charge_label: "Top Up",
       period_dt: captureDateToPeriodDate(captureDt),
       kwh: "0",
+      water_kl: "0",
       tariff: "0",
       cost: credit,
       balance
@@ -536,7 +563,7 @@ export async function readLivenopayCsvRows(targetPath = csvPath) {
   }
 
   const headers = parseCsvLine(lines[0]);
-  const required = new Set(livenopayFieldNames.filter((field) => field !== "source_ts"));
+  const required = new Set(livenopayFieldNames.filter((field) => field !== "source_ts" && field !== "water_kl"));
   const seen = new Set<string>();
   const rows: LivenopayCsvRow[] = [];
 
@@ -556,7 +583,7 @@ export async function readLivenopayCsvRows(targetPath = csvPath) {
     }
 
     const normalized = Object.fromEntries(
-      livenopayFieldNames.map((field) => [field, row[field] || ""])
+      livenopayFieldNames.map((field) => [field, row[field] || (field === "water_kl" ? "0" : "")])
     ) as LivenopayCsvRow;
     const key = livenopayLedgerKey(normalized);
 

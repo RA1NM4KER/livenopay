@@ -43,6 +43,15 @@ export const explainDayTool: AssistantTool = {
         spend: interval.spend,
         kwh: interval.kwh
       }));
+    const topWaterIntervals = intervals
+      .slice()
+      .sort((left, right) => right.waterSpend - left.waterSpend)
+      .slice(0, 6)
+      .map((interval) => ({
+        time: interval.periodTime,
+        waterSpend: interval.waterSpend,
+        waterKl: interval.waterKl
+      }));
 
     return {
       scope: context.scope,
@@ -50,7 +59,8 @@ export const explainDayTool: AssistantTool = {
       found: true,
       day,
       topSpendIntervals,
-      topUsageIntervals
+      topUsageIntervals,
+      topWaterIntervals
     };
   }
 };

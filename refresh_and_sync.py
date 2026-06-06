@@ -19,11 +19,12 @@ FIELDNAMES = [
     "charge_label",
     "period_dt",
     "kwh",
+    "water_kl",
     "tariff",
     "cost",
     "balance",
 ]
-REQUIRED_FIELDNAMES = [field for field in FIELDNAMES if field != "source_ts"]
+REQUIRED_FIELDNAMES = [field for field in FIELDNAMES if field not in {"source_ts", "water_kl"}]
 BATCH_SIZE = 500
 
 
@@ -205,6 +206,7 @@ def read_csv_rows():
                 continue
 
             clean = {field: row.get(field, "") for field in FIELDNAMES}
+            clean["water_kl"] = clean.get("water_kl") or "0"
             key = ledger_key(clean)
             if key in seen:
                 continue
@@ -233,6 +235,7 @@ def upsert_rows(rows, run_id):
             batch.append(
                 {
                     **{field: row[field] for field in REQUIRED_FIELDNAMES},
+                    "water_kl": row.get("water_kl", "0") or "0",
                     **({"source_ts": source_ts} if source_ts else {}),
                     "sync_run_id": run_id,
                     "last_seen_at": synced_at,

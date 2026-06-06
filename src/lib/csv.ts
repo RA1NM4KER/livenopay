@@ -4,6 +4,7 @@ export type EnergyRecordInput = {
   charge_label: string;
   period_dt: string;
   kwh: string | number;
+  water_kl?: string | number;
   tariff: string | number;
   cost: string | number;
   balance: string | number;
@@ -34,9 +35,14 @@ export function toEnergyRow(row: EnergyRecordInput): EnergyRow {
   const periodDateTime = row.period_dt.replace(" ", "T");
   const chargeKind = row.charge_label.startsWith("Energy Charge:")
     ? "energy"
-    : row.charge_label === "Top Up"
-      ? "topup"
-      : "fixed";
+    : row.charge_label.startsWith("Water:")
+      ? "water"
+      : row.charge_label === "Top Up"
+        ? "topup"
+        : "fixed";
+  const waterKl = toNumber(row.water_kl ?? 0);
+  const usageAmount = chargeKind === "water" ? waterKl : chargeKind === "energy" ? toNumber(row.kwh) : 0;
+  const usageUnit = chargeKind === "water" ? "kL" : chargeKind === "energy" ? "kWh" : null;
 
   return {
     chargeKind,
@@ -50,6 +56,9 @@ export function toEnergyRow(row: EnergyRecordInput): EnergyRow {
     periodTime: periodDateTime.slice(11, 16),
     hour: periodDt.getHours(),
     kwh: toNumber(row.kwh),
+    waterKl,
+    usageAmount,
+    usageUnit,
     tariff: toNumber(row.tariff),
     cost: toNumber(row.cost),
     balance: toNumber(row.balance)

@@ -8,8 +8,10 @@ function toExportRows(rows: EnergyRow[]): ExportRow[] {
     Period: row.periodDateTime.replace("T", " "),
     Type: row.chargeKind,
     Band: row.chargeLabel,
-    kWh: row.kwh,
-    "Tariff (R/kWh)": row.tariff,
+    Usage: row.usageAmount,
+    "Usage unit": row.usageUnit ?? "",
+    Tariff: row.tariff,
+    "Tariff unit": row.usageUnit ? `R/${row.usageUnit}` : "",
     "Cost (R)": row.cost,
     "Balance (R)": row.balance,
     Captured: row.captureDateTime
@@ -31,6 +33,6 @@ export function toCSVString(rows: EnergyRow[]): string {
 export function toXLSXBuffer(rows: EnergyRow[]): Buffer {
   const ws = utils.json_to_sheet(toExportRows(rows));
   const wb = utils.book_new();
-  utils.book_append_sheet(wb, ws, "Energy rows");
+  utils.book_append_sheet(wb, ws, "Ledger rows");
   return write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
 }

@@ -70,11 +70,12 @@ FIELDNAMES = [
     "charge_label",
     "period_dt",
     "kwh",
+    "water_kl",
     "tariff",
     "cost",
     "balance",
 ]
-REQUIRED_FIELDNAMES = [field for field in FIELDNAMES if field != "source_ts"]
+REQUIRED_FIELDNAMES = [field for field in FIELDNAMES if field not in {"source_ts", "water_kl"}]
 MONEY_RE = r'-?[\d,]+(?:\.\d+)?'
 BOUNDS_RE = re.compile(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]")
 
@@ -82,6 +83,14 @@ ENERGY_ROW_RE = re.compile(
     r'^(?P<capture_dt>\d{2}/\d{2}/\d{4} \d{2}:\d{2})\n'
     r'(?P<charge_label>.+?) \((?P<period_dt>\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)\n'
     rf'(?P<kwh>{MONEY_RE}) kWh @ R(?P<tariff>{MONEY_RE}) \(VAT Incl\)\n'
+    rf'R(?P<cost>{MONEY_RE})\n'
+    rf'R(?P<balance>{MONEY_RE})$'
+)
+
+WATER_ROW_RE = re.compile(
+    r'^(?P<capture_dt>\d{2}/\d{2}/\d{4} \d{2}:\d{2})\n'
+    r'(?P<charge_label>Water:.+?) \((?P<period_dt>\d{4}-\d{2}-\d{2} \d{2}:\d{2}) to \d{4}-\d{2}-\d{2} \d{2}:\d{2}\)\n'
+    rf'(?P<water_kl>{MONEY_RE}) kL @ R(?P<tariff>{MONEY_RE}) \(VAT Incl\)\n'
     rf'R(?P<cost>{MONEY_RE})\n'
     rf'R(?P<balance>{MONEY_RE})$'
 )
@@ -218,11 +227,11 @@ def node_desc(node):
 
 
 def is_transaction_desc(desc: str) -> bool:
-    return "Energy Charge:" in desc or "Daily " in desc or "Subtotal-" in desc
+    return "Energy Charge:" in desc or "Water:" in desc or "Daily " in desc or "Subtotal-" in desc
 
 
 def is_parseable_transaction_desc(desc: str) -> bool:
-    return bool(ENERGY_ROW_RE.match(desc) or FIXED_ROW_RE.match(desc) or TOPUP_ROW_RE.match(desc))
+    return bool(WATER_ROW_RE.match(desc) or ENERGY_ROW_RE.match(desc) or FIXED_ROW_RE.match(desc) or TOPUP_ROW_RE.match(desc))
 
 
 def node_bounds(node):
@@ -448,36 +457,46 @@ def parse_xml(path: Path):
         if m:
             candidate_count += 1
             item = m.groupdict()
+            item["water_kl"] = "0"
         else:
-            m = FIXED_ROW_RE.match(desc)
+            m = WATER_ROW_RE.match(desc)
 
             if m:
                 candidate_count += 1
                 item = m.groupdict()
-                item["period_dt"] = f"{item.pop('period_date')} 00:00"
                 item["kwh"] = "0"
-                item.pop("quantity", None)
             else:
-                m = TOPUP_ROW_RE.match(desc)
+                m = FIXED_ROW_RE.match(desc)
 
                 if m:
                     candidate_count += 1
                     item = m.groupdict()
-                    item["charge_label"] = "Top Up"
-                    item["period_dt"] = capture_dt_to_period_dt(item["capture_dt"])
+                    item["period_dt"] = f"{item.pop('period_date')} 00:00"
                     item["kwh"] = "0"
-                    item["tariff"] = "0"
-                    item["cost"] = item.pop("amount")
-                    item.pop("subtotal", None)
-                    item.pop("vat", None)
-                    item.pop("total", None)
+                    item["water_kl"] = "0"
+                    item.pop("quantity", None)
+                else:
+                    m = TOPUP_ROW_RE.match(desc)
+
+                    if m:
+                        candidate_count += 1
+                        item = m.groupdict()
+                        item["charge_label"] = "Top Up"
+                        item["period_dt"] = capture_dt_to_period_dt(item["capture_dt"])
+                        item["kwh"] = "0"
+                        item["water_kl"] = "0"
+                        item["tariff"] = "0"
+                        item["cost"] = item.pop("amount")
+                        item.pop("subtotal", None)
+                        item.pop("vat", None)
+                        item.pop("total", None)
 
         if not m:
             continue
 
         item.setdefault("source_ts", "")
 
-        for field in ("kwh", "tariff", "cost", "balance"):
+        for field in ("kwh", "water_kl", "tariff", "cost", "balance"):
             if field in item:
                 item[field] = item[field].replace(",", "")
 
@@ -557,7 +576,7 @@ def load_existing_csv():
                 continue
 
             seen_keys.add(key)
-            rows.append({field: item.get(field, "") for field in FIELDNAMES})
+            rows.append({field: item.get(field, "0" if field == "water_kl" else "") for field in FIELDNAMES})
             loaded += 1
 
     return loaded

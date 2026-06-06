@@ -1,4 +1,4 @@
-import { formatCurrency, formatKwh, formatPercent, formatTariff, shortDate } from "./format";
+import { formatCurrency, formatKl, formatKwh, formatPercent, formatTariff, shortDate } from "./format";
 import type {
   Analytics,
   DailyPoint,
@@ -51,14 +51,17 @@ function buildDaily(rows: DailyRollupRow[]): DailyPoint[] {
         date: row.periodDate,
         spend: round(row.totalSpend),
         kwh: round(row.energyKwh),
+        waterSpend: round(row.waterSpend),
+        waterKl: round(row.waterKl),
         averageTariff: round(row.weightedTariff),
         balance: round(row.balanceEnd),
         cumulativeSpend: round(cumulativeSpend),
         energyIntervals: row.energyIntervals,
+        waterIntervals: row.waterIntervals,
         isComplete: row.isComplete,
         projectedSpend:
           !row.isComplete && row.energyIntervals > 0
-            ? round((row.energySpend / row.energyIntervals) * 48 + row.fixedSpend)
+            ? round((row.energySpend / row.energyIntervals) * 48 + row.fixedSpend + row.waterSpend)
             : undefined,
         projectedKwh:
           !row.isComplete && row.energyIntervals > 0 ? round((row.energyKwh / row.energyIntervals) * 48) : undefined
@@ -82,7 +85,10 @@ function buildHourly(rows: HourlyRollupRow[]): HourlyPoint[] {
       hour: `${String(hour).padStart(2, "0")}:00`,
       spend: round(sum(items.map((item) => item.spend))),
       kwh: round(sum(items.map((item) => item.kwh))),
-      intervals: sum(items.map((item) => item.intervals))
+      waterSpend: round(sum(items.map((item) => item.waterSpend))),
+      waterKl: round(sum(items.map((item) => item.waterKl))),
+      intervals: sum(items.map((item) => item.intervals)),
+      waterIntervals: sum(items.map((item) => item.waterIntervals))
     };
   });
 }
@@ -151,6 +157,8 @@ function buildInsights(
   tariffTimeline: TariffPoint[]
 ): Insight[] {
   const fixedSpend = sum(dailyRows.map((day) => day.fixedSpend));
+  const waterSpend = sum(dailyRows.map((day) => day.waterSpend));
+  const waterKl = sum(dailyRows.map((day) => day.waterKl));
   const topSpendHour = maxBy(hourly, (hour) => hour.spend);
   const totalSpend = sum(hourly.map((hour) => hour.spend));
   const topHours = hourly
@@ -208,6 +216,13 @@ function buildInsights(
     });
   }
 
+  if (waterSpend > 0 || waterKl > 0) {
+    insights.push({
+      title: "Water charges",
+      body: `${formatCurrency(waterSpend)} came from ${formatKl(waterKl)} of metered water usage in this range.`
+    });
+  }
+
   return insights;
 }
 
@@ -225,13 +240,16 @@ export function createAnalytics(
   const tariffTimeline = buildDailyTariffTimeline(filteredDailyRows);
   const totalSpend = round(sum(filteredDailyRows.map((row) => row.totalSpend)));
   const totalEnergySpend = round(sum(filteredDailyRows.map((row) => row.energySpend)));
+  const totalWaterSpend = round(sum(filteredDailyRows.map((row) => row.waterSpend)));
   const totalFixedSpend = round(sum(filteredDailyRows.map((row) => row.fixedSpend)));
   const totalKwh = round(sum(filteredDailyRows.map((row) => row.energyKwh)));
+  const totalWaterKl = round(sum(filteredDailyRows.map((row) => row.waterKl)));
   const energyCostPerKwh = totalKwh > 0 ? round(totalEnergySpend / totalKwh) : 0;
-  const allInCostPerKwh = totalKwh > 0 ? round(totalSpend / totalKwh) : 0;
+  const allInCostPerKwh = totalKwh > 0 ? round((totalEnergySpend + totalFixedSpend) / totalKwh) : 0;
   const dayCount = daily.length || 1;
   const highestSpendDay = maxBy(daily, (day) => day.spend);
   const highestUsageDay = maxBy(daily, (day) => day.kwh);
+  const highestWaterDay = maxBy(daily, (day) => day.waterKl);
   const highestUsageHour = buildHighestUsageHour(filteredHourlyRows);
   const latest = filteredDailyRows[filteredDailyRows.length - 1];
 
@@ -242,14 +260,18 @@ export function createAnalytics(
     metrics: {
       totalSpend,
       totalEnergySpend,
+      totalWaterSpend,
       totalFixedSpend,
       totalKwh,
+      totalWaterKl,
       energyCostPerKwh,
       allInCostPerKwh,
       averageSpendPerDay: round(totalSpend / dayCount),
       averageKwhPerDay: round(totalKwh / dayCount),
+      averageWaterKlPerDay: round(totalWaterKl / dayCount),
       highestSpendDay,
       highestUsageDay,
+      highestWaterDay,
       highestUsageHour,
       latestBalance: latestSummary?.latestBalance ?? latest?.balanceEnd,
       latestPeriod: latestSummary?.latestPeriod ?? latest?.latestPeriod,

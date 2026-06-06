@@ -1,4 +1,4 @@
-import { formatKwh, formatTariff } from "@/lib/format";
+import { formatTariffForUnit, formatUsage } from "@/lib/format";
 import type { EnergyRow } from "@/lib/types";
 
 export function amountClassFor(row: EnergyRow) {
@@ -10,13 +10,17 @@ export function amountClassFor(row: EnergyRow) {
     return "font-medium text-fixed";
   }
 
+  if (row.chargeKind === "water") {
+    return "font-medium text-accent";
+  }
+
   return "text-ink";
 }
 
-export function kwhDisplayFor(row: EnergyRow) {
-  return row.chargeKind === "energy" ? formatKwh(row.kwh) : "--";
+export function usageDisplayFor(row: EnergyRow) {
+  return formatUsage(row.usageAmount, row.usageUnit);
 }
 
 export function tariffDisplayFor(row: EnergyRow) {
-  return row.chargeKind === "energy" ? formatTariff(row.tariff) : "--";
+  return formatTariffForUnit(row.tariff, row.usageUnit);
 }

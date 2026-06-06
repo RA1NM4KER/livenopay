@@ -1,5 +1,5 @@
 export type EnergyRow = {
-  chargeKind: "energy" | "fixed" | "topup";
+  chargeKind: "energy" | "water" | "fixed" | "topup";
   captureTimestamp: number;
   captureDateTime: string;
   ledgerTimestamp: number;
@@ -10,6 +10,9 @@ export type EnergyRow = {
   periodTime: string;
   hour: number;
   kwh: number;
+  waterKl: number;
+  usageAmount: number;
+  usageUnit: "kWh" | "kL" | null;
   tariff: number;
   cost: number;
   balance: number;
@@ -36,10 +39,13 @@ export type DailyPoint = {
   date: string;
   spend: number;
   kwh: number;
+  waterSpend: number;
+  waterKl: number;
   averageTariff: number;
   balance: number;
   cumulativeSpend: number;
   energyIntervals: number;
+  waterIntervals: number;
   isComplete: boolean;
   projectedSpend?: number;
   projectedKwh?: number;
@@ -49,7 +55,10 @@ export type HourlyPoint = {
   hour: string;
   spend: number;
   kwh: number;
+  waterSpend: number;
+  waterKl: number;
   intervals: number;
+  waterIntervals: number;
 };
 
 export type UsageHourPeak = {
@@ -62,16 +71,19 @@ export type UsageHourPeak = {
 export type DailyRollupRow = {
   periodDate: string;
   energySpend: number;
+  waterSpend: number;
   fixedSpend: number;
   topupAmount: number;
   totalSpend: number;
   energyKwh: number;
+  waterKl: number;
   weightedTariff: number;
   peakTariff: number;
   allInRate: number;
   balanceEnd: number;
   latestPeriod?: string;
   energyIntervals: number;
+  waterIntervals: number;
   isComplete: boolean;
 };
 
@@ -80,7 +92,10 @@ export type HourlyRollupRow = {
   hour: number;
   spend: number;
   kwh: number;
+  waterSpend: number;
+  waterKl: number;
   intervals: number;
+  waterIntervals: number;
 };
 
 export type IntervalRollupRow = {
@@ -88,6 +103,8 @@ export type IntervalRollupRow = {
   periodTime: string;
   spend: number;
   kwh: number;
+  waterSpend: number;
+  waterKl: number;
 };
 
 export type TariffPoint = {
@@ -112,14 +129,18 @@ export type Analytics = {
   metrics: {
     totalSpend: number;
     totalEnergySpend: number;
+    totalWaterSpend: number;
     totalFixedSpend: number;
     totalKwh: number;
+    totalWaterKl: number;
     energyCostPerKwh: number;
     allInCostPerKwh: number;
     averageSpendPerDay: number;
     averageKwhPerDay: number;
+    averageWaterKlPerDay: number;
     highestSpendDay?: DailyPoint;
     highestUsageDay?: DailyPoint;
+    highestWaterDay?: DailyPoint;
     highestUsageHour?: UsageHourPeak;
     latestBalance?: number;
     latestPeriod?: string;

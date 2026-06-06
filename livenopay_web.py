@@ -17,14 +17,19 @@ FIELDNAMES = [
     "charge_label",
     "period_dt",
     "kwh",
+    "water_kl",
     "tariff",
     "cost",
     "balance",
 ]
 
 ENERGY_LABEL_RE = re.compile(r"^(?P<label>.+?) \((?P<period_dt>\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)$")
+WATER_LABEL_RE = re.compile(
+    r"^(?P<label>Water:.+?) \((?P<period_dt>\d{4}-\d{2}-\d{2} \d{2}:\d{2}) to \d{4}-\d{2}-\d{2} \d{2}:\d{2}\)$"
+)
 FIXED_LABEL_RE = re.compile(r"^(?P<label>Daily .+?) - (?P<period_date>\d{4}-\d{2}-\d{2})$")
 ENERGY_UNITS_RE = re.compile(r"(?P<kwh>-?[\d.]+)\s*kWh\s*@\s*R(?P<tariff>-?[\d.]+)")
+WATER_UNITS_RE = re.compile(r"(?P<water_kl>-?[\d.]+)\s*kL\s*@\s*R(?P<tariff>-?[\d.]+)")
 FIXED_UNITS_RE = re.compile(r"(?P<quantity>-?[\d.]+)\s*@\s*R(?P<tariff>-?[\d.]+)")
 
 
@@ -291,6 +296,26 @@ def normalize_ledger_row(item: dict) -> dict | None:
             "charge_label": energy_match.group("label"),
             "period_dt": energy_match.group("period_dt"),
             "kwh": units_match.group("kwh"),
+            "water_kl": "0",
+            "tariff": units_match.group("tariff"),
+            "cost": parse_money(item.get("debitIncl") or item.get("debit")),
+            "balance": balance,
+        }
+
+    water_match = WATER_LABEL_RE.match(description)
+    if water_match:
+        units = item.get("unitsDescriptionIncl") or item.get("unitsDescription") or ""
+        units_match = WATER_UNITS_RE.search(units)
+        if not units_match:
+            raise RuntimeError(f"Could not parse water units from {units!r}")
+
+        return {
+            "capture_dt": capture_dt,
+            "source_ts": item["date"],
+            "charge_label": water_match.group("label"),
+            "period_dt": water_match.group("period_dt"),
+            "kwh": "0",
+            "water_kl": units_match.group("water_kl"),
             "tariff": units_match.group("tariff"),
             "cost": parse_money(item.get("debitIncl") or item.get("debit")),
             "balance": balance,
@@ -309,6 +334,7 @@ def normalize_ledger_row(item: dict) -> dict | None:
             "charge_label": fixed_match.group("label"),
             "period_dt": f"{fixed_match.group('period_date')} 00:00",
             "kwh": "0",
+            "water_kl": "0",
             "tariff": units_match.group("tariff"),
             "cost": parse_money(item.get("debitIncl") or item.get("debit")),
             "balance": balance,
@@ -322,6 +348,7 @@ def normalize_ledger_row(item: dict) -> dict | None:
             "charge_label": "Top Up",
             "period_dt": capture_dt_to_period_dt(capture_dt),
             "kwh": "0",
+            "water_kl": "0",
             "tariff": "0",
             "cost": credit,
             "balance": balance,

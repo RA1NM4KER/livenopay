@@ -1,4 +1,4 @@
-import { formatCurrency, formatKwh, formatTariff, longDateTime, shortDate } from "@/lib/format";
+import { formatCurrency, formatKl, formatKwh, formatTariff, longDateTime, shortDate } from "@/lib/format";
 import type { Analytics } from "@/lib/types";
 
 type MetricCardItem = {
@@ -8,19 +8,25 @@ type MetricCardItem = {
 };
 
 export function buildMetricCards(metrics: Analytics["metrics"]): MetricCardItem[] {
-  return [
+  const cards: MetricCardItem[] = [
     {
       label: "Total spend",
       value: formatCurrency(metrics.totalSpend),
-      detail: `incl. ${formatCurrency(metrics.totalFixedSpend)} fixed`
+      detail:
+        metrics.totalWaterSpend > 0
+          ? `${formatCurrency(metrics.totalFixedSpend)} fixed • ${formatCurrency(metrics.totalWaterSpend)} water`
+          : `incl. ${formatCurrency(metrics.totalFixedSpend)} fixed`
     },
     {
       label: "Total usage",
       value: formatKwh(metrics.totalKwh),
-      detail: `${formatKwh(metrics.averageKwhPerDay)} per day`
+      detail:
+        metrics.totalWaterKl > 0
+          ? `${formatKwh(metrics.averageKwhPerDay)} electricity/day`
+          : `${formatKwh(metrics.averageKwhPerDay)} per day`
     },
     {
-      label: "Effective rate",
+      label: "Electricity rate",
       value: formatTariff(metrics.energyCostPerKwh),
       detail: `${formatTariff(metrics.allInCostPerKwh)} incl. fixed`
     },
@@ -52,4 +58,20 @@ export function buildMetricCards(metrics: Analytics["metrics"]): MetricCardItem[
         : undefined
     }
   ];
+
+  if (metrics.totalWaterSpend > 0 || metrics.totalWaterKl > 0) {
+    cards.splice(2, 0, {
+      label: "Water spend",
+      value: formatCurrency(metrics.totalWaterSpend),
+      detail: formatKl(metrics.totalWaterKl)
+    });
+
+    cards.splice(3, 0, {
+      label: "Water usage",
+      value: formatKl(metrics.totalWaterKl),
+      detail: `${formatKl(metrics.averageWaterKlPerDay)} per day`
+    });
+  }
+
+  return cards;
 }

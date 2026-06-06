@@ -26,6 +26,7 @@ type ExistingSupabaseRow = {
   charge_label: string;
   cost: string | number;
   kwh: string | number;
+  water_kl?: string | number;
   period_dt: string;
   source_ts?: string | null;
   tariff: string | number;
@@ -36,6 +37,7 @@ type SupabaseEnergyRow = {
   charge_label: string;
   period_dt: string;
   kwh: string;
+  water_kl: string;
   tariff: string;
   cost: string;
   balance: string;
@@ -98,6 +100,7 @@ function toCsvRow(row: ExistingSupabaseRow): LivenopayCsvRow {
     charge_label: row.charge_label,
     period_dt: row.period_dt,
     kwh: String(row.kwh ?? "0"),
+    water_kl: String(row.water_kl ?? "0"),
     tariff: String(row.tariff ?? "0"),
     cost: String(row.cost ?? "0"),
     balance: String(row.balance ?? "0")
@@ -125,7 +128,7 @@ async function fetchSupabaseRows(basePath: string, baseParams: URLSearchParams) 
 
 async function loadExistingRowsBefore(cutoff: string) {
   const params = new URLSearchParams({
-    select: "capture_dt,source_ts,charge_label,period_dt,kwh,tariff,cost,balance",
+    select: "capture_dt,source_ts,charge_label,period_dt,kwh,water_kl,tariff,cost,balance",
     order: "period_ts.asc,capture_ts.asc"
   });
   params.append("period_dt", `lt.${cutoff}`);
@@ -233,6 +236,7 @@ async function upsertRows(rows: LivenopayCsvRow[], runId: string) {
           charge_label: row.charge_label,
           period_dt: row.period_dt,
           kwh: row.kwh,
+          water_kl: row.water_kl,
           tariff: row.tariff,
           cost: row.cost,
           balance: row.balance,

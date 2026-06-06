@@ -51,6 +51,8 @@ export const comparePreviousPeriodTool: AssistantTool = {
       deltas: {
         spend: current.totalSpend - previous.totalSpend,
         kwh: current.totalKwh - previous.totalKwh,
+        waterKl: current.totalWaterKl - previous.totalWaterKl,
+        waterSpend: current.totalWaterSpend - previous.totalWaterSpend,
         averageSpendPerDay: current.averageSpendPerDay - previous.averageSpendPerDay,
         averageKwhPerDay: current.averageKwhPerDay - previous.averageKwhPerDay,
         latestBalance:

@@ -1,4 +1,4 @@
-import { formatCurrency, formatKwh } from "@/lib/format";
+import { formatCurrency, formatKl, formatKwh } from "@/lib/format";
 import type { DailyRollupRow } from "@/lib/types";
 import type { AssistantTool } from "../types";
 import { EmptySchema } from "./schemas";
@@ -23,8 +23,10 @@ function buildMonthlyBreakdown(rows: DailyRollupRow[]) {
       to: string;
       spend: number;
       energySpend: number;
+      waterSpend: number;
       fixedSpend: number;
       kwh: number;
+      waterKl: number;
       topups: number;
       latestBalance: number;
       days: number;
@@ -39,8 +41,10 @@ function buildMonthlyBreakdown(rows: DailyRollupRow[]) {
       to: row.periodDate,
       spend: 0,
       energySpend: 0,
+      waterSpend: 0,
       fixedSpend: 0,
       kwh: 0,
+      waterKl: 0,
       topups: 0,
       latestBalance: row.balanceEnd,
       days: 0
@@ -50,8 +54,10 @@ function buildMonthlyBreakdown(rows: DailyRollupRow[]) {
     bucket.to = row.periodDate > bucket.to ? row.periodDate : bucket.to;
     bucket.spend += row.totalSpend;
     bucket.energySpend += row.energySpend;
+    bucket.waterSpend += row.waterSpend;
     bucket.fixedSpend += row.fixedSpend;
     bucket.kwh += row.energyKwh;
+    bucket.waterKl += row.waterKl;
     bucket.topups += row.topupAmount;
     bucket.latestBalance = row.balanceEnd;
     bucket.days += 1;
@@ -69,10 +75,14 @@ function buildMonthlyBreakdown(rows: DailyRollupRow[]) {
       spendDisplay: formatCurrency(item.spend),
       energySpend: Number(item.energySpend.toFixed(2)),
       energySpendDisplay: formatCurrency(item.energySpend),
+      waterSpend: Number(item.waterSpend.toFixed(2)),
+      waterSpendDisplay: formatCurrency(item.waterSpend),
       fixedSpend: Number(item.fixedSpend.toFixed(2)),
       fixedSpendDisplay: formatCurrency(item.fixedSpend),
       kwh: Number(item.kwh.toFixed(2)),
       kwhDisplay: formatKwh(item.kwh),
+      waterKl: Number(item.waterKl.toFixed(2)),
+      waterKlDisplay: formatKl(item.waterKl),
       topups: Number(item.topups.toFixed(2)),
       topupsDisplay: formatCurrency(item.topups),
       latestBalance: Number(item.latestBalance.toFixed(2)),
@@ -120,6 +130,8 @@ export const compareCalendarMonthsTool: AssistantTool = {
           ? {
               spend: Number((current.spend - previous.spend).toFixed(2)),
               kwh: Number((current.kwh - previous.kwh).toFixed(2)),
+              waterSpend: Number((current.waterSpend - previous.waterSpend).toFixed(2)),
+              waterKl: Number((current.waterKl - previous.waterKl).toFixed(2)),
               averageSpendPerDay: Number((current.averageSpendPerDay - previous.averageSpendPerDay).toFixed(2)),
               averageKwhPerDay: Number((current.averageKwhPerDay - previous.averageKwhPerDay).toFixed(2)),
               topups: Number((current.topups - previous.topups).toFixed(2)),

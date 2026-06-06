@@ -16,8 +16,32 @@ export function formatKwh(value: number) {
   return `${numberFormatter.format(value)} kWh`;
 }
 
+export function formatKl(value: number) {
+  return `${numberFormatter.format(value)} kL`;
+}
+
 export function formatTariff(value: number) {
   return `R${numberFormatter.format(value)}/kWh`;
+}
+
+export function formatTariffPerKl(value: number) {
+  return `R${numberFormatter.format(value)}/kL`;
+}
+
+export function formatUsage(value: number, unit: "kWh" | "kL" | null) {
+  if (!unit) {
+    return "--";
+  }
+
+  return unit === "kWh" ? formatKwh(value) : formatKl(value);
+}
+
+export function formatTariffForUnit(value: number, unit: "kWh" | "kL" | null) {
+  if (!unit) {
+    return "--";
+  }
+
+  return unit === "kWh" ? formatTariff(value) : formatTariffPerKl(value);
 }
 
 export function formatPercent(value: number) {

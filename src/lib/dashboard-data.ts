@@ -47,34 +47,40 @@ export async function loadDashboardDailyRollups(): Promise<DailyRollupRow[]> {
   const rows = await supabaseFetchAllPages<{
     period_date: string;
     energy_spend: number | string;
+    water_spend: number | string;
     fixed_spend: number | string;
     topup_amount: number | string;
     total_spend: number | string;
     energy_kwh: number | string;
+    water_kl: number | string;
     weighted_tariff: number | string;
     peak_tariff: number | string;
     all_in_rate: number | string;
     balance_end: number | string;
     latest_period: string | null;
     energy_intervals: number | string;
+    water_intervals: number | string;
     is_complete: boolean;
   }>(
-    "/energy_day_rollups?select=period_date,energy_spend,fixed_spend,topup_amount,total_spend,energy_kwh,weighted_tariff,peak_tariff,all_in_rate,balance_end,latest_period,energy_intervals,is_complete&order=period_date.asc"
+    "/energy_day_rollups?select=period_date,energy_spend,water_spend,fixed_spend,topup_amount,total_spend,energy_kwh,water_kl,weighted_tariff,peak_tariff,all_in_rate,balance_end,latest_period,energy_intervals,water_intervals,is_complete&order=period_date.asc"
   );
 
   return rows.map((row) => ({
     periodDate: row.period_date,
     energySpend: toNumber(row.energy_spend),
+    waterSpend: toNumber(row.water_spend),
     fixedSpend: toNumber(row.fixed_spend),
     topupAmount: toNumber(row.topup_amount),
     totalSpend: toNumber(row.total_spend),
     energyKwh: toNumber(row.energy_kwh),
+    waterKl: toNumber(row.water_kl),
     weightedTariff: toNumber(row.weighted_tariff),
     peakTariff: toNumber(row.peak_tariff),
     allInRate: toNumber(row.all_in_rate),
     balanceEnd: toNumber(row.balance_end),
     latestPeriod: row.latest_period ?? undefined,
     energyIntervals: toNumber(row.energy_intervals),
+    waterIntervals: toNumber(row.water_intervals),
     isComplete: Boolean(row.is_complete)
   }));
 }
@@ -85,15 +91,23 @@ export async function loadDashboardHourlyRollups(): Promise<HourlyRollupRow[]> {
     hour: number | string;
     spend: number | string;
     kwh: number | string;
+    water_spend: number | string;
+    water_kl: number | string;
     intervals: number | string;
-  }>("/energy_hourly_rollups?select=period_date,hour,spend,kwh,intervals&order=period_date.asc,hour.asc");
+    water_intervals: number | string;
+  }>(
+    "/energy_hourly_rollups?select=period_date,hour,spend,kwh,water_spend,water_kl,intervals,water_intervals&order=period_date.asc,hour.asc"
+  );
 
   return rows.map((row) => ({
     periodDate: row.period_date,
     hour: toNumber(row.hour),
     spend: toNumber(row.spend),
     kwh: toNumber(row.kwh),
-    intervals: toNumber(row.intervals)
+    waterSpend: toNumber(row.water_spend),
+    waterKl: toNumber(row.water_kl),
+    intervals: toNumber(row.intervals),
+    waterIntervals: toNumber(row.water_intervals)
   }));
 }
 
@@ -104,15 +118,19 @@ export async function loadDayIntervalRollups(periodDate: string): Promise<Interv
       period_time: string;
       spend: number | string;
       kwh: number | string;
+      water_spend: number | string;
+      water_kl: number | string;
     }>
   >(
-    `/energy_interval_rollups?select=period_date,period_time,spend,kwh&period_date=eq.${encodeURIComponent(periodDate)}&order=period_time.asc`
+    `/energy_interval_rollups?select=period_date,period_time,spend,kwh,water_spend,water_kl&period_date=eq.${encodeURIComponent(periodDate)}&order=period_time.asc`
   );
 
   return rows.map((row) => ({
     periodDate: row.period_date,
     periodTime: row.period_time.slice(0, 5),
     spend: toNumber(row.spend),
-    kwh: toNumber(row.kwh)
+    kwh: toNumber(row.kwh),
+    waterSpend: toNumber(row.water_spend),
+    waterKl: toNumber(row.water_kl)
   }));
 }

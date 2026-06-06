@@ -4,6 +4,8 @@ export type IntervalPoint = {
   time: string;
   spend: number;
   kwh: number;
+  waterSpend: number;
+  waterKl: number;
 };
 
 export type DayBreakdownDomains = {
@@ -30,7 +32,9 @@ export function buildIntervalPoints(rows: IntervalRollupRow[], selectedDate: str
     return {
       time,
       spend: round(items.reduce((total, row) => total + row.spend, 0)),
-      kwh: round(items.reduce((total, row) => total + row.kwh, 0))
+      kwh: round(items.reduce((total, row) => total + row.kwh, 0)),
+      waterSpend: round(items.reduce((total, row) => total + row.waterSpend, 0)),
+      waterKl: round(items.reduce((total, row) => total + row.waterKl, 0))
     };
   });
 }
@@ -64,7 +68,7 @@ export function buildGlobalDomains(maxSpend: number, maxKwh: number): DayBreakdo
   };
 }
 
-export function sumRows(rows: IntervalRollupRow[], key: "spend" | "kwh") {
+export function sumRows(rows: IntervalRollupRow[], key: "spend" | "kwh" | "waterSpend" | "waterKl") {
   return rows.reduce((total, row) => total + row[key], 0);
 }
 

@@ -39,7 +39,7 @@ const sortColumnByKey: Record<SortKey, string> = {
   period: "period_ts",
   type: "charge_label",
   band: "charge_label",
-  kwh: "kwh",
+  kwh: "usage_qty",
   tariff: "tariff",
   amount: "cost",
   balance: "balance",
@@ -84,7 +84,7 @@ function orderClauseForQuery(sortKey?: SortKey, sortDirection?: SortDirection) {
 
 function queryPathForPage({ from, to, chargeType, search, sortKey, sortDirection }: EnergyRowsPageQuery) {
   const params = new URLSearchParams();
-  params.set("select", "capture_dt,charge_label,period_dt,kwh,tariff,cost,balance");
+  params.set("select", "capture_dt,charge_label,period_dt,kwh,water_kl,tariff,cost,balance");
   params.set("order", orderClauseForQuery(sortKey, sortDirection));
 
   if (from) {
@@ -97,10 +97,13 @@ function queryPathForPage({ from, to, chargeType, search, sortKey, sortDirection
 
   if (chargeType === "energy") {
     params.set("charge_label", "like.Energy Charge:*");
+  } else if (chargeType === "water") {
+    params.set("charge_label", "like.Water:*");
   } else if (chargeType === "topup") {
     params.set("charge_label", "eq.Top Up");
   } else if (chargeType === "fixed") {
     params.append("charge_label", "not.like.Energy Charge:*");
+    params.append("charge_label", "not.like.Water:*");
     params.append("charge_label", "neq.Top Up");
   }
 

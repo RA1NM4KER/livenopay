@@ -15,11 +15,12 @@ import { useDataTableUrlState } from "@/lib/use-data-table-url-state";
 import { formatCurrency } from "@/lib/format";
 import { buildEnergyRowsUrl } from "@/lib/endpoints";
 import type { EnergyRow, SyncMetadata } from "@/lib/types";
-import { amountClassFor, kwhDisplayFor, tariffDisplayFor } from "./row-formatting";
+import { amountClassFor, tariffDisplayFor, usageDisplayFor } from "./row-formatting";
 import type { SortDirection, SortKey } from "./types";
 
 const chargeTypeLabelMap: Record<EnergyRow["chargeKind"], string> = {
   energy: "Energy",
+  water: "Water",
   fixed: "Fixed",
   topup: "Top up"
 };
@@ -200,13 +201,17 @@ export function DataTable() {
         id: "band",
         accessorFn: (row) => row.chargeLabel,
         header: "Band",
-        cell: ({ row }) => <span className="text-muted">{row.original.chargeLabel.replace("Energy Charge: ", "")}</span>
+        cell: ({ row }) => (
+          <span className="text-muted">
+            {row.original.chargeLabel.replace("Energy Charge: ", "").replace("Water: ", "")}
+          </span>
+        )
       },
       {
         id: "kwh",
-        accessorFn: (row) => row.kwh,
-        header: "kWh",
-        cell: ({ row }) => <span className="text-ink">{kwhDisplayFor(row.original)}</span>
+        accessorFn: (row) => row.usageAmount,
+        header: "Usage",
+        cell: ({ row }) => <span className="text-ink">{usageDisplayFor(row.original)}</span>
       },
       {
         id: "tariff",
@@ -261,6 +266,7 @@ export function DataTable() {
     return [
       { label: "All types", value: "all" },
       { label: chargeTypeLabelMap.energy, value: "energy" },
+      { label: chargeTypeLabelMap.water, value: "water" },
       { label: chargeTypeLabelMap.fixed, value: "fixed" },
       { label: chargeTypeLabelMap.topup, value: "topup" }
     ];
@@ -272,7 +278,7 @@ export function DataTable() {
       value={chargeType}
       options={chargeTypeOptions}
       onChange={(value) => onChargeTypeChange(value as ChargeTypeFilter)}
-      className="w-28"
+      className="w-32"
     />
   );
 
@@ -355,7 +361,7 @@ export function DataTable() {
     <div className="flex min-h-0 flex-1 flex-col gap-5 pt-6">
       <div className="hidden items-end justify-between gap-4 sm:flex">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Raw energy rows</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Raw ledger rows</h2>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
           <div className="flex items-center gap-2">
