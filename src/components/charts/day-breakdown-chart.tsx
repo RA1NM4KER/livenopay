@@ -137,7 +137,7 @@ export function DayBreakdownChart({
       <Card>
         <CardHeader
           title="Day detail"
-          eyebrow="30 minute electricity view"
+          eyebrow="30 minute electricity intervals"
           action={
             <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
               {dateControl}
@@ -145,9 +145,9 @@ export function DayBreakdownChart({
             </div>
           }
         />
-        <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[1fr_18rem]">
+        <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[1fr_22rem]">
           <div className="h-72 sm:h-80">{renderChart(isCompactAxis ? 7 : 3)}</div>
-          <aside className="grid content-start grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-1">
+          <aside className="grid content-start grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-2">
             <DaySummaryCard label="Energy spend" value={formatCurrency(energySpend)} />
             <DaySummaryCard label="Energy usage" value={formatKwh(usage)} />
             <DaySummaryCard label="Water spend" value={formatCurrency(waterSpend)} />
