@@ -37,7 +37,12 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
 
   const globalDomains =
     summary.maxIntervalSpend !== undefined && summary.maxIntervalKwh !== undefined
-      ? buildGlobalDomains(summary.maxIntervalSpend, summary.maxIntervalKwh)
+      ? buildGlobalDomains(
+          summary.maxIntervalSpend,
+          summary.maxIntervalKwh,
+          summary.maxWaterIntervalSpend ?? 0,
+          summary.maxWaterIntervalKl ?? 0
+        )
       : undefined;
 
   const metrics = analytics.metrics;

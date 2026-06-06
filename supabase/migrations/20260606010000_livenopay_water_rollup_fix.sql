@@ -1,44 +1,3 @@
-alter table public.energy_rows
-  add column if not exists water_kl numeric(12, 4) not null default 0;
-
-alter table public.energy_rows
-  drop column if exists charge_kind;
-
-alter table public.energy_rows
-  add column charge_kind text generated always as (
-    case
-      when charge_label like 'Energy Charge:%' then 'energy'
-      when charge_label like 'Water:%' then 'water'
-      when charge_label = 'Top Up' then 'topup'
-      else 'fixed'
-    end
-  ) stored;
-
-alter table public.energy_rows
-  add column if not exists usage_qty numeric(12, 4) generated always as (
-    case
-      when charge_label like 'Water:%' then water_kl
-      else kwh
-    end
-  ) stored;
-
-create index if not exists energy_rows_usage_qty_idx
-  on public.energy_rows (usage_qty);
-
-alter table public.energy_day_rollups
-  add column if not exists water_spend numeric(12, 2) not null default 0,
-  add column if not exists water_kl numeric(12, 4) not null default 0,
-  add column if not exists water_intervals integer not null default 0;
-
-alter table public.energy_hourly_rollups
-  add column if not exists water_spend numeric(12, 2) not null default 0,
-  add column if not exists water_kl numeric(12, 4) not null default 0,
-  add column if not exists water_intervals integer not null default 0;
-
-alter table public.energy_interval_rollups
-  add column if not exists water_spend numeric(12, 2) not null default 0,
-  add column if not exists water_kl numeric(12, 4) not null default 0;
-
 alter table public.dashboard_summary
   add column if not exists max_water_interval_spend numeric(12, 2),
   add column if not exists max_water_interval_kl numeric(12, 4);
@@ -228,7 +187,7 @@ begin
   interval_aggregates as (
     select
       public.parse_livenopay_period_ts(period_dt)::date as period_date,
-      to_char(public.parse_livenopay_period_ts(period_dt), 'HH24:MI') as period_time,
+      public.parse_livenopay_period_ts(period_dt)::time without time zone as period_time,
       round(sum(case when charge_kind = 'energy' then cost else 0 end)::numeric, 2) as spend,
       round(sum(case when charge_kind = 'energy' then kwh else 0 end)::numeric, 4) as kwh,
       round(sum(case when charge_kind = 'water' then cost else 0 end)::numeric, 2) as water_spend,

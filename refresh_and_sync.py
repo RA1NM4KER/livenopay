@@ -236,7 +236,7 @@ def upsert_rows(rows, run_id):
                 {
                     **{field: row[field] for field in REQUIRED_FIELDNAMES},
                     "water_kl": row.get("water_kl", "0") or "0",
-                    **({"source_ts": source_ts} if source_ts else {}),
+                    "source_ts": source_ts or None,
                     "sync_run_id": run_id,
                     "last_seen_at": synced_at,
                 }

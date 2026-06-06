@@ -41,7 +41,7 @@ type SupabaseEnergyRow = {
   tariff: string;
   cost: string;
   balance: string;
-  source_ts?: string;
+  source_ts: string | null;
   sync_run_id: string;
   last_seen_at: string;
 };
@@ -240,7 +240,7 @@ async function upsertRows(rows: LivenopayCsvRow[], runId: string) {
           tariff: row.tariff,
           cost: row.cost,
           balance: row.balance,
-          ...(sourceTs ? { source_ts: sourceTs } : {}),
+          source_ts: sourceTs || null,
           sync_run_id: runId,
           last_seen_at: syncedAt
         }

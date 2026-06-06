@@ -18,9 +18,11 @@ export async function loadDashboardSummary(): Promise<DashboardSummary> {
       rows_synced: number | null;
       max_interval_spend: number | string | null;
       max_interval_kwh: number | string | null;
+      max_water_interval_spend: number | string | null;
+      max_water_interval_kl: number | string | null;
     }>
   >(
-    "/dashboard_summary?select=date_start,date_end,latest_balance,latest_period,last_synced_at,rows_in_csv,rows_synced,max_interval_spend,max_interval_kwh&id=eq.1&limit=1"
+    "/dashboard_summary?select=date_start,date_end,latest_balance,latest_period,last_synced_at,rows_in_csv,rows_synced,max_interval_spend,max_interval_kwh,max_water_interval_spend,max_water_interval_kl&id=eq.1&limit=1"
   );
 
   const row = rows[0];
@@ -39,7 +41,17 @@ export async function loadDashboardSummary(): Promise<DashboardSummary> {
         ? undefined
         : toNumber(row.max_interval_spend),
     maxIntervalKwh:
-      row?.max_interval_kwh === null || row?.max_interval_kwh === undefined ? undefined : toNumber(row.max_interval_kwh)
+      row?.max_interval_kwh === null || row?.max_interval_kwh === undefined
+        ? undefined
+        : toNumber(row.max_interval_kwh),
+    maxWaterIntervalSpend:
+      row?.max_water_interval_spend === null || row?.max_water_interval_spend === undefined
+        ? undefined
+        : toNumber(row.max_water_interval_spend),
+    maxWaterIntervalKl:
+      row?.max_water_interval_kl === null || row?.max_water_interval_kl === undefined
+        ? undefined
+        : toNumber(row.max_water_interval_kl)
   };
 }
 

@@ -31,6 +31,8 @@ export type DashboardSummary = SyncMetadata & {
   latestPeriod?: string;
   maxIntervalSpend?: number;
   maxIntervalKwh?: number;
+  maxWaterIntervalSpend?: number;
+  maxWaterIntervalKl?: number;
 };
 
 export type QuickRange = "pastWeek" | "pastMonth" | "past3Months" | "thisMonth" | "thisWeek" | "allTime" | "custom";

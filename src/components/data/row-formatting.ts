@@ -10,10 +10,6 @@ export function amountClassFor(row: EnergyRow) {
     return "font-medium text-fixed";
   }
 
-  if (row.chargeKind === "water") {
-    return "font-medium text-accent";
-  }
-
   return "text-ink";
 }
 

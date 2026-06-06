@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
+import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
 import { buildDayIntervalsUrl } from "@/lib/endpoints";
 import { formatCurrency, formatKl, formatKwh } from "@/lib/format";
@@ -44,6 +45,7 @@ export function DayBreakdownChart({
   globalDomains
 }: DayBreakdownChartProps) {
   const [isCompactAxis, setIsCompactAxis] = useState(false);
+  const [utility, setUtility] = useState<"electricity" | "water">("electricity");
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate ?? dateOptions[dateOptions.length - 1] ?? "");
   const selectableDates = useMemo(() => new Set(dateOptions), [dateOptions]);
   const { data } = useQuery({
@@ -60,6 +62,32 @@ export function DayBreakdownChart({
   const waterSpend = sumRows(rows, "waterSpend");
   const waterUsage = sumRows(rows, "waterKl");
   const fixedSpend = dailyRows.find((row) => row.periodDate === selectedDate)?.fixedSpend ?? 0;
+  const utilityConfig =
+    utility === "water"
+      ? {
+          eyebrow: "30 minute water intervals",
+          spendKey: "waterSpend" as const,
+          usageKey: "waterKl" as const,
+          usageAxisId: "water" as const,
+          spendDomain: axisDomains.waterSpend,
+          usageDomain: axisDomains.waterKl,
+          usageTickFormatter: (value: number) => `${value}`,
+          usageFormatter: formatKl,
+          usageLabel: "Water usage",
+          spendLabel: "Water spend"
+        }
+      : {
+          eyebrow: "30 minute electricity intervals",
+          spendKey: "spend" as const,
+          usageKey: "kwh" as const,
+          usageAxisId: "kwh" as const,
+          spendDomain: axisDomains.spend,
+          usageDomain: axisDomains.kwh,
+          usageTickFormatter: (value: number) => `${value}`,
+          usageFormatter: formatKwh,
+          usageLabel: "Energy usage",
+          spendLabel: "Energy spend"
+        };
 
   useEffect(() => {
     const nextSelectedDate = initialSelectedDate ?? dateOptions[dateOptions.length - 1] ?? "";
@@ -92,17 +120,17 @@ export function DayBreakdownChart({
         />
         <YAxis
           yAxisId="spend"
-          domain={[0, axisDomains.spend]}
+          domain={[0, utilityConfig.spendDomain]}
           tickFormatter={(value) => `R${value}`}
           tickLine={false}
           axisLine={false}
           width={48}
         />
         <YAxis
-          yAxisId="kwh"
-          domain={[0, axisDomains.kwh]}
+          yAxisId={utilityConfig.usageAxisId}
+          domain={[0, utilityConfig.usageDomain]}
           orientation="right"
-          tickFormatter={(value) => `${value}`}
+          tickFormatter={utilityConfig.usageTickFormatter}
           tickLine={false}
           axisLine={false}
           width={42}
@@ -110,26 +138,49 @@ export function DayBreakdownChart({
         <Tooltip
           contentStyle={chartTooltipStyle}
           formatter={(value, name) => [
-            name === "spend" ? formatCurrency(Number(value)) : formatKwh(Number(value)),
-            name === "spend" ? "Spend" : "Usage"
+            name === utilityConfig.spendKey
+              ? formatCurrency(Number(value))
+              : utilityConfig.usageFormatter(Number(value)),
+            name === utilityConfig.spendKey ? utilityConfig.spendLabel : utilityConfig.usageLabel
           ]}
         />
-        <Bar yAxisId="spend" dataKey="spend" fill={chartColors.spend} radius={[4, 4, 0, 0]} />
-        <Bar yAxisId="kwh" dataKey="kwh" fill={chartColors.usage} radius={[4, 4, 0, 0]} />
+        <Bar yAxisId="spend" dataKey={utilityConfig.spendKey} fill={chartColors.spend} radius={[4, 4, 0, 0]} />
+        <Bar
+          yAxisId={utilityConfig.usageAxisId}
+          dataKey={utilityConfig.usageKey}
+          fill={chartColors.usage}
+          radius={[4, 4, 0, 0]}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
 
-  const dateControl = (
-    <DatePicker
-      closeOnSelect={false}
-      label="Day detail date"
-      max={dateOptions[dateOptions.length - 1]}
-      min={dateOptions[0]}
-      onChange={setSelectedDate}
-      selectableDates={selectableDates}
-      value={selectedDate}
+  const utilityControl = (
+    <DropdownSelect
+      ariaLabel="Day detail utility"
+      value={utility}
+      options={[
+        { label: "Electricity", value: "electricity" },
+        { label: "Water", value: "water" }
+      ]}
+      onChange={(value) => setUtility(value as "electricity" | "water")}
+      className="w-32"
     />
+  );
+
+  const dateControl = (
+    <div className="flex items-center gap-2">
+      {utilityControl}
+      <DatePicker
+        closeOnSelect={false}
+        label="Day detail date"
+        max={dateOptions[dateOptions.length - 1]}
+        min={dateOptions[0]}
+        onChange={setSelectedDate}
+        selectableDates={selectableDates}
+        value={selectedDate}
+      />
+    </div>
   );
 
   return (
@@ -137,7 +188,7 @@ export function DayBreakdownChart({
       <Card>
         <CardHeader
           title="Day detail"
-          eyebrow="30 minute electricity intervals"
+          eyebrow={utilityConfig.eyebrow}
           action={
             <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
               {dateControl}
