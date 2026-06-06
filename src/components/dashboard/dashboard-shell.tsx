@@ -11,6 +11,7 @@ import { TariffChart } from "@/components/charts/tariff-chart";
 import { MetricCard } from "@/components/ui/metric-card";
 import { createAnalytics } from "@/lib/analytics";
 import { buildGlobalDomains } from "@/lib/day-breakdown";
+import { previousComparableScope } from "@/lib/period-comparison";
 import { useFilterUrlState } from "@/lib/use-filter-url-state";
 import { FilterBar } from "./filter-bar";
 import { Insights } from "./insights";
@@ -30,6 +31,20 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
       }),
     [dailyRows, hourlyRows, from, summary.latestBalance, summary.latestPeriod, to]
   );
+  const previousScope = useMemo(() => {
+    if (!from || !to) {
+      return undefined;
+    }
+
+    return previousComparableScope({ from, to });
+  }, [from, to]);
+  const previousAnalytics = useMemo(() => {
+    if (!previousScope) {
+      return undefined;
+    }
+
+    return createAnalytics(dailyRows, hourlyRows, previousScope.from, previousScope.to);
+  }, [dailyRows, hourlyRows, previousScope]);
   const dateOptions = useMemo(
     () => Array.from(new Set(dailyRows.map((row) => row.periodDate))).sort((left, right) => left.localeCompare(right)),
     [dailyRows]
@@ -45,7 +60,7 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
       : undefined;
 
   const metrics = analytics.metrics;
-  const metricCards = buildMetricCards(metrics);
+  const metricCards = buildMetricCards(metrics, previousAnalytics?.metrics);
 
   return (
     <div className="flex flex-1 flex-col gap-5 py-6">
@@ -65,9 +80,16 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
         rightControlsExpanded
       />
 
-      <section className="snap-rail touch-pan-x touch-pan-y flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0">
+      <section className="snap-rail touch-pan-x touch-pan-y flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 xl:grid-cols-5 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0">
         {metricCards.map((card) => (
-          <MetricCard key={card.label} label={card.label} value={card.value} detail={card.detail} />
+          <MetricCard
+            key={card.label}
+            label={card.label}
+            value={card.value}
+            detail={card.detail}
+            tone={card.tone}
+            comparison={card.comparison}
+          />
         ))}
       </section>
 

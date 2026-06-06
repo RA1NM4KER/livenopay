@@ -15,4 +15,9 @@ export type MetricCardProps = {
   label: string;
   value: string;
   detail?: string;
+  tone?: "neutral" | "good" | "watch" | "danger";
+  comparison?: {
+    text: string;
+    tone: "good" | "watch" | "danger" | "neutral";
+  };
 };

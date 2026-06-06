@@ -8,6 +8,7 @@ import { explainDayTool } from "./explain-day";
 import { getBalanceRunoutTool } from "./get-balance-runout";
 import { getRecentTopupsTool } from "./get-recent-topups";
 import { getScopeOverviewTool } from "./get-scope-overview";
+import { getWaterOverviewTool } from "./get-water-overview";
 import { getTopDaysTool } from "./get-top-days";
 import { getTopHoursTool } from "./get-top-hours";
 
@@ -53,7 +54,8 @@ export function createAssistantToolbox(scope: AssistantScope) {
     getTopDaysTool,
     getTopHoursTool,
     explainDayTool,
-    getRecentTopupsTool
+    getRecentTopupsTool,
+    getWaterOverviewTool
   ];
 
   const toolHandlers = Object.fromEntries(
