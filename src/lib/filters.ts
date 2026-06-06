@@ -69,13 +69,14 @@ export function defaultRange(bounds: { from?: string; to?: string }) {
     };
   }
 
-  const latestDate = startOfDay(parseIsoDate(latest));
-  const recentStart = formatIsoDate(subtractMonths(latestDate, 3));
+  const today = startOfDay(new Date());
+  const todayIso = formatIsoDate(today);
+  const recentStart = formatIsoDate(subtractMonths(today, 3));
   const boundedStart = earliest && earliest > recentStart ? earliest : recentStart;
 
   return {
     from: boundedStart,
-    to: latest,
+    to: todayIso,
     quickRange: "past3Months" as QuickRange
   };
 }

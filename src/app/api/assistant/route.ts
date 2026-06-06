@@ -24,7 +24,7 @@ const requestSchema = z.object({
 export async function POST(request: Request) {
   try {
     const identifier = getRateLimitIdentifier(request, "assistant");
-    const rateLimit = await enforceRateLimit(identifier);
+    const rateLimit = await enforceRateLimit(identifier, "assistant");
     const rateHeaders = rateLimitHeaders(rateLimit);
 
     if (!rateLimit.allowed) {
