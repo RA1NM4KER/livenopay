@@ -32,7 +32,7 @@ export const getWaterOverviewTool: AssistantTool = {
       scope: context.scope,
       firstWaterCharge: firstWaterDayAllTime
         ? {
-            date: firstWaterDayAllTime.date,
+            date: firstWaterDayAllTime.periodDate,
             spend: firstWaterDayAllTime.waterSpend,
             kwh: firstWaterDayAllTime.waterKl
           }
