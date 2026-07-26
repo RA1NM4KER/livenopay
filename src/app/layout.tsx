@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "NewinMeter",
-  description: "Your electricity usage, your data, your control.",
+  description: "Your usage. Finally clear.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
