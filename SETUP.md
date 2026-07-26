@@ -32,12 +32,12 @@ Add these to `.env.local`:
     LIVENOPAY_WEB_EMAIL=you@example.com
     LIVENOPAY_WEB_PASSWORD=your-livewallet-password
     LIVENOPAY_FIREBASE_API_KEY=your-firebase-web-api-key
-    LIVENOPAY_ACCOUNT_ID=715717
+    LIVENOPAY_ACCOUNT_ID=your-account-id
 
 Optional overrides:
 
-    LIVENOPAY_COMPANY_ID=43
-    LIVENOPAY_PROPERTY_ID=13835
+    LIVENOPAY_COMPANY_ID=your-company-id
+    LIVENOPAY_PROPERTY_ID=your-property-id
     LIVENOPAY_WEB_BASE_URL=https://app.propertywallet.co.za
     LIVENOPAY_WEB_PORTAL_ORIGIN=https://app.livewalletportal.co.za
     LIVENOPAY_WEB_SESSION_PATH=.secrets/livemopay_auth.json
@@ -62,7 +62,10 @@ To sync the existing CSV without refetching:
 
 The session file at `LIVENOPAY_WEB_SESSION_PATH` stores auth tokens locally so refreshes can reuse them.
 
-The deployed dashboard also stays on this path: the in-app sync action calls `/api/sync`, which runs `refresh_and_sync.py --source web`.
+The deployed dashboard does **not** use this script. Its in-app sync action calls `/api/sync`, which runs the sync
+directly in the Next.js backend (`src/lib/livenopay-sync.ts` and `src/lib/livenopay-web.ts`, pure TypeScript, no
+Python involved). This script is only for the legacy single-user local CLI described in `README.md`'s "Legacy Local
+Setup" section.
 
 ## Legacy: Android / ADB Refresh
 

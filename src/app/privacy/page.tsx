@@ -26,9 +26,10 @@ export default function PrivacyPolicyPage() {
         <ul className="list-disc pl-5">
           <li>Your email address, used to sign you in via a magic link. We never see or store a password.</li>
           <li>
-            Your LiveMopay sign-in credentials, which you provide once to connect your account. These are encrypted
-            (AES-256-GCM) before being stored, and are only ever decrypted server-side to sync your data from
-            LiveMopay on your behalf.
+            Your LiveMopay password, which you provide once to connect your account. It&apos;s used exactly once,
+            server-side, to establish that connection, and is never stored -- not even encrypted. What we do store is
+            an encrypted (AES-256-GCM) refresh token, which lets us sync your data on your behalf without ever holding
+            your password.
           </li>
           <li>
             The usage data itself: electricity and water spend, consumption, tariffs, balance, and meter/account
@@ -71,10 +72,10 @@ export default function PrivacyPolicyPage() {
 
       <Section title="Security">
         <p>
-          LiveMopay credentials are encrypted at rest and are never sent to your browser. Row-level security in our
-          database ensures your data is only ever readable by your own account. Disconnecting your LiveMopay
-          connection (from Settings) clears the stored credentials immediately, while keeping your historical usage
-          data intact.
+          Your LiveMopay password is never stored, in any form. The encrypted refresh token we do store is never sent
+          to your browser. Row-level security in our database ensures your data is only ever readable by your own
+          account. Disconnecting your LiveMopay connection (from Settings) clears the stored refresh token
+          immediately, while keeping your historical usage data intact.
         </p>
       </Section>
 
