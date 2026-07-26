@@ -13,6 +13,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "NewinMeter"
+  },
+  verification: {
+    google: "z_wEWDWLL9ymDqwg8TujdHSPuuBKFWGngpjklpeV-4o"
   }
 };
 
