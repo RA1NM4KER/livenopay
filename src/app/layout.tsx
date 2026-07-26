@@ -41,7 +41,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           dangerouslySetInnerHTML={{
             __html: `
 try {
-  var theme = localStorage.getItem("electricity-ledger-theme") || "system";
+  var theme = localStorage.getItem("electricity-ledger-theme") || "light";
   var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   var resolved = theme === "system" ? (prefersDark ? "dark" : "light") : theme;
   document.documentElement.classList.toggle("dark", resolved === "dark");

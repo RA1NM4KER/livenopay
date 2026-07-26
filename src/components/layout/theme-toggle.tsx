@@ -22,11 +22,11 @@ const themeOptions = [
 ];
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<ThemeChoice>("system");
+  const [theme, setTheme] = useState<ThemeChoice>("light");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(storageKey);
-    const initialTheme = stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+    const initialTheme = stored === "light" || stored === "dark" || stored === "system" ? stored : "light";
 
     setTheme(initialTheme);
     applyTheme(initialTheme);
