@@ -15,4 +15,5 @@ livemopay_energy.csv
 livemopay_capture.log
 supabase/.temp
 *.png
+!public/dashboard-preview.png
 .playwright-mcp/
