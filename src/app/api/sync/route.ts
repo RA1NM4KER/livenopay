@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     }
 
     const message = error instanceof Error ? error.message : "Sync failed.";
+    console.error("livemopay_sync_failed", message);
     await markConnectionSyncOutcome(connectionRow.id, message).catch(() => {});
     return NextResponse.json({ message: "Sync failed." }, { status: 500 });
   }
