@@ -143,7 +143,12 @@ export async function loadEnergyRowsPage(accessToken: string, query: EnergyRowsP
   const [response, bounds, sync] = await Promise.all([
     authenticatedSupabaseResponse(path, accessToken, {
       headers: {
-        Prefer: "count=exact",
+        // count=exact forces a real COUNT(*) over the whole filtered set on
+        // every page request/keystroke -- with accounts now holding tens of
+        // thousands of rows, that alone was enough to hit statement_timeout.
+        // count=planned uses the query planner's estimate instead: cheap,
+        // and accurate enough for pagination totals.
+        Prefer: "count=planned",
         Range: `${offset}-${offset + pageSize - 1}`
       }
     }),
