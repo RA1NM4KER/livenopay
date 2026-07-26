@@ -60,7 +60,7 @@ export function AuthShell({ badge, title, description, children }: AuthShellProp
             src="/dashboard-preview.png"
             alt="A NewinMeter dashboard showing electricity and water spend, usage, and daily cost charts"
             width={2000}
-            height={1097}
+            height={1071}
             unoptimized
             className="block w-full"
           />
