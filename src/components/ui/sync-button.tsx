@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Loader2, RefreshCw } from "lucide-react";
+import { triggerIconToneClass, triggerToneClass, type ControlTone } from "./control-tone";
 
 export type SyncButtonProps = {
   iconOnly?: boolean;
   className?: string;
+  tone?: ControlTone;
   onSuccess?: () => void | Promise<void>;
 };
 
@@ -22,7 +24,7 @@ type PopoverPosition = {
 const popoverWidth = 256;
 const popoverMargin = 12;
 
-export function SyncButton({ iconOnly = false, className, onSuccess }: SyncButtonProps) {
+export function SyncButton({ iconOnly = false, className, tone = "light", onSuccess }: SyncButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [position, setPosition] = useState<PopoverPosition>({ left: popoverMargin, top: popoverMargin });
@@ -114,7 +116,7 @@ export function SyncButton({ iconOnly = false, className, onSuccess }: SyncButto
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-busy={isLoading}
-        className={`inline-flex h-9 items-center gap-2 rounded-md border border-line bg-paper text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`inline-flex h-9 items-center gap-2 rounded-md border text-sm outline-none transition disabled:cursor-not-allowed disabled:opacity-60 ${triggerToneClass(tone)} ${
           iconOnly ? "px-2" : "px-3"
         } ${className ?? ""}`}
         disabled={isLoading}
@@ -122,12 +124,15 @@ export function SyncButton({ iconOnly = false, className, onSuccess }: SyncButto
         type="button"
       >
         {isLoading ? (
-          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin text-muted" />
+          <Loader2 aria-hidden="true" className={`h-4 w-4 animate-spin ${triggerIconToneClass(tone)}`} />
         ) : (
-          <RefreshCw aria-hidden="true" className="h-4 w-4 text-muted" />
+          <RefreshCw aria-hidden="true" className={`h-4 w-4 ${triggerIconToneClass(tone)}`} />
         )}
         {iconOnly ? <span className="sr-only">Sync</span> : <span>Sync</span>}
-        <ChevronDown aria-hidden="true" className={`h-4 w-4 text-muted transition ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown
+          aria-hidden="true"
+          className={`ml-auto h-4 w-4 transition ${triggerIconToneClass(tone)} ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       {isOpen ? (

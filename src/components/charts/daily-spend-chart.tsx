@@ -70,7 +70,8 @@ export function DailySpendChart({ data }: DailyChartProps) {
             type="monotone"
             dataKey="actualSpend"
             stroke={chartColors.spend}
-            fill={chartColors.spendSoft}
+            fill={chartColors.spend}
+            fillOpacity={0.15}
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4, fill: chartColors.spend, stroke: chartColors.paper, strokeWidth: 2 }}

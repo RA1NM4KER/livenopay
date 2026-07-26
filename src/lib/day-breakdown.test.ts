@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGlobalDomains, buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
+import { buildGlobalDomains, buildIntervalPoints, buildStableAxisDomains, roundedCeiling, sumRows } from "@/lib/day-breakdown";
 import type { IntervalRollupRow } from "@/lib/types";
 
 function row(overrides: Partial<IntervalRollupRow>): IntervalRollupRow {
@@ -128,5 +128,17 @@ describe("buildGlobalDomains", () => {
 
   it("defaults water domains to the minimum step when omitted", () => {
     expect(buildGlobalDomains(2, 3)).toEqual({ spend: 2, kwh: 3, waterSpend: 0.1, waterKl: 0.05 });
+  });
+});
+
+describe("roundedCeiling", () => {
+  it("rounds up to the next multiple of step", () => {
+    expect(roundedCeiling(4.3, 0.5)).toBe(4.5);
+    expect(roundedCeiling(4.0, 0.5)).toBe(4);
+  });
+
+  it("never returns less than one step, even for 0 or negative input", () => {
+    expect(roundedCeiling(0, 0.5)).toBe(0.5);
+    expect(roundedCeiling(-3, 0.5)).toBe(0.5);
   });
 });

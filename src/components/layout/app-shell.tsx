@@ -52,7 +52,7 @@ export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps
 
   return (
     <div className="flex h-[100svh] overflow-hidden">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-paper lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col bg-sidebar lg:flex">
         <div className="flex h-16 shrink-0 items-center px-6">
           <Link href="/">
             <Wordmark className="text-2xl" textClassName="text-ink" accentClassName="text-accent" />

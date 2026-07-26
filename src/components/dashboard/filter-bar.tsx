@@ -11,11 +11,12 @@ function IsoDateInput({
   value,
   onChange,
   buttonClassName,
-  loading
-}: IsoDateInputProps & { buttonClassName?: string; loading?: boolean }) {
+  loading,
+  fullWidth
+}: IsoDateInputProps & { buttonClassName?: string; loading?: boolean; fullWidth?: boolean }) {
   return (
-    <label className="relative flex min-w-0">
-      <span className="pointer-events-none absolute left-3 top-0 z-10 -translate-y-1/2 bg-paper px-1 text-[0.6rem] font-medium uppercase tracking-[0.18em] text-muted/80">
+    <label className={`relative flex min-w-0 ${fullWidth ? "w-full" : ""}`}>
+      <span className="pointer-events-none absolute left-3 top-0 z-10 -translate-y-1/2 bg-brandTeal px-1 text-[0.6rem] font-medium uppercase tracking-[0.18em] text-white/80">
         {label}
       </span>
       <DatePicker
@@ -24,6 +25,8 @@ function IsoDateInput({
         onChange={onChange}
         value={value}
         buttonClassName={buttonClassName}
+        tone="dark"
+        fullWidth={fullWidth}
       />
     </label>
   );
@@ -45,6 +48,7 @@ function RangeDropdown({ quickRange, onQuickRange, loading, className }: RangeDr
       onChange={(value) => onQuickRange(value as QuickRangePreset)}
       loading={loading}
       className={className ?? "w-36"}
+      tone="dark"
     />
   );
 }
@@ -59,31 +63,60 @@ function FilterBarContent({
   leftControls,
   extraControls,
   rightControls,
-  rightControlsExpanded = false
+  rightControlsExpanded = false,
+  fullBleed = false,
+  sticky = false
 }: FilterBarProps) {
+  // fullBleed stretches the bar's own bg out to fill the gap above it and
+  // out to the edges of its container (main's px-3/sm:px-6/lg:px-8), via a
+  // negative margin matched by an equal inner padding increase on the sides.
+  // Vertical padding is symmetric (py-6) so the controls sit centered in
+  // the taller bar rather than pinned toward the bottom. Coupled to
+  // app-shell.tsx's <main> padding values by necessity (any full-bleed
+  // breakout has to know what it's breaking out of); only used by the
+  // dashboard's sticky header, not the plain-card usage in the data table.
+  //
+  // `sticky` must live on this SAME element, not a wrapping parent -- a
+  // parent with no padding/border lets this element's negative top margin
+  // collapse into it, and position:sticky's "static position" reference
+  // gets computed inconsistently when margin collapse is involved (visible
+  // as the bar scrolling a bit before it actually catches and sticks).
+  // One element carrying both rules sidesteps the collapse entirely.
+  const containerClassName = fullBleed
+    ? `-mx-3 -mt-6 bg-brandTeal px-6 py-6 sm:-mx-6 sm:px-9 lg:-mx-8 lg:px-11 ${sticky ? "lg:sticky lg:top-0 lg:z-10" : ""}`
+    : "rounded-lg border border-line bg-brandTeal px-3 py-3";
+
   return (
-    <div className="rounded-lg border border-line bg-paper px-3 py-3">
+    <div className={containerClassName}>
       {/* Mobile */}
       <div className="flex flex-col gap-2 sm:hidden">
         <div className="flex items-center gap-2">
-          {leftControls}
+          <div className="min-w-0 flex-1 [&_button]:w-full">{leftControls}</div>
           <div className="min-w-0 flex-1">
             <RangeDropdown quickRange={quickRange} onQuickRange={onQuickRange} loading={loading} className="w-full" />
           </div>
-          <IsoDateInput
-            label="From"
-            value={from}
-            onChange={(value) => onDateChange(value, to)}
-            buttonClassName="h-8 px-2 gap-1.5 text-xs"
-            loading={loading}
-          />
-          <IsoDateInput
-            label="To"
-            value={to}
-            onChange={(value) => onDateChange(from, value)}
-            buttonClassName="h-8 px-2 gap-1.5 text-xs"
-            loading={loading}
-          />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <IsoDateInput
+              label="From"
+              value={from}
+              onChange={(value) => onDateChange(value, to)}
+              buttonClassName="h-8 px-2 gap-1.5 text-xs"
+              loading={loading}
+              fullWidth
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <IsoDateInput
+              label="To"
+              value={to}
+              onChange={(value) => onDateChange(from, value)}
+              buttonClassName="h-8 px-2 gap-1.5 text-xs"
+              loading={loading}
+              fullWidth
+            />
+          </div>
         </div>
         {(extraControls ?? rightControls) ? (
           <div className="flex items-center gap-2">

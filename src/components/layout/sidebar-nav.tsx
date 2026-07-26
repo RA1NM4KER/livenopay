@@ -52,11 +52,17 @@ export function SidebarNav({ isAdmin = false, onNavigate, size = "default" }: Si
             href={href}
             onClick={onNavigate}
             aria-current={isActive ? "page" : undefined}
-            className={`flex items-center rounded-lg transition ${isLarge ? "gap-4 px-4 py-3 text-base" : "gap-3 px-3 py-2 text-sm"} ${
-              isActive ? "bg-accentSoft font-medium text-accent" : "text-muted hover:bg-canvas hover:text-ink"
+            className={`flex items-center rounded-lg transition ${isLarge ? "gap-3 px-3 py-2 text-base" : "gap-2.5 px-2.5 py-1.5 text-sm"} ${
+              isActive ? "bg-paper font-medium text-ink shadow-sm" : "text-muted hover:bg-paper/60 hover:text-ink"
             }`}
           >
-            <Icon className={isLarge ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" />
+            <span
+              className={`flex shrink-0 items-center justify-center rounded-full transition ${isLarge ? "h-9 w-9" : "h-7 w-7"} ${
+                isActive ? "bg-brandTeal text-white" : "text-muted"
+              }`}
+            >
+              <Icon className={isLarge ? "h-5 w-5" : "h-4 w-4"} aria-hidden="true" />
+            </span>
             {item.label}
           </Link>
         );

@@ -16,6 +16,5 @@ export const chartColors = {
   paper: "rgb(var(--color-paper))",
   projection: "rgb(var(--color-projection))",
   spend: "rgb(var(--color-spend))",
-  spendSoft: "rgb(var(--color-accent-soft))",
   usage: "rgb(var(--color-usage))"
 };

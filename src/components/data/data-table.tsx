@@ -277,15 +277,16 @@ export function DataTable() {
       onChange={(value) => onChargeTypeChange(value as ChargeTypeFilter)}
       loading={isChargeTypePending}
       className="w-32"
+      tone="dark"
     />
   );
 
   const searchFilterControl = (
     <div className="relative w-full sm:w-52">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/70" />
       <input
         aria-label="Search rows"
-        className="h-9 w-full rounded-md border border-line bg-paper pl-9 pr-3 text-sm text-ink outline-none focus:border-accent"
+        className="h-9 w-full rounded-md border border-white/15 bg-white/10 pl-9 pr-3 text-sm text-white placeholder:text-white/50 outline-none focus:border-white/40"
         value={searchInput}
         onBlur={(event) => {
           if (searchDebounceRef.current) {
@@ -372,12 +373,13 @@ export function DataTable() {
             <DataExportAction iconOnly={false} />
           </div>
         }
+        fullBleed
       />
 
       <Card className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
-            <thead className="sticky top-0 z-10 border-b border-line bg-canvas text-xs uppercase tracking-[0.16em] text-muted shadow-[0_1px_0_rgb(var(--color-line))]">
+            <thead className="sticky top-0 z-10 border-b border-line bg-accentSoft text-xs uppercase tracking-[0.16em] text-brandTeal dark:text-accent shadow-[0_1px_0_rgb(var(--color-line))]">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {

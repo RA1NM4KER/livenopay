@@ -69,19 +69,19 @@ export function DashboardShell({ dailyRows, hourlyRows, summary, isAiAssistantEn
 
   return (
     <div className="flex flex-1 flex-col gap-5 py-6">
-      <div className="lg:sticky lg:top-0 lg:z-10 lg:-mt-6 lg:bg-canvas lg:pt-6">
-        <FilterBar
-          from={from}
-          to={to}
-          quickRange={quickRange}
-          onDateChange={onDateChange}
-          onQuickRange={onQuickRange}
-          loading={isPending}
-          leftControls={<DataSyncAction />}
-          rightControls={isAiAssistantEnabled ? <AssistantPanel from={from} to={to} compact /> : undefined}
-          rightControlsExpanded
-        />
-      </div>
+      <FilterBar
+        from={from}
+        to={to}
+        quickRange={quickRange}
+        onDateChange={onDateChange}
+        onQuickRange={onQuickRange}
+        loading={isPending}
+        leftControls={<DataSyncAction />}
+        rightControls={isAiAssistantEnabled ? <AssistantPanel from={from} to={to} compact /> : undefined}
+        rightControlsExpanded
+        fullBleed
+        sticky
+      />
 
       <div className="relative">
         <section

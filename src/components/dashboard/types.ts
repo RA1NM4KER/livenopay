@@ -30,4 +30,6 @@ export type FilterBarProps = {
   extraControls?: ReactNode;
   rightControls?: ReactNode;
   rightControlsExpanded?: boolean;
+  fullBleed?: boolean;
+  sticky?: boolean;
 };

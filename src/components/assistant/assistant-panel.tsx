@@ -96,30 +96,40 @@ export function AssistantPanel({ from, to, compact = false }: AssistantPanelProp
         }}
         type="button"
       >
-        <div className="absolute inset-0 rounded-[inherit] border border-line bg-paper transition duration-200 group-hover:border-accent/35 group-hover:bg-canvas/40" />
-        <BorderBeam
-          borderWidth={1}
-          colorFrom="rgba(0, 128, 82, 0)"
-          colorTo="rgba(0, 128, 82, 0.62)"
-          duration={7.6}
-          size={24}
+        <div
+          className={
+            compact
+              ? "absolute inset-0 rounded-[inherit] border border-white/15 bg-white/10 transition duration-200 group-hover:border-white/30 group-hover:bg-white/15"
+              : "absolute inset-0 rounded-[inherit] border border-line bg-paper transition duration-200 group-hover:border-accent/35 group-hover:bg-canvas/40"
+          }
         />
-        <div className={`relative flex items-center text-muted ${compact ? "gap-2 text-sm" : "gap-3 text-sm"}`}>
+        <BorderBeam
+          borderWidth={1.5}
+          colorFrom="rgba(0, 255, 155, 0)"
+          colorTo="rgba(0, 255, 155, 0.95)"
+          duration={8.5}
+          size={300}
+        />
+        <div
+          className={`relative flex items-center ${compact ? "text-white/80" : "text-muted"} ${compact ? "gap-2 text-sm" : "gap-3 text-sm"}`}
+        >
           <div
-            className={`shrink-0 rounded-full bg-paper/90 ring-1 ring-accent/15 transition group-hover:ring-accent/30 ${
-              compact ? "flex h-5 w-5 items-center justify-center" : "flex h-8 w-8 items-center justify-center"
-            }`}
+            className={`shrink-0 rounded-full ring-1 transition ${
+              compact
+                ? "bg-white/15 ring-white/20 group-hover:ring-white/35"
+                : "bg-paper/90 ring-accent/15 group-hover:ring-accent/30"
+            } ${compact ? "flex h-5 w-5 items-center justify-center" : "flex h-8 w-8 items-center justify-center"}`}
           >
-            <Sparkles className={`${compact ? "h-3 w-3" : "h-4 w-4"} text-accent`} />
+            <Sparkles className={`${compact ? "h-3 w-3" : "h-4 w-4"} text-brandGreen`} />
           </div>
-          <span className={`min-w-0 flex-1 truncate text-ink/80 ${compact ? "pr-2 text-sm" : ""}`}>
+          <span className={`min-w-0 flex-1 truncate ${compact ? "text-white/80" : "text-ink/80"} ${compact ? "pr-2 text-sm" : ""}`}>
             {compact
               ? "Ask your energy assistant..."
               : conversation.length
                 ? "Continue the conversation about your usage and spend..."
                 : "Ask about spend, usage, top-ups, spikes, or comparisons..."}
           </span>
-          {compact ? <ArrowUpRight className="ml-auto h-3.5 w-3.5 shrink-0 text-muted/80" /> : null}
+          {compact ? <ArrowUpRight className="ml-auto h-3.5 w-3.5 shrink-0 text-white/70" /> : null}
         </div>
       </button>
 

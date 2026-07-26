@@ -6,18 +6,20 @@
   color-scheme: light;
   --color-canvas: 246 246 246;
   --color-paper: 255 255 255;
+  --color-sidebar: 219 222 226;
   --color-ink: 24 24 24;
   --color-muted: 108 108 108;
-  --color-line: 224 224 224;
-  --color-accent: 0 128 82;
+  --color-line: 234 235 236;
+  --color-accent: 76 201 142;
   --color-accent-soft: 214 250 231;
   --color-amber-soft: 254 243 219;
   --color-rose-soft: 252 232 231;
   --color-success: 34 139 58;
-  --color-fixed: 56 130 200;
+  --color-fixed: 20 140 158;
   --color-projection: 143 118 105;
-  --color-spend: 0 128 82;
-  --color-usage: 99 120 145;
+  --color-spend: 1 99 113;
+  --color-usage: 76 201 142;
+  --color-brand-teal: 1 99 113;
   /* Fixed (theme-independent) brand green for the signed-out auth pages,
      whose background is permanently dark regardless of the app's own
      light/dark toggle. --color-accent above flips with the toggle instead,
@@ -31,18 +33,20 @@
   color-scheme: dark;
   --color-canvas: 18 18 18;
   --color-paper: 26 26 26;
+  --color-sidebar: 10 10 10;
   --color-ink: 238 238 238;
   --color-muted: 156 156 156;
-  --color-line: 46 46 46;
-  --color-accent: 0 224 140;
+  --color-line: 36 36 36;
+  --color-accent: 70 224 148;
   --color-accent-soft: 8 46 33;
   --color-amber-soft: 66 54 28;
   --color-rose-soft: 60 24 22;
   --color-success: 74 176 100;
-  --color-fixed: 90 158 220;
+  --color-fixed: 70 190 205;
   --color-projection: 180 151 135;
-  --color-spend: 0 224 140;
-  --color-usage: 99 140 180;
+  --color-spend: 45 168 178;
+  --color-usage: 70 224 148;
+  --color-brand-teal: 1 99 113;
   --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.35);
 }
 

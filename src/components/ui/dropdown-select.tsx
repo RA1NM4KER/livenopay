@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { triggerIconToneClass, triggerToneClass, type ControlTone } from "./control-tone";
 
 export type DropdownOption = {
   label: string;
@@ -21,6 +22,7 @@ type DropdownSelectProps = {
   menuPlacement?: "bottom" | "top";
   hideLabelOnMobile?: boolean;
   loading?: boolean;
+  tone?: ControlTone;
 };
 
 type MenuPosition = {
@@ -39,7 +41,8 @@ export function DropdownSelect({
   className = "w-36",
   menuPlacement = "bottom",
   hideLabelOnMobile = false,
-  loading = false
+  loading = false,
+  tone = "light"
 }: DropdownSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState<MenuPosition>({ left: 0, width: 0 });
@@ -101,7 +104,7 @@ export function DropdownSelect({
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
-        className={`inline-flex h-9 items-center ${layoutClassName} rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent ${className}`}
+        className={`inline-flex h-9 items-center ${layoutClassName} rounded-md border px-3 text-sm outline-none transition ${triggerToneClass(tone)} ${className}`}
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
@@ -110,11 +113,11 @@ export function DropdownSelect({
           <span className={triggerLabelClassName}>{activeLabel}</span>
         </span>
         {loading ? (
-          <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin text-muted" />
+          <Loader2 aria-hidden="true" className={`h-4 w-4 shrink-0 animate-spin ${triggerIconToneClass(tone)}`} />
         ) : (
           <ChevronDown
             aria-hidden="true"
-            className={`h-4 w-4 shrink-0 text-muted transition ${isOpen ? "rotate-180" : ""}`}
+            className={`h-4 w-4 shrink-0 transition ${triggerIconToneClass(tone)} ${isOpen ? "rotate-180" : ""}`}
           />
         )}
       </button>

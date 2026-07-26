@@ -13,14 +13,14 @@ const toneStyles = {
 
 const valueToneStyles = {
   neutral: "",
-  good: "text-green-700 dark:text-green-400",
+  good: "text-accent",
   watch: "text-amber-700 dark:text-amber-400",
   danger: "text-red-700 dark:text-red-400"
 } as const;
 
 const comparisonToneStyles = {
   neutral: "text-muted",
-  good: "text-green-700 dark:text-green-400",
+  good: "text-accent",
   watch: "text-amber-700 dark:text-amber-400",
   danger: "text-red-700 dark:text-red-400"
 } as const;

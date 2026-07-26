@@ -12,6 +12,7 @@ const config: Config = {
       colors: {
         canvas: "rgb(var(--color-canvas) / <alpha-value>)",
         paper: "rgb(var(--color-paper) / <alpha-value>)",
+        sidebar: "rgb(var(--color-sidebar) / <alpha-value>)",
         ink: "rgb(var(--color-ink) / <alpha-value>)",
         muted: "rgb(var(--color-muted) / <alpha-value>)",
         line: "rgb(var(--color-line) / <alpha-value>)",
@@ -24,7 +25,8 @@ const config: Config = {
         projection: "rgb(var(--color-projection) / <alpha-value>)",
         spend: "rgb(var(--color-spend) / <alpha-value>)",
         usage: "rgb(var(--color-usage) / <alpha-value>)",
-        brandGreen: "rgb(var(--color-brand-green) / <alpha-value>)"
+        brandGreen: "rgb(var(--color-brand-green) / <alpha-value>)",
+        brandTeal: "rgb(var(--color-brand-teal) / <alpha-value>)"
       },
       boxShadow: {
         soft: "var(--shadow-soft)"

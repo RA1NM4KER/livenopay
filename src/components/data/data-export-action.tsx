@@ -10,6 +10,9 @@ type DataExportActionProps = {
 export function DataExportAction({ iconOnly = true }: DataExportActionProps) {
   const { from, to, chargeType, searchQuery, sortKey, sortDirection } = useDataTableUrlState();
 
+  // Always rendered inside the filter bar's rightControls, so it always
+  // sits on the bar's dark teal background -- no other caller in this
+  // codebase.
   return (
     <ExportButton
       from={from || undefined}
@@ -19,6 +22,7 @@ export function DataExportAction({ iconOnly = true }: DataExportActionProps) {
       sort={sortKey !== "captured" ? sortKey : undefined}
       dir={sortDirection !== "desc" ? sortDirection : undefined}
       iconOnly={iconOnly}
+      tone="dark"
     />
   );
 }

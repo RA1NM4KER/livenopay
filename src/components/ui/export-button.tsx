@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, FileDown } from "lucide-react";
+import { triggerIconToneClass, triggerToneClass, type ControlTone } from "./control-tone";
 
 export type ExportButtonProps = {
   from?: string;
@@ -12,6 +13,7 @@ export type ExportButtonProps = {
   dir?: string;
   iconOnly?: boolean;
   className?: string;
+  tone?: ControlTone;
 };
 
 const formats = [
@@ -27,7 +29,8 @@ export function ExportButton({
   sort,
   dir,
   iconOnly = false,
-  className
+  className,
+  tone = "light"
 }: ExportButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -58,15 +61,18 @@ export function ExportButton({
       <button
         aria-expanded={isOpen}
         aria-haspopup="listbox"
-        className={`inline-flex h-9 items-center gap-2 rounded-md border border-line bg-paper text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`inline-flex h-9 items-center gap-2 rounded-md border text-sm outline-none transition disabled:cursor-not-allowed disabled:opacity-60 ${triggerToneClass(tone)} ${
           iconOnly ? "px-2" : "px-3"
         } ${className ?? ""}`}
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >
-        <FileDown aria-hidden="true" className="h-4 w-4 text-muted" />
+        <FileDown aria-hidden="true" className={`h-4 w-4 ${triggerIconToneClass(tone)}`} />
         {iconOnly ? <span className="sr-only">Export</span> : <span>Export</span>}
-        <ChevronDown aria-hidden="true" className={`h-4 w-4 text-muted transition ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown
+          aria-hidden="true"
+          className={`h-4 w-4 transition ${triggerIconToneClass(tone)} ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       {isOpen ? (

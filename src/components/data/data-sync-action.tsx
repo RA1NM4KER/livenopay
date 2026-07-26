@@ -11,5 +11,7 @@ export function DataSyncAction({ iconOnly = false }: DataSyncActionProps) {
     window.location.reload();
   };
 
-  return <SyncButton iconOnly={iconOnly} onSuccess={handleSyncSuccess} />;
+  // Always rendered as the filter bar's leftControls, so it always sits on
+  // the bar's dark teal background -- no other caller in this codebase.
+  return <SyncButton iconOnly={iconOnly} onSuccess={handleSyncSuccess} tone="dark" />;
 }

@@ -11,19 +11,19 @@ export default function DashboardLoading() {
 
   return (
     <div className="flex flex-1 flex-col gap-5 py-6">
-      <div className="lg:sticky lg:top-0 lg:z-10 lg:-mt-6 lg:bg-canvas lg:pt-6">
-        <FilterBar
-          from={from}
-          to={to}
-          quickRange={quickRange}
-          onDateChange={onDateChange}
-          onQuickRange={onQuickRange}
-          loading={isPending}
-          leftControls={<DataSyncAction />}
-          rightControls={<AssistantPanel from={from} to={to} compact />}
-          rightControlsExpanded
-        />
-      </div>
+      <FilterBar
+        from={from}
+        to={to}
+        quickRange={quickRange}
+        onDateChange={onDateChange}
+        onQuickRange={onQuickRange}
+        loading={isPending}
+        leftControls={<DataSyncAction />}
+        rightControls={<AssistantPanel from={from} to={to} compact />}
+        rightControlsExpanded
+        fullBleed
+        sticky
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {Array.from({ length: 10 }, (_, index) => (

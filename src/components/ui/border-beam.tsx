@@ -85,7 +85,10 @@ export function BorderBeam({
       setPath(nextPath);
       setViewBox(nextViewBox);
       setPathLength(nextPathLength);
-      setBeamLength(Math.min(size, Math.max(20, nextPathLength * 0.14)));
+      // `size` is the caller's requested beam length; only ever clamped down
+      // to fit the actual perimeter (with a small gap so the dash pattern
+      // never fully closes into a solid ring).
+      setBeamLength(Math.min(size, Math.max(20, nextPathLength - 8)));
       setBeamGlowWidth(Math.max(3.2, borderWidth * 2.2));
     };
 
@@ -109,8 +112,7 @@ export function BorderBeam({
         >
           <defs>
             <linearGradient id={gradientId} x1="0%" x2="100%" y1="0%" y2="0%">
-              <stop offset="0%" stopColor={colorFrom} />
-              <stop offset="50%" stopColor={colorTo} />
+              <stop offset="0%" stopColor={colorTo} />
               <stop offset="100%" stopColor={colorFrom} />
             </linearGradient>
             <filter id={glowId} x="-200%" y="-200%" width="400%" height="400%">

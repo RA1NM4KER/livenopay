@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { DayPicker, type ClassNames } from "react-day-picker";
+import { triggerIconToneClass, triggerToneClass, type ControlTone } from "./control-tone";
 
 const calendarClassNames = {
   root: "text-sm text-ink",
@@ -39,6 +40,8 @@ export type DatePickerProps = {
   onChange(date: string): void;
   selectableDates?: Set<string>;
   value: string;
+  tone?: ControlTone;
+  fullWidth?: boolean;
 };
 
 type PopoverPosition = {
@@ -71,7 +74,9 @@ export function DatePicker({
   min,
   onChange,
   selectableDates,
-  value
+  value,
+  tone = "light",
+  fullWidth = false
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState<PopoverPosition>({ left: popoverMargin, top: popoverMargin });
@@ -145,12 +150,12 @@ export function DatePicker({
   }, [selectedDate]);
 
   return (
-    <div className="relative w-auto" ref={containerRef}>
+    <div className={`relative ${fullWidth ? "w-full" : "w-auto"}`} ref={containerRef}>
       <button
         aria-expanded={isOpen}
         aria-haspopup="dialog"
         aria-label={label}
-        className={`flex h-9 w-auto items-center justify-between gap-3 whitespace-nowrap rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none transition hover:bg-canvas focus:border-accent${buttonClassName ? ` ${buttonClassName}` : ""}`}
+        className={`flex h-9 ${fullWidth ? "w-full" : "w-auto"} items-center justify-between gap-3 whitespace-nowrap rounded-md border px-3 text-sm outline-none transition ${triggerToneClass(tone)}${buttonClassName ? ` ${buttonClassName}` : ""}`}
         onClick={() => {
           setIsOpen((current) => !current);
         }}
@@ -158,11 +163,11 @@ export function DatePicker({
       >
         <span>{value}</span>
         {loading ? (
-          <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin text-muted" />
+          <Loader2 aria-hidden="true" className={`h-4 w-4 shrink-0 animate-spin ${triggerIconToneClass(tone)}`} />
         ) : (
           <svg
             aria-hidden="true"
-            className="h-4 w-4 text-muted"
+            className={`h-4 w-4 ${triggerIconToneClass(tone)}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="1.8"
