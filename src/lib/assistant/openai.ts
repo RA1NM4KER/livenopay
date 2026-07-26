@@ -1,6 +1,7 @@
 import { buildAssistantSystemPrompt } from "./system-prompt";
 import type { AssistantConversationMessage, AssistantScope } from "./types";
 import { createAssistantToolbox } from "./tools/index";
+import { getOpenAiApiKey, getOpenAiModel } from "@/lib/env";
 
 type ChatMessage =
   | { role: "system" | "user"; content: string }
@@ -35,14 +36,13 @@ type ChatCompletionResponse = {
 };
 
 function openAiConfig() {
-  const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+  const apiKey = getOpenAiApiKey();
 
   if (!apiKey) {
     throw new Error("Missing OPENAI_API_KEY for assistant access.");
   }
 
-  return { apiKey, model };
+  return { apiKey, model: getOpenAiModel() };
 }
 
 async function callChatCompletions(messages: ChatMessage[], tools: ReturnType<typeof createAssistantToolbox>["tools"]) {
@@ -71,11 +71,12 @@ async function callChatCompletions(messages: ChatMessage[], tools: ReturnType<ty
 }
 
 export async function answerAssistantQuestion(
+  accessToken: string,
   question: string,
   scope: AssistantScope,
   history: AssistantConversationMessage[] = []
 ) {
-  const toolbox = createAssistantToolbox(scope);
+  const toolbox = createAssistantToolbox(accessToken, scope);
   const messages: ChatMessage[] = [
     {
       role: "system",

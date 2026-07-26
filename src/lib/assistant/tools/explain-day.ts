@@ -24,7 +24,7 @@ export const explainDayTool: AssistantTool = {
       };
     }
 
-    const intervals = await loadDayIntervalRollups(date);
+    const intervals = await loadDayIntervalRollups(context.accessToken, date);
     const topSpendIntervals = intervals
       .slice()
       .sort((left, right) => right.spend - left.spend)

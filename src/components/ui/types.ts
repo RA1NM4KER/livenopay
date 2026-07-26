@@ -15,6 +15,7 @@ export type MetricCardProps = {
   label: string;
   value: string;
   detail?: string;
+  description?: string;
   tone?: "neutral" | "good" | "watch" | "danger";
   comparison?: {
     text: string;

@@ -23,7 +23,8 @@ const config: Config = {
         fixed: "rgb(var(--color-fixed) / <alpha-value>)",
         projection: "rgb(var(--color-projection) / <alpha-value>)",
         spend: "rgb(var(--color-spend) / <alpha-value>)",
-        usage: "rgb(var(--color-usage) / <alpha-value>)"
+        usage: "rgb(var(--color-usage) / <alpha-value>)",
+        brandGreen: "rgb(var(--color-brand-green) / <alpha-value>)"
       },
       boxShadow: {
         soft: "var(--shadow-soft)"

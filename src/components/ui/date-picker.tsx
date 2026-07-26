@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { DayPicker, type ClassNames } from "react-day-picker";
 
 const calendarClassNames = {
@@ -32,6 +33,7 @@ export type DatePickerProps = {
   buttonClassName?: string;
   closeOnSelect?: boolean;
   label?: string;
+  loading?: boolean;
   max?: string;
   min?: string;
   onChange(date: string): void;
@@ -64,6 +66,7 @@ export function DatePicker({
   buttonClassName,
   closeOnSelect = true,
   label,
+  loading = false,
   max,
   min,
   onChange,
@@ -154,19 +157,23 @@ export function DatePicker({
         type="button"
       >
         <span>{value}</span>
-        <svg
-          aria-hidden="true"
-          className="h-4 w-4 text-muted"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          viewBox="0 0 24 24"
-        >
-          <path d="M8 2v4" />
-          <path d="M16 2v4" />
-          <rect height="18" rx="2" width="18" x="3" y="4" />
-          <path d="M3 10h18" />
-        </svg>
+        {loading ? (
+          <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin text-muted" />
+        ) : (
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4 text-muted"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            viewBox="0 0 24 24"
+          >
+            <path d="M8 2v4" />
+            <path d="M16 2v4" />
+            <rect height="18" rx="2" width="18" x="3" y="4" />
+            <path d="M3 10h18" />
+          </svg>
+        )}
       </button>
       {isOpen ? (
         <div

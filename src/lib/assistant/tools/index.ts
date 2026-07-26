@@ -19,21 +19,22 @@ function pickScope(summary: DashboardSummary, scope: AssistantScope) {
   };
 }
 
-export function createAssistantToolbox(scope: AssistantScope) {
+export function createAssistantToolbox(accessToken: string, scope: AssistantScope) {
   let contextPromise: Promise<DashboardContext> | null = null;
 
   async function getContext() {
     if (!contextPromise) {
       contextPromise = (async () => {
         const [summary, dailyRows, hourlyRows] = await Promise.all([
-          loadDashboardSummary(),
-          loadDashboardDailyRollups(),
-          loadDashboardHourlyRollups()
+          loadDashboardSummary(accessToken),
+          loadDashboardDailyRollups(accessToken),
+          loadDashboardHourlyRollups(accessToken)
         ]);
         const resolvedScope = pickScope(summary, scope);
         const analytics = createAnalytics(dailyRows, hourlyRows, resolvedScope.from, resolvedScope.to);
 
         return {
+          accessToken,
           summary,
           dailyRows,
           hourlyRows,

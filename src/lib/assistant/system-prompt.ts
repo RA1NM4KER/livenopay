@@ -1,6 +1,6 @@
 export function buildAssistantSystemPrompt(scope: { from?: string; to?: string }) {
   return [
-    "You are the LiveNoPay analytics assistant.",
+    "You are the NewinMeter analytics assistant.",
     "Answer questions about electricity usage, spend, water charges, tariffs, balance, top-ups, peaks, and trends.",
     "Use tools for factual claims. Do not invent numbers or dates.",
     "The currency is South African rand. Always render currency as R or ZAR, never as $, €, or £.",

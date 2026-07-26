@@ -99,8 +99,8 @@ export function AssistantPanel({ from, to, compact = false }: AssistantPanelProp
         <div className="absolute inset-0 rounded-[inherit] border border-line bg-paper transition duration-200 group-hover:border-accent/35 group-hover:bg-canvas/40" />
         <BorderBeam
           borderWidth={1}
-          colorFrom="rgba(226, 74, 67, 0)"
-          colorTo="rgba(226, 74, 67, 0.62)"
+          colorFrom="rgba(0, 128, 82, 0)"
+          colorTo="rgba(0, 128, 82, 0.62)"
           duration={7.6}
           size={24}
         />
@@ -185,7 +185,7 @@ export function AssistantPanel({ from, to, compact = false }: AssistantPanelProp
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <label className="flex-1">
-                <span className="sr-only">Ask the LiveNoPay assistant</span>
+                <span className="sr-only">Ask the NewinMeter assistant</span>
                 <input
                   ref={dialogInputRef}
                   className="h-11 w-full rounded-md border border-line bg-paper px-4 text-sm text-ink outline-none transition focus:border-accent"

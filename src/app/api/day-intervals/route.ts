@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
 import { loadDayIntervalRollups } from "@/lib/dashboard-data";
+import { requireConnectedSession } from "@/lib/auth/session";
 import { enforceRateLimit, getRateLimitIdentifier, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const auth = await requireConnectedSession();
+  if (!auth.ok) {
+    return NextResponse.json(
+      { message: auth.status === 401 ? "Authentication required." : "Connect a LiveMopay account first." },
+      { status: auth.status }
+    );
+  }
+
   try {
-    const identifier = getRateLimitIdentifier(request, "day-intervals");
+    const identifier = getRateLimitIdentifier(auth.session.userId, "day-intervals");
     const rateLimit = await enforceRateLimit(identifier);
     const rateHeaders = rateLimitHeaders(rateLimit);
 
@@ -27,7 +36,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const rows = await loadDayIntervalRollups(periodDate);
+    const rows = await loadDayIntervalRollups(auth.session.accessToken, periodDate);
     return NextResponse.json({ rows }, { headers: rateHeaders });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load day intervals.";

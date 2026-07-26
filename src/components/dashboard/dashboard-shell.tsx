@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { AssistantPanel } from "@/components/assistant/assistant-panel";
+import { DataSyncAction } from "@/components/data/data-sync-action";
 import { CumulativeSpendChart } from "@/components/charts/cumulative-spend-chart";
 import { DayBreakdownChart } from "@/components/charts/day-breakdown-chart";
 import { DailyKwhChart } from "@/components/charts/daily-kwh-chart";
@@ -18,8 +19,8 @@ import { Insights } from "./insights";
 import { buildMetricCards } from "./metric-cards";
 import type { DashboardShellProps } from "./types";
 
-export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShellProps) {
-  const { from, to, quickRange, onDateChange, onQuickRange } = useFilterUrlState({
+export function DashboardShell({ dailyRows, hourlyRows, summary, isAiAssistantEnabled = true }: DashboardShellProps) {
+  const { from, to, quickRange, isPending, onDateChange, onQuickRange } = useFilterUrlState({
     from: summary.dateStart,
     to: summary.dateEnd
   });
@@ -64,21 +65,19 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
 
   return (
     <div className="flex flex-1 flex-col gap-5 py-6">
-      <div className="hidden flex-wrap items-center justify-between gap-4 sm:flex">
-        <h2 className="hidden text-2xl font-semibold tracking-tight text-ink sm:block sm:text-3xl">
-          A clearer view of your LiveMopay usage and spend.
-        </h2>
+      <div className="lg:sticky lg:top-0 lg:z-10 lg:-mt-6 lg:bg-canvas lg:pt-6">
+        <FilterBar
+          from={from}
+          to={to}
+          quickRange={quickRange}
+          onDateChange={onDateChange}
+          onQuickRange={onQuickRange}
+          loading={isPending}
+          leftControls={<DataSyncAction />}
+          rightControls={isAiAssistantEnabled ? <AssistantPanel from={from} to={to} compact /> : undefined}
+          rightControlsExpanded
+        />
       </div>
-
-      <FilterBar
-        from={from}
-        to={to}
-        quickRange={quickRange}
-        onDateChange={onDateChange}
-        onQuickRange={onQuickRange}
-        rightControls={<AssistantPanel from={from} to={to} compact />}
-        rightControlsExpanded
-      />
 
       <section className="snap-rail touch-pan-x touch-pan-y flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 xl:grid-cols-5 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0">
         {metricCards.map((card) => (
@@ -87,6 +86,7 @@ export function DashboardShell({ dailyRows, hourlyRows, summary }: DashboardShel
             label={card.label}
             value={card.value}
             detail={card.detail}
+            description={card.description}
             tone={card.tone}
             comparison={card.comparison}
           />

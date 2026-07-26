@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 export type AppShellProps = {
   children: ReactNode;
-  mobileHeaderActions?: ReactNode;
-  lockViewport?: boolean;
+  userEmail?: string | null;
+  isAdmin?: boolean;
 };
 
 export type ThemeChoice = "system" | "light" | "dark";

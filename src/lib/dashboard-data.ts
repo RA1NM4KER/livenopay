@@ -1,13 +1,21 @@
+import "server-only";
+
 import type { DashboardSummary, DailyRollupRow, HourlyRollupRow, IntervalRollupRow } from "./types";
-import { supabaseFetch, supabaseFetchAllPages } from "./supabase-rest";
+import { authenticatedSupabaseFetch, authenticatedSupabaseFetchAllPages } from "./supabase-rest";
 
 function toNumber(value: unknown) {
   const numeric = Number(value ?? 0);
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
-export async function loadDashboardSummary(): Promise<DashboardSummary> {
-  const rows = await supabaseFetch<
+// No connection_id filter in any of these queries: RLS scopes every read to
+// the caller's own connection via the forwarded access token (see
+// supabase-rest.ts's authenticatedSupabase* helpers and the
+// owns_livemopay_connection() policies), and this MVP has at most one
+// connected connection per user, so "my rows" and "all rows visible to me"
+// are the same set.
+export async function loadDashboardSummary(accessToken: string): Promise<DashboardSummary> {
+  const rows = await authenticatedSupabaseFetch<
     Array<{
       date_start: string | null;
       date_end: string | null;
@@ -22,7 +30,8 @@ export async function loadDashboardSummary(): Promise<DashboardSummary> {
       max_water_interval_kl: number | string | null;
     }>
   >(
-    "/dashboard_summary?select=date_start,date_end,latest_balance,latest_period,last_synced_at,rows_in_csv,rows_synced,max_interval_spend,max_interval_kwh,max_water_interval_spend,max_water_interval_kl&id=eq.1&limit=1"
+    "/dashboard_summary?select=date_start,date_end,latest_balance,latest_period,last_synced_at,rows_in_csv,rows_synced,max_interval_spend,max_interval_kwh,max_water_interval_spend,max_water_interval_kl&limit=1",
+    accessToken
   );
 
   const row = rows[0];
@@ -55,8 +64,8 @@ export async function loadDashboardSummary(): Promise<DashboardSummary> {
   };
 }
 
-export async function loadDashboardDailyRollups(): Promise<DailyRollupRow[]> {
-  const rows = await supabaseFetchAllPages<{
+export async function loadDashboardDailyRollups(accessToken: string): Promise<DailyRollupRow[]> {
+  const rows = await authenticatedSupabaseFetchAllPages<{
     period_date: string;
     energy_spend: number | string;
     water_spend: number | string;
@@ -74,7 +83,8 @@ export async function loadDashboardDailyRollups(): Promise<DailyRollupRow[]> {
     water_intervals: number | string;
     is_complete: boolean;
   }>(
-    "/energy_day_rollups?select=period_date,energy_spend,water_spend,fixed_spend,topup_amount,total_spend,energy_kwh,water_kl,weighted_tariff,peak_tariff,all_in_rate,balance_end,latest_period,energy_intervals,water_intervals,is_complete&order=period_date.asc"
+    "/energy_day_rollups?select=period_date,energy_spend,water_spend,fixed_spend,topup_amount,total_spend,energy_kwh,water_kl,weighted_tariff,peak_tariff,all_in_rate,balance_end,latest_period,energy_intervals,water_intervals,is_complete&order=period_date.asc",
+    accessToken
   );
 
   return rows.map((row) => ({
@@ -97,8 +107,8 @@ export async function loadDashboardDailyRollups(): Promise<DailyRollupRow[]> {
   }));
 }
 
-export async function loadDashboardHourlyRollups(): Promise<HourlyRollupRow[]> {
-  const rows = await supabaseFetchAllPages<{
+export async function loadDashboardHourlyRollups(accessToken: string): Promise<HourlyRollupRow[]> {
+  const rows = await authenticatedSupabaseFetchAllPages<{
     period_date: string;
     hour: number | string;
     spend: number | string;
@@ -108,7 +118,8 @@ export async function loadDashboardHourlyRollups(): Promise<HourlyRollupRow[]> {
     intervals: number | string;
     water_intervals: number | string;
   }>(
-    "/energy_hourly_rollups?select=period_date,hour,spend,kwh,water_spend,water_kl,intervals,water_intervals&order=period_date.asc,hour.asc"
+    "/energy_hourly_rollups?select=period_date,hour,spend,kwh,water_spend,water_kl,intervals,water_intervals&order=period_date.asc,hour.asc",
+    accessToken
   );
 
   return rows.map((row) => ({
@@ -123,8 +134,8 @@ export async function loadDashboardHourlyRollups(): Promise<HourlyRollupRow[]> {
   }));
 }
 
-export async function loadDayIntervalRollups(periodDate: string): Promise<IntervalRollupRow[]> {
-  const rows = await supabaseFetch<
+export async function loadDayIntervalRollups(accessToken: string, periodDate: string): Promise<IntervalRollupRow[]> {
+  const rows = await authenticatedSupabaseFetch<
     Array<{
       period_date: string;
       period_time: string;
@@ -134,7 +145,8 @@ export async function loadDayIntervalRollups(periodDate: string): Promise<Interv
       water_kl: number | string;
     }>
   >(
-    `/energy_interval_rollups?select=period_date,period_time,spend,kwh,water_spend,water_kl&period_date=eq.${encodeURIComponent(periodDate)}&order=period_time.asc`
+    `/energy_interval_rollups?select=period_date,period_time,spend,kwh,water_spend,water_kl&period_date=eq.${encodeURIComponent(periodDate)}&order=period_time.asc`,
+    accessToken
   );
 
   return rows.map((row) => ({

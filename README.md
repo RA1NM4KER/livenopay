@@ -1,261 +1,97 @@
-# Electricity Ledger
+# NewinMeter
 
-**Your power. Your data. Your rules.**
+**Your usage. Finally clear.**
 
-LiveMopay currently doesn't let you download your data. If you want to understand your usage over time — spot trends, track tariff changes, see which days cost the most — you're stuck squinting at charts that barely work on mobile.
+LiveMopay doesn't let you download your data. NewinMeter pulls your ledger history from
+LiveMopay's web API, syncs it to Supabase, and gives you a proper dashboard: usage, spend,
+balance, fixed charges, water, tariff changes, 30-minute interval breakdowns, and raw transaction
+history.
 
-This project now pulls ledger history from LiveMopay's web app API, syncs the rows to Supabase, and gives you a proper dashboard: usage, spend, balance, fixed charges, tariff changes, 30-minute interval breakdowns, and raw transaction history — going back as far as you've been syncing.
+Built for the Newinbosch community. NewinMeter is an independent project, not affiliated with
+Newinbosch HOA, Livewire, or LiveMopay.
 
-The original Android/ADB capture path is still in the repo and still works, but it is no longer the recommended setup out of the box.
+NewinMeter is a **multi-user MVP**. Each person signs up with Supabase Auth, connects their own
+LiveMopay account with their own email and password, and sees only their own data. It is not a
+finished, fully production-hardened product -- see "Known limitations" in `MULTI_USER_SETUP.md`.
 
-It also includes an in-app assistant on the dashboard that can answer grounded questions about the currently selected date range: comparisons, top usage periods, top-up activity, spikes, and balance patterns.
+It also includes an in-app assistant that answers grounded questions about the currently selected
+date range: comparisons, top usage periods, top-up activity, spikes, and balance patterns, scoped
+to the signed-in user's own data. Assistant access is a per-user permission an admin can revoke,
+and every assistant call is rate-limited server-side regardless of what the UI shows.
 
-The intended setup is:
+There's a lightweight admin/roles system on top of Supabase Auth (everyone is `role: 'user'` by
+default; one seed admin is set in a migration), and every user can permanently delete their own
+account and all their data from Settings, without contacting anyone.
 
-1. run the dashboard anywhere Next.js can deploy
-2. run refresh locally against the LiveMopay web API
-3. let Supabase sit between the two as the source of truth and rollup engine
+There are two ways to run this:
+
+1. **Hosted multi-user setup** -- deploy the Next.js app, each user signs up and connects their
+   own LiveMopay account through the UI. See `MULTI_USER_SETUP.md`.
+2. **Legacy personal local setup** -- a single-owner Python CLI that predates multi-user support.
+   See "Legacy Local Setup" below.
 
 ## Architecture
 
-Livenopay now separates ingestion from presentation:
+```
+Supabase Auth sign-in
+  -> user_roles row lazily created (role: 'user' by default; one seed admin via migration)
+  -> /connect: LiveMopay email + password -> Firebase auth -> account discovery
+  -> encrypted refresh token stored in livemopay_connections
+  -> /api/sync: server-side ledger fetch, normalized, upserted into Supabase (connection-scoped)
+  -> Postgres trigger recomputes that connection's rollups + dashboard_summary row
+  -> dashboard / data table / export / assistant read through Supabase RLS, scoped to auth.uid()
+  -> every authenticated API route checks a per-user Upstash rate limit before doing any work
+```
 
-- local machine: authenticates against the LiveMopay web stack and fetches ledger rows through `livenopay_web.py`
-- local machine: writes `livemopay_energy.csv` and syncs it to Supabase with `refresh_and_sync.py`
-- Supabase: source of truth for dashboard reads
-- deployed Next.js app: reads Supabase only
-
-Optional legacy path:
-
-- local machine: can still capture through Android/ADB via `capture_livemopay.py`
-
-There are no job queues, polling workers, remote command systems, or localhost dependencies for viewing the dashboard.
-
-## Who Can Use This
-
-This repo is set up as a personal deployable tool, not a shared hosted product.
-
-If someone else wants to use it, they should run their own instance:
-
-1. create their own Supabase project
-2. apply the Supabase migration from this repo
-3. deploy their own Next.js dashboard with their own Supabase read env vars
-4. configure their own LiveMopay web credentials for local refresh
-5. run the local refresh command that fetches their ledger and syncs it to Supabase
-
-The deployed dashboard only reads Supabase. It does not know how to capture someone else's LiveMopay data, and it cannot trigger local capture remotely.
-
-To turn this into a product for multiple users, the architecture would need more work: authentication, per-user data isolation, a proper ingestion/onboarding story, and a backend that does not expose service-role access to clients. That is intentionally out of scope for this personal version.
+There are no job queues, polling workers, or remote command systems. The deployed app never
+depends on local files -- no CSV, no session file. See `MULTI_USER_SETUP.md` for the full
+ownership model, migration order, and setup steps.
 
 ## Supabase Schema
 
-Apply the migrations in `supabase/migrations` in timestamp order.
-
-Current set:
-
-    supabase/migrations/20260414000000_livenopay_energy.sql
-    supabase/migrations/20260421000000_livenopay_rollups.sql
-    supabase/migrations/20260523000000_livenopay_sort_timestamps.sql
-    supabase/migrations/20260526090000_livenopay_source_ts.sql
-    supabase/migrations/20260526143000_livenopay_latest_ledger_balance.sql
-    supabase/migrations/20260526161500_livenopay_refresh_rollups_time_fix.sql
-    supabase/migrations/20260526172000_livenopay_dashboard_summary_live.sql
-    supabase/migrations/20260526174000_livenopay_unify_rollup_refresh.sql
-
-They create and refine:
-
-- `energy_rows` with the same core shape as the CSV: `capture_dt`, `charge_label`, `period_dt`, `kwh`, `tariff`, `cost`, `balance`
-- a natural unique key on `charge_label`, `period_dt`, `cost`, and `balance`
-- `capture_runs` for sync metadata used by the dashboard's last synced indicator
-- `energy_day_rollups`, `energy_hourly_rollups`, and `energy_interval_rollups` for dashboard metrics and charts
-- `dashboard_summary` for last sync metadata and latest balance context
-
-The unique key matches the existing local capture dedupe strategy, so rerunning sync is idempotent and avoids duplicate rows.
-
-## Quick Start
-
-1. Install dependencies:
-
-   npm install
-
-2. Create `.env.local` from `.env.example` and set:
-
-   SUPABASE_URL=...
-   SUPABASE_ANON_KEY=...
-   SUPABASE_SERVICE_ROLE_KEY=...
-
-   If you want the dashboard assistant:
-
-   OPENAI_API_KEY=...
-   OPENAI_MODEL=gpt-4.1-mini
-
-3. Apply all migrations in `supabase/migrations` to Supabase, in timestamp order.
-
-   At minimum, do not stop at the first three files. The newer rollup and summary fixes are required for the current dashboard and refresh flow.
-
-4. Add the LiveMopay web ingestion credentials to `.env.local`:
-
-   LIVENOPAY_WEB_EMAIL=...
-   LIVENOPAY_WEB_PASSWORD=...
-   LIVENOPAY_FIREBASE_API_KEY=...
-   LIVENOPAY_ACCOUNT_ID=...
-
-   Optional if your JWT does not expose them or you want to override them:
-
-   LIVENOPAY_COMPANY_ID=...
-   LIVENOPAY_PROPERTY_ID=...
-
-5. Refresh data through the web API:
-
-   python3 refresh_and_sync.py --source web
-
-6. Start the dashboard:
-
-   npm run dev
-
-Open `http://localhost:3000`.
-
-If you prefer, the dashboard sync action already uses the web path. The local command above is the simplest first refresh because it makes the ingestion mode explicit.
-
-## Web Ingestion Setup
-
-The recommended local refresh path is:
-
-    python3 refresh_and_sync.py --source web
-
-That command:
-
-1. authenticates against the LiveMopay web stack
-2. refreshes the saved session if needed
-3. fetches ledger rows from the web API
-4. writes `livemopay_energy.csv`
-5. upserts all rows into Supabase
-6. records a `capture_runs` row for last synced metadata
-7. refreshes rollup tables through the capture-run trigger so dashboard reads stay lightweight
-
-For a full historical rebuild:
-
-    python3 refresh_and_sync.py --source web --full
-
-To sync the existing CSV without refetching:
-
-    python3 refresh_and_sync.py --skip-capture
-
-The script reads these web-ingestion values from `.env.local`:
-
-    LIVENOPAY_WEB_EMAIL=you@example.com
-    LIVENOPAY_WEB_PASSWORD=your-livewallet-password
-    LIVENOPAY_FIREBASE_API_KEY=your-firebase-web-api-key
-    LIVENOPAY_ACCOUNT_ID=715717
-    LIVENOPAY_WEB_BASE_URL=https://app.propertywallet.co.za
-    LIVENOPAY_WEB_PORTAL_ORIGIN=https://app.livewalletportal.co.za
-    LIVENOPAY_WEB_SESSION_PATH=.secrets/livemopay_auth.json
-    LIVENOPAY_WEB_AUTH_HEADER=Authorization
-    LIVENOPAY_WEB_AUTH_SCHEME=Bearer
-    LIVENOPAY_WEB_APP_FLAVOR=livemopay
-    LIVENOPAY_COMPANY_ID=43
-    LIVENOPAY_PROPERTY_ID=13835
-    LIVENOPAY_WEB_REFRESH_BUFFER_SECONDS=300
-    LIVENOPAY_WEB_START_DATE=2026-01-01
-    LIVENOPAY_TIMEZONE=Africa/Johannesburg
-
-The session file stores the web auth tokens locally so subsequent refreshes can reuse or refresh them automatically.
-
-## Legacy Android / ADB Setup
-
-Android capture is still available, but it is no longer the default recommendation.
-
-Use it only if:
-
-- the web API flow stops working for your account
-- you want to keep the old capture path as a fallback
-- you specifically want to verify the Android UI-derived ledger output
-
-See [SETUP.md](./SETUP.md) for the full Android and emulator setup.
-
-To use the legacy path directly:
-
-    python3 refresh_and_sync.py --source adb
-
-Or through the emulator wrapper:
-
-npm run refresh:emulator
-
-## Environment
-
-For the deployed dashboard:
-
-    SUPABASE_URL=...
-    SUPABASE_ANON_KEY=...
-
-For local sync:
-
-    SUPABASE_URL=...
-    SUPABASE_SERVICE_ROLE_KEY=...
-
-Optional dashboard assistant:
-
-    OPENAI_API_KEY=...
-    OPENAI_MODEL=gpt-4.1-mini
-
-You can put these in `.env.local` for local development. Do not expose the service role key in the browser or deployed public client environment.
-
-Recommended web API refresh settings:
-
-    LIVENOPAY_WEB_EMAIL=you@example.com
-    LIVENOPAY_WEB_PASSWORD=your-livewallet-password
-    LIVENOPAY_FIREBASE_API_KEY=your-firebase-web-api-key
-    LIVENOPAY_ACCOUNT_ID=715717
-
-Optional web API overrides:
-
-    LIVENOPAY_COMPANY_ID=43
-    LIVENOPAY_PROPERTY_ID=13835
-    LIVENOPAY_WEB_BASE_URL=https://app.propertywallet.co.za
-    LIVENOPAY_WEB_PORTAL_ORIGIN=https://app.livewalletportal.co.za
-    LIVENOPAY_WEB_SESSION_PATH=.secrets/livemopay_auth.json
-    LIVENOPAY_WEB_AUTH_HEADER=Authorization
-    LIVENOPAY_WEB_AUTH_SCHEME=Bearer
-    LIVENOPAY_WEB_APP_FLAVOR=livemopay
-    LIVENOPAY_WEB_REFRESH_BUFFER_SECONDS=300
-    LIVENOPAY_WEB_START_DATE=2026-01-01
-    LIVENOPAY_TIMEZONE=Africa/Johannesburg
-
-Optional legacy emulator refresh settings:
-
-    LIVENOPAY_AVD_NAME=Your_AVD_Name
-    LIVENOPAY_PACKAGE_NAME=livemopay.co.za
-    LIVENOPAY_ACTIVITY_NAME=com.example.property_wallet.MainActivity
-    EMULATOR_CMD=/path/to/emulator
-    ADB_PATH=/path/to/adb
-    ADB_SERIAL=emulator-5554
-
-Optional capture tuning and output locations:
-
-    LIVENOPAY_CSV_PATH=livemopay_energy.csv
-    LIVENOPAY_DUMPS_DIR=livemopay_dumps
-    LIVENOPAY_CAPTURE_LOG=livemopay_capture.log
-    LIVENOPAY_MAX_ITERATIONS=500
-    LIVENOPAY_MAX_STAGNANT_ROUNDS=4
-    LIVENOPAY_SCREEN_WAIT_ATTEMPTS=15
-    LIVENOPAY_SCREEN_WAIT_SECONDS=2.0
-
-## Run the Dashboard
-
-    npm install
-    npm run dev
-
-Open `http://localhost:3000`.
-
-The dashboard reads rollups through `src/lib/dashboard-data.ts` and the data table reads paginated rows through `src/lib/energy-data.ts`. Neither reads `livemopay_energy.csv` directly.
-
-If `OPENAI_API_KEY` is configured, the dashboard assistant sends questions to the server-side `/api/assistant` route and answers using structured tools over your Supabase data for the currently selected date range. It does not run arbitrary SQL from the browser.
+Apply the migrations in `supabase/migrations` in timestamp order -- see `MULTI_USER_SETUP.md`
+section 6 for the exact order and where the legacy-owner backfill fits in. The multi-user
+migrations add:
+
+- `livemopay_connections` -- one row per user's LiveMopay connection: discovered account/company/
+  property ids, an encrypted refresh token (AES-256-GCM, nullable when disconnected), and status.
+- `connection_id` ownership on `energy_rows`, `capture_runs`, `energy_day_rollups`,
+  `energy_hourly_rollups`, `energy_interval_rollups`, and `dashboard_summary` (one summary row per
+  connection, replacing the old single global row). All of these cascade-delete when their
+  `livemopay_connections` row is deleted, which is what powers self-service account deletion.
+- Row Level Security on every one of those tables, scoped to the caller's own connection via a
+  `SECURITY DEFINER` ownership function -- no anonymous read access to personal data.
+- `user_roles` -- one row per user: `role` (`'admin' | 'user'`) and `ai_assistant_enabled`.
+  Read/written exclusively via the service-role REST helpers (same as `livemopay_connections`);
+  authorization is enforced in code (`requireAdminSession`), not by RLS. Rows are created lazily
+  on first authenticated request; the one seed admin is set by
+  `20260726000000_livenopay_user_roles.sql`.
+
+The original single-user schema (`energy_rows` with the CSV-shaped columns, `capture_runs`,
+rollup tables, the water-support columns) is unchanged in shape; multi-user support only adds
+ownership on top of it.
+
+## Quick Start (hosted multi-user)
+
+See `MULTI_USER_SETUP.md` for the full walkthrough. Short version:
+
+```
+npm install
+cp .env.example .env.local   # fill in the "Hosted multi-user configuration" section
+npm run dev
+```
+
+Apply the Supabase migrations, open `http://localhost:3000`, sign up, connect a LiveMopay
+account, sync.
+
+You'll also need an Upstash Redis database (free tier) for rate limiting -- see "Rate limiting"
+below. The app throws on the first API request without it; there's no in-memory fallback.
 
 ## Assistant
 
-The assistant is a grounded analyst for the active dashboard date range. It only answers using the tool results below and never invents numbers or dates.
-
-Available tools:
+The assistant is a grounded analyst for the active dashboard date range, scoped to the signed-in
+user's own connection. It only answers using the tool results below and never invents numbers or
+dates, and never runs arbitrary SQL.
 
 1. `get_scope_overview` - totals, peaks, balance, and generated insights for the active range
 2. `get_balance_runout` - estimate when the current balance runs out and whether it covers month-end
@@ -265,66 +101,113 @@ Available tools:
 6. `get_top_hours` - highest hours by spend or usage
 7. `explain_day` - explain a single day with daily rollups plus top half-hour intervals
 8. `get_recent_topups` - list recent top-ups in the active range
+9. `get_water_overview` - summarize water charges in the active range
 
-These tools read Supabase rollups and export rows only, so responses stay consistent with the dashboard tables and charts.
+## Roles and Admin
 
-## Refresh Data
+Every signed-in user gets a `user_roles` row on first authenticated request (role `'user'`,
+`ai_assistant_enabled: true` by default). One seed admin is set in
+`supabase/migrations/20260726000000_livenopay_user_roles.sql` (currently `kefasa112@gmail.com`).
 
-Recommended:
+Admins get an "Admin" nav item (hidden entirely from non-admins; `/admin` 404s for them) with a
+table of every user, where they can:
 
-    python3 refresh_and_sync.py --source web
+- Promote/demote between `admin` and `user` (an admin can't demote themselves, checked both in
+  the UI and the API, so you can't lock yourself out)
+- Toggle a user's access to the AI assistant
 
-Full rebuild from the web API:
+`requireAdminSession` (`src/lib/auth/session.ts`) is the shared guard -- every admin route/page
+resolves the caller and checks their role from that one place, never trusting a role passed in
+from the client.
 
-    python3 refresh_and_sync.py --source web --full
+## Rate limiting
 
-Sync the existing CSV only:
+Every authenticated API route (`assistant`, `energy-rows`, `day-intervals`, `export`,
+`livemopay/connect`) checks a per-user rate limit before doing any work, backed by Upstash Redis
+(`src/lib/rate-limit.ts`) so the limit actually holds across serverless cold starts and instances
+-- a plain in-memory counter doesn't survive that on Vercel. Identifiers are always the
+authenticated user id, never IP, since every one of these routes is already authenticated by the
+time rate limiting runs.
 
-    python3 refresh_and_sync.py --skip-capture
+The assistant has its own tighter policy (5/minute, 30/day) since it's the one route that costs
+real money per call; everything else defaults to 60/minute, 1000/day.
 
-Legacy Android / ADB refresh:
+Needs one of these env var pairs (see `.env.example`):
 
-    python3 refresh_and_sync.py --source adb
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` -- signing up directly at
+  [upstash.com](https://upstash.com)
+- `KV_REST_API_URL` / `KV_REST_API_TOKEN` -- Vercel's Upstash Marketplace storage integration,
+  which keeps the older Vercel KV variable names
 
-Legacy emulator wrapper:
+## Account deletion
 
-    npm run refresh:emulator
+Users can permanently delete their own account from Settings (type `DELETE` to confirm):
+`deleteAccountForUser` (`src/lib/livenopay-connection.ts`) removes their `livemopay_connections`
+row (cascading to every table keyed off it -- see "Supabase Schema" above) and deletes their
+Supabase Auth user entirely. Fully self-service, no admin action required.
 
-Pass emulator wrapper options after `--`:
+## Legal pages
 
-    npm run refresh:emulator -- --full
-    npm run refresh:emulator -- --no-shutdown
-    npm run refresh:emulator -- --skip-capture
+`/privacy` and `/terms` are static, unauthenticated pages (`src/app/privacy`, `src/app/terms`,
+allowlisted in `src/middleware.ts`) describing what's collected, the third parties involved
+(LiveMopay, OpenAI, Supabase, Vercel), and self-service account deletion. Linked from the signed-
+out auth pages and the signed-in sidebar footer.
 
 ## Data Semantics
 
-Rows are normalized in `src/lib/csv.ts`, then summarized in `src/lib/analytics.ts`.
-
-Analytics behavior is preserved:
+Rows are normalized in `src/lib/livenopay-web.ts` (upstream ledger response) and
+`src/lib/csv.ts` (Supabase row shape), then summarized in `src/lib/analytics.ts`. Unchanged by
+multi-user support:
 
 - fixed daily charges are included in total spend
 - fixed daily charges are excluded from kWh, hourly usage, and tariff analysis
 - top-ups appear in raw data and balance history context
 - top-ups are excluded from electricity spend
-
-## Capture Setup
-
-`capture_livemopay.py` remains local-only and still depends on ADB plus a connected Android phone or emulator. It is now a fallback path rather than the default setup. See [SETUP.md](./SETUP.md) for the Android setup.
-
-The deployed dashboard cannot run capture. Refreshing data is a manual local command by design.
+- water charges have their own spend/usage tracking, separate from electricity
 
 ## Project Structure
 
-- `src/app` - App Router pages
-- `src/app/api/assistant` - server-side assistant route
+- `src/app` - App Router pages; `(app)` route group (`/`, `/data`, `/settings`, `/admin`) shares
+  one layout/sidebar, plus `/login`, `/connect`, `/auth/callback`, `/privacy`, `/terms`
+- `src/app/api/admin` - admin-only routes: list users, set role, set AI-assistant permission
+- `src/app/api/account/delete` - self-service account + data deletion
+- `src/app/api/livemopay` - LiveMopay connection routes (connect, select-account, disconnect, status)
+- `src/app/api` - sync, assistant, export, energy-rows, day-intervals routes (all authenticated,
+  all rate-limited)
+- `src/components/admin` - admin user list/role/permission table
+- `src/components/auth`, `src/components/connect` - sign-in and LiveMopay connection UI
 - `src/components/assistant` - dashboard assistant launcher and dialog UI
 - `src/components/dashboard` - dashboard controls and insight sections
 - `src/components/charts` - Recharts chart components
-- `src/components/data` - Supabase-backed data table
-- `src/components/ui` - shared presentation components
+- `src/components/data` - Supabase-backed data table (`columns.ts` is the shared column
+  label/alignment source used by both the real table and its loading skeleton)
+- `src/components/settings` - connection management, delete-account card
+- `src/components/ui` - shared presentation components (includes `switch.tsx` for admin toggles)
+- `src/components/layout/document-shell.tsx` - shared layout for the static `/privacy`, `/terms` pages
+- `src/lib/supabase` - browser/server/admin Supabase client boundaries
+- `src/lib/auth` - authenticated-session resolution, including `requireAdminSession`
+- `src/lib/user-roles.ts` - role/permission reads and writes (`user_roles` table)
+- `src/lib/rate-limit.ts` - Upstash-backed per-user rate limiting
 - `src/lib/assistant` - assistant prompt, tool loop, and grounded analytics tools
-- `src/lib` - Supabase access, CSV normalization, filtering, formatting, and analytics
+- `src/lib/livenopay-web.ts` - LiveMopay Firebase auth, account discovery, ledger fetch (pure, argument-based)
+- `src/lib/livenopay-connection.ts` - LiveMopay connection persistence (encrypted tokens), account deletion
+- `src/lib/livenopay-sync.ts` - connection-scoped ledger sync into Supabase
+- `src/lib` (remainder) - Supabase access, CSV normalization, filtering, formatting, and analytics
 - `supabase/migrations` - database schema
-- `livenopay_web.py` - local web API login, session refresh, and ledger fetch
-- `capture_livemopay.py` - local Android capture
-- `refresh_and_sync.py` - local capture and Supabase sync
+- `scripts/backfill-legacy-owner.ts` - one-time ownership backfill for pre-multi-user data
+- `MULTI_USER_SETUP.md` - full hosted setup guide
+
+## Legacy Local Setup
+
+`livenopay_web.py`, `capture_livemopay.py`, and `refresh_and_sync.py` are a standalone Python CLI
+that predates multi-user support. It authenticates against LiveMopay using
+`LIVENOPAY_WEB_EMAIL`/`LIVENOPAY_WEB_PASSWORD` from `.env.local`, writes `livemopay_energy.csv`
+locally, and syncs it to Supabase with the service-role key -- independent of Supabase Auth and
+the connection flow described above. It is not used by the deployed multi-user app; nothing in
+`src/` calls into it or vice versa.
+
+Use it only if you're running a personal, single-owner instance and don't need multi-user
+support. See [SETUP.md](./SETUP.md) for the full Android/ADB and web-API setup, and the
+"Legacy local-only setup" section of `.env.example` for its environment variables.
+
+    python3 refresh_and_sync.py --source web

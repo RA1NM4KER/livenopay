@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Loader2, RefreshCw } from "lucide-react";
 
 export type SyncButtonProps = {
@@ -10,13 +10,69 @@ export type SyncButtonProps = {
 };
 
 const syncModes = [
-  { value: "incremental", label: "Sync new rows" },
-  { value: "full", label: "Full resync" }
+  { value: "incremental", label: "Sync new rows", subtitle: "Fetch only what's changed since your last sync" },
+  { value: "full", label: "Full resync", subtitle: "Refetch your entire LiveMopay history from scratch" }
 ] as const;
+
+type PopoverPosition = {
+  left: number;
+  top: number;
+};
+
+const popoverWidth = 256;
+const popoverMargin = 12;
 
 export function SyncButton({ iconOnly = false, className, onSuccess }: SyncButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [position, setPosition] = useState<PopoverPosition>({ left: popoverMargin, top: popoverMargin });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) {
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!containerRef.current) {
+        return;
+      }
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const centeredLeft = rect.left + rect.width / 2 - popoverWidth / 2;
+      const left = Math.min(window.innerWidth - popoverWidth - popoverMargin, Math.max(popoverMargin, centeredLeft));
+      const top = rect.bottom + 8;
+
+      setPosition({ left, top });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+    };
+  }, [isOpen]);
 
   async function handleSync(mode: (typeof syncModes)[number]["value"]) {
     if (mode === "full" && !window.confirm("Run a full LiveMopay resync? This will refetch the full range.")) {
@@ -49,14 +105,10 @@ export function SyncButton({ iconOnly = false, className, onSuccess }: SyncButto
   return (
     <div
       className="relative"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setIsOpen(false);
-        }
-      }}
       onKeyDown={(event) => {
         if (event.key === "Escape") setIsOpen(false);
       }}
+      ref={containerRef}
     >
       <button
         aria-expanded={isOpen}
@@ -80,19 +132,21 @@ export function SyncButton({ iconOnly = false, className, onSuccess }: SyncButto
 
       {isOpen ? (
         <div
-          className="absolute left-1/2 top-[calc(100%+0.5rem)] z-40 min-w-[8rem] -translate-x-1/2 rounded-md border border-line bg-paper p-1 shadow-soft"
+          className="fixed z-40 w-64 rounded-md border border-line bg-paper p-1 shadow-soft"
           role="listbox"
           aria-label="Sync options"
+          style={{ left: position.left, top: position.top }}
         >
-          {syncModes.map(({ value, label }) => (
+          {syncModes.map(({ value, label, subtitle }) => (
             <button
-              className="flex w-full items-center rounded px-2 py-2 text-left text-sm text-muted transition hover:bg-canvas hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex w-full flex-col items-start gap-0.5 rounded px-2 py-2 text-left transition hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isLoading}
               key={value}
               onClick={() => void handleSync(value)}
               type="button"
             >
-              {label}
+              <span className="text-sm text-ink">{label}</span>
+              <span className="text-xs text-muted">{subtitle}</span>
             </button>
           ))}
         </div>

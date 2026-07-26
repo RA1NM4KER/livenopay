@@ -69,18 +69,18 @@ export function DailySpendChart({ data }: DailyChartProps) {
           <Area
             type="monotone"
             dataKey="actualSpend"
-            stroke={chartColors.accent}
-            fill={chartColors.accentSoft}
+            stroke={chartColors.spend}
+            fill={chartColors.spendSoft}
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: chartColors.accent, stroke: chartColors.paper, strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: chartColors.spend, stroke: chartColors.paper, strokeWidth: 2 }}
           />
           <Line
             dataKey="currentSpend"
             stroke="transparent"
             strokeWidth={8}
-            dot={{ r: 4, fill: chartColors.accent, stroke: chartColors.paper, strokeWidth: 2 }}
-            activeDot={{ r: 5, fill: chartColors.accent, stroke: chartColors.paper, strokeWidth: 2 }}
+            dot={{ r: 4, fill: chartColors.spend, stroke: chartColors.paper, strokeWidth: 2 }}
+            activeDot={{ r: 5, fill: chartColors.spend, stroke: chartColors.paper, strokeWidth: 2 }}
           />
           <Line dataKey="projectedSpendValue" stroke="transparent" strokeWidth={8} dot={false} activeDot={false} />
           {projectedDay ? (

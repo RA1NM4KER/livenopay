@@ -9,7 +9,9 @@ import { DataExportAction } from "@/components/data/data-export-action";
 import { DataSyncAction } from "@/components/data/data-sync-action";
 import { DropdownSelect, type DropdownOption } from "@/components/ui/dropdown-select";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { type ChargeTypeFilter } from "@/lib/data-table-query-params";
+import { dataTableColumnAlign, dataTableColumnLabel } from "./columns";
 import { inferQuickRange } from "@/lib/filters";
 import { useDataTableUrlState } from "@/lib/use-data-table-url-state";
 import { formatCurrency } from "@/lib/format";
@@ -44,13 +46,6 @@ type EnergyRowsApiResponse = {
   };
 };
 
-const columnAlignClass: Record<string, string> = {
-  kwh: "text-right",
-  tariff: "text-right",
-  amount: "text-right",
-  balance: "text-right"
-};
-
 function nextSortLabel(direction: SortDirection, active: boolean) {
   if (!active) {
     return <ArrowUpDown aria-hidden="true" className="ml-1 h-3.5 w-3.5 text-muted/55" />;
@@ -81,7 +76,7 @@ function TableSkeletonRows({ columnCount, rowCount }: { columnCount: number; row
         <tr key={`skeleton-${rowIndex}`}>
           {Array.from({ length: columnCount }, (_, columnIndex) => (
             <td className="px-4 py-3" key={`skeleton-${rowIndex}-${columnIndex}`}>
-              <div className="h-4 animate-pulse rounded bg-canvas" />
+              <Skeleton className="h-4 w-full" />
             </td>
           ))}
         </tr>
@@ -100,6 +95,8 @@ export function DataTable() {
     pageSize,
     sortKey,
     sortDirection,
+    isDatePending,
+    isChargeTypePending,
     onDateChange,
     onQuickRange,
     onChargeTypeChange,
@@ -184,13 +181,13 @@ export function DataTable() {
       {
         id: "period",
         accessorFn: (row) => row.periodDateTime,
-        header: "Period",
+        header: dataTableColumnLabel.period,
         cell: ({ row }) => <span className="font-medium text-ink">{row.original.periodDateTime.replace("T", " ")}</span>
       },
       {
         id: "type",
         accessorFn: (row) => row.chargeKind,
-        header: "Type",
+        header: dataTableColumnLabel.type,
         cell: ({ row }) => (
           <span className="rounded bg-canvas px-2 py-1 text-xs font-medium uppercase tracking-[0.12em] text-muted">
             {row.original.chargeKind}
@@ -200,7 +197,7 @@ export function DataTable() {
       {
         id: "band",
         accessorFn: (row) => row.chargeLabel,
-        header: "Band",
+        header: dataTableColumnLabel.band,
         cell: ({ row }) => (
           <span className="text-muted">
             {row.original.chargeLabel.replace("Energy Charge: ", "").replace("Water: ", "")}
@@ -210,31 +207,31 @@ export function DataTable() {
       {
         id: "kwh",
         accessorFn: (row) => row.usageAmount,
-        header: "Usage",
+        header: dataTableColumnLabel.kwh,
         cell: ({ row }) => <span className="text-ink">{usageDisplayFor(row.original)}</span>
       },
       {
         id: "tariff",
         accessorFn: (row) => row.tariff,
-        header: "Tariff",
+        header: dataTableColumnLabel.tariff,
         cell: ({ row }) => <span className="text-muted">{tariffDisplayFor(row.original)}</span>
       },
       {
         id: "amount",
         accessorFn: (row) => row.cost,
-        header: "Cost / amount",
+        header: dataTableColumnLabel.amount,
         cell: ({ row }) => <span className={amountClassFor(row.original)}>{formatCurrency(row.original.cost)}</span>
       },
       {
         id: "balance",
         accessorFn: (row) => row.balance,
-        header: "Balance",
+        header: dataTableColumnLabel.balance,
         cell: ({ row }) => <span className="text-muted">{formatCurrency(row.original.balance)}</span>
       },
       {
         id: "captured",
         accessorFn: (row) => row.captureDateTime,
-        header: "Captured",
+        header: dataTableColumnLabel.captured,
         cell: ({ row }) => <span className="text-muted">{row.original.captureDateTime}</span>
       }
     ],
@@ -278,6 +275,7 @@ export function DataTable() {
       value={chargeType}
       options={chargeTypeOptions}
       onChange={(value) => onChargeTypeChange(value as ChargeTypeFilter)}
+      loading={isChargeTypePending}
       className="w-32"
     />
   );
@@ -359,26 +357,21 @@ export function DataTable() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 pt-6">
-      <div className="hidden items-end justify-between gap-4 sm:flex">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Raw ledger rows</h2>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-          <div className="flex items-center gap-2">
-            <DataSyncAction />
-            <DataExportAction iconOnly={false} />
-          </div>
-        </div>
-      </div>
-
       <FilterBar
         from={displayFrom}
         to={displayTo}
         quickRange={effectiveQuickRange}
         onDateChange={onDateChange}
         onQuickRange={handleQuickRangeChange}
+        loading={isDatePending}
+        leftControls={<DataSyncAction />}
         extraControls={chargeTypeFilterControl}
-        rightControls={searchFilterControl}
+        rightControls={
+          <div className="flex items-center gap-2">
+            {searchFilterControl}
+            <DataExportAction iconOnly={false} />
+          </div>
+        }
       />
 
       <Card className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
@@ -389,7 +382,7 @@ export function DataTable() {
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     const id = header.column.id as SortKey;
-                    const alignClass = columnAlignClass[id] ?? "text-left";
+                    const alignClass = dataTableColumnAlign[id] ?? "text-left";
                     const isActive = sortKey === id;
 
                     return (
@@ -415,7 +408,7 @@ export function DataTable() {
                 table.getRowModel().rows.map((row) => (
                   <tr className="transition hover:bg-canvas/70" key={row.id}>
                     {row.getVisibleCells().map((cell) => {
-                      const alignClass = columnAlignClass[cell.column.id] ?? "text-left";
+                      const alignClass = dataTableColumnAlign[cell.column.id] ?? "text-left";
 
                       return (
                         <td className={`px-4 py-3 ${alignClass}`} key={cell.id}>

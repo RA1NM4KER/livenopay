@@ -1,10 +1,10 @@
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL_CACHE = `ledger-shell-${VERSION}`;
 const PAGE_CACHE = `ledger-pages-${VERSION}`;
 const DATA_CACHE = `ledger-data-${VERSION}`;
 const STATIC_CACHE = `ledger-static-${VERSION}`;
 const OFFLINE_URL = "/offline";
-const SHELL_URLS = ["/", "/data", OFFLINE_URL, "/manifest.webmanifest", "/icon.png", "/logo.png", "/logo-dark.png"];
+const SHELL_URLS = ["/", "/data", OFFLINE_URL, "/manifest.webmanifest", "/icon"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

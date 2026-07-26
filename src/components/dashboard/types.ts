@@ -6,6 +6,7 @@ export type DashboardShellProps = {
   dailyRows: DailyRollupRow[];
   hourlyRows: HourlyRollupRow[];
   summary: DashboardSummary;
+  isAiAssistantEnabled?: boolean;
 };
 
 export type InsightsProps = {
@@ -24,6 +25,8 @@ export type FilterBarProps = {
   quickRange: QuickRange;
   onDateChange: (from: string, to: string) => void;
   onQuickRange: (range: QuickRangePreset) => void;
+  loading?: boolean;
+  leftControls?: ReactNode;
   extraControls?: ReactNode;
   rightControls?: ReactNode;
   rightControlsExpanded?: boolean;

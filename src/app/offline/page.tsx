@@ -13,7 +13,7 @@ export default function OfflinePage() {
             You are offline right now.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted sm:text-base">
-            LiveNoPay could not reach the network. If you have visited this page before, some recent screens may still
+            NewinMeter could not reach the network. If you have visited this page before, some recent screens may still
             load from cache. Live dashboard and data refreshes need a connection.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">

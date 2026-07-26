@@ -1,4 +1,7 @@
-import { Card } from "./card";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { MetricCardProps } from "./types";
 
 const toneStyles = {
@@ -22,19 +25,85 @@ const comparisonToneStyles = {
   danger: "text-red-700 dark:text-red-400"
 } as const;
 
-export function MetricCard({ label, value, detail, tone = "neutral", comparison }: MetricCardProps) {
+export function MetricCard({ label, value, detail, description, tone = "neutral", comparison }: MetricCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const containerRef = useRef<HTMLElement | null>(null);
+
+  const toggle = () => setIsExpanded((previous) => !previous);
+
+  useEffect(() => {
+    if (!isExpanded) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsExpanded(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsExpanded(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isExpanded]);
+
   return (
-    <Card className={`p-4 ${toneStyles[tone]}`}>
-      <p className="text-sm text-muted">{label}</p>
-      <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+    <section
+      aria-expanded={description ? isExpanded : undefined}
+      className={`relative min-w-0 rounded-lg border border-line bg-paper p-4 text-left ${
+        description ? "cursor-pointer" : ""
+      } ${toneStyles[tone]}`}
+      onClick={description ? toggle : undefined}
+      onKeyDown={
+        description
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                toggle();
+              }
+            }
+          : undefined
+      }
+      ref={containerRef}
+      role={description ? "button" : undefined}
+      tabIndex={description ? 0 : undefined}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted">{label}</p>
+        <div className="flex shrink-0 items-center gap-2">
+          {comparison ? (
+            <p className={`text-xs font-medium ${comparisonToneStyles[comparison.tone]}`}>{comparison.text}</p>
+          ) : null}
+          {description ? (
+            <ChevronDown
+              aria-hidden="true"
+              className={`h-3.5 w-3.5 text-muted/60 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            />
+          ) : null}
+        </div>
+      </div>
+      <div className="mt-3">
         <p className={`break-words text-xl font-semibold tracking-tight sm:text-2xl ${valueToneStyles[tone]}`}>
           {value}
         </p>
-        {comparison ? (
-          <p className={`text-xs font-medium ${comparisonToneStyles[comparison.tone]}`}>{comparison.text}</p>
-        ) : null}
       </div>
       {detail ? <p className="mt-2 break-words text-xs text-muted">{detail}</p> : null}
-    </Card>
+
+      {isExpanded && description ? (
+        <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-line bg-paper p-3 text-xs text-muted shadow-soft">
+          {description}
+        </div>
+      ) : null}
+    </section>
   );
 }

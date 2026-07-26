@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 export type DropdownOption = {
@@ -20,6 +20,14 @@ type DropdownSelectProps = {
   className?: string;
   menuPlacement?: "bottom" | "top";
   hideLabelOnMobile?: boolean;
+  loading?: boolean;
+};
+
+type MenuPosition = {
+  left: number;
+  width: number;
+  top?: number;
+  bottom?: number;
 };
 
 export function DropdownSelect({
@@ -30,16 +38,49 @@ export function DropdownSelect({
   fallbackLabel,
   className = "w-36",
   menuPlacement = "bottom",
-  hideLabelOnMobile = false
+  hideLabelOnMobile = false,
+  loading = false
 }: DropdownSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const activeOption = useMemo(() => {
-    return options.find((option) => option.value === value);
-  }, [options, value]);
+  const [position, setPosition] = useState<MenuPosition>({ left: 0, width: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const activeOption = options.find((option) => option.value === value);
   const activeLabel = activeOption?.label ?? fallbackLabel ?? value;
   const activeIcon = activeOption?.icon;
   const triggerLabelClassName = hideLabelOnMobile ? "sr-only sm:not-sr-only" : undefined;
   const layoutClassName = hideLabelOnMobile ? "justify-center gap-2 sm:justify-between sm:gap-0" : "justify-between";
+
+  // Fixed positioning (computed from the trigger's real screen position)
+  // instead of an absolute/relative menu, so this never gets clipped by an
+  // ancestor's overflow-x-auto -- the same fix as SyncButton and DatePicker.
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) {
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!containerRef.current) {
+        return;
+      }
+
+      const rect = containerRef.current.getBoundingClientRect();
+
+      setPosition(
+        menuPlacement === "top"
+          ? { left: rect.left, width: rect.width, bottom: window.innerHeight - rect.top + 8 }
+          : { left: rect.left, width: rect.width, top: rect.bottom + 8 }
+      );
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen, menuPlacement]);
 
   return (
     <div
@@ -54,6 +95,7 @@ export function DropdownSelect({
           setIsOpen(false);
         }
       }}
+      ref={containerRef}
     >
       <button
         aria-expanded={isOpen}
@@ -67,18 +109,21 @@ export function DropdownSelect({
           {activeIcon ? <span className="shrink-0">{activeIcon}</span> : null}
           <span className={triggerLabelClassName}>{activeLabel}</span>
         </span>
-        <ChevronDown
-          aria-hidden="true"
-          className={`h-4 w-4 shrink-0 text-muted transition ${isOpen ? "rotate-180" : ""}`}
-        />
+        {loading ? (
+          <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin text-muted" />
+        ) : (
+          <ChevronDown
+            aria-hidden="true"
+            className={`h-4 w-4 shrink-0 text-muted transition ${isOpen ? "rotate-180" : ""}`}
+          />
+        )}
       </button>
       {isOpen ? (
         <div
-          className={`absolute left-1/2 z-40 min-w-full -translate-x-1/2 rounded-md border border-line bg-paper p-1 shadow-soft ${
-            menuPlacement === "top" ? "bottom-[calc(100%+0.5rem)]" : "top-[calc(100%+0.5rem)]"
-          }`}
+          className="fixed z-40 rounded-md border border-line bg-paper p-1 shadow-soft"
           role="listbox"
           aria-label={ariaLabel}
+          style={{ left: position.left, width: position.width, top: position.top, bottom: position.bottom }}
         >
           {options.map((option) => {
             const isActive = option.value === value;

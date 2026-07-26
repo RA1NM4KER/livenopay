@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { defaultRange, inferQuickRange, quickRangeFromLatest, type QuickRangePreset } from "@/lib/filters";
 import { dateRangeQueryUpdates, parseDateRangeQuery } from "@/lib/filter-query-params";
@@ -11,6 +11,7 @@ type FilterUrlState = {
   from: string;
   to: string;
   quickRange: QuickRange;
+  isPending: boolean;
   onDateChange: (from: string, to: string) => void;
   onQuickRange: (range: QuickRangePreset) => void;
 };
@@ -18,7 +19,7 @@ type FilterUrlState = {
 function resolveStateFromQuery(
   dateBounds: { from?: string; to?: string },
   searchParams: URLSearchParams
-): Omit<FilterUrlState, "onDateChange" | "onQuickRange"> {
+): Omit<FilterUrlState, "isPending" | "onDateChange" | "onQuickRange"> {
   const fallback = defaultRange(dateBounds);
   const { from, to } = parseDateRangeQuery(searchParams);
 
@@ -45,6 +46,7 @@ export function useFilterUrlState(dateBounds: { from?: string; to?: string }): F
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   const state = useMemo(() => {
     return resolveStateFromQuery(dateBounds, new URLSearchParams(searchParams.toString()));
@@ -52,7 +54,9 @@ export function useFilterUrlState(dateBounds: { from?: string; to?: string }): F
 
   const updateSearchParams = (updates: Record<string, string | null>) => {
     const next = applyQueryUpdates(searchParams, updates);
-    router.replace(queryHref(pathname, next), { scroll: false });
+    startTransition(() => {
+      router.replace(queryHref(pathname, next), { scroll: false });
+    });
   };
 
   const onQuickRange = (range: QuickRangePreset) => {
@@ -71,6 +75,7 @@ export function useFilterUrlState(dateBounds: { from?: string; to?: string }): F
 
   return {
     ...state,
+    isPending,
     onDateChange,
     onQuickRange
   };

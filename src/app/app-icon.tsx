@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { ImageResponse } from "next/og";
 
 export const size = {
@@ -9,44 +7,34 @@ export const size = {
 
 export const contentType = "image/png";
 
-async function loadLogoDataUrl() {
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
-  const logo = await readFile(logoPath);
-  return `data:image/png;base64,${logo.toString("base64")}`;
-}
-
-export default async function AppIcon() {
-  const logoSrc = await loadLogoDataUrl();
-
+export default function AppIcon() {
   return new ImageResponse(
-    <div
-      style={{
-        alignItems: "center",
-        background: "#f6f6f6",
-        display: "flex",
-        height: "100%",
-        justifyContent: "center",
-        width: "100%"
-      }}
-    >
+    (
       <div
         style={{
           alignItems: "center",
           background: "#111111",
-          borderRadius: 120,
-          boxShadow: "0 24px 60px rgba(0,0,0,0.18)",
+          borderRadius: 96,
           display: "flex",
-          height: 408,
+          height: "100%",
           justifyContent: "center",
-          padding: 44,
-          width: 408
+          width: "100%"
         }}
       >
-        {/* `ImageResponse` renders Open Graph markup, so `next/image` does not apply here. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img alt="LiveNoPay" height="272" src={logoSrc} width="408" />
+        <div
+          style={{
+            color: "#ffffff",
+            display: "flex",
+            fontFamily: "sans-serif",
+            fontSize: 280,
+            fontWeight: 700,
+            letterSpacing: -8
+          }}
+        >
+          N<span style={{ color: "#00ff9b" }}>M</span>
+        </div>
       </div>
-    </div>,
+    ),
     size
   );
 }

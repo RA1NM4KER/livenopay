@@ -1,13 +1,24 @@
 import { loadExportRows } from "@/lib/energy-data";
 import { toCSVString, toXLSXBuffer } from "@/lib/export";
 import type { EnergyRowsPageQuery } from "@/lib/energy-data";
+import { requireConnectedSession } from "@/lib/auth/session";
 import { enforceRateLimit, getRateLimitIdentifier, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const auth = await requireConnectedSession();
+  if (!auth.ok) {
+    return new Response(
+      JSON.stringify({
+        message: auth.status === 401 ? "Authentication required." : "Connect a LiveMopay account first."
+      }),
+      { status: auth.status, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
-    const identifier = getRateLimitIdentifier(request, "export");
+    const identifier = getRateLimitIdentifier(auth.session.userId, "export");
     const rateLimit = await enforceRateLimit(identifier);
     const rateHeaders = rateLimitHeaders(rateLimit);
 
@@ -30,7 +41,7 @@ export async function GET(request: Request) {
       sortDirection: (searchParams.get("dir") as EnergyRowsPageQuery["sortDirection"]) ?? undefined
     };
 
-    const rows = await loadExportRows(query);
+    const rows = await loadExportRows(auth.session.accessToken, query);
     const from = query.from ?? "all";
     const to = query.to ?? "time";
     const filename = `electricity-ledger-${from}-${to}`;

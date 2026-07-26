@@ -15,7 +15,7 @@ export const getRecentTopupsTool: AssistantTool = {
     const context = await getContext();
     const requestedLimit = typeof args.limit === "number" ? args.limit : Number(args.limit ?? 10);
     const limit = Math.min(20, Math.max(1, Number.isFinite(requestedLimit) ? requestedLimit : 10));
-    const rows = await loadExportRows({
+    const rows = await loadExportRows(context.accessToken, {
       from: context.scope.from,
       to: context.scope.to,
       chargeType: "topup",

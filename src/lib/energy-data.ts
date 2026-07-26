@@ -1,5 +1,5 @@
 import { toEnergyRow, type EnergyRecordInput } from "./csv";
-import { supabaseFetch, supabaseFetchAllPages, supabaseResponse } from "./supabase-rest";
+import { authenticatedSupabaseFetch, authenticatedSupabaseFetchAllPages, authenticatedSupabaseResponse } from "./supabase-rest";
 import type { EnergyRow, SyncMetadata } from "./types";
 import type { SortDirection, SortKey } from "@/components/data/types";
 
@@ -116,10 +116,16 @@ function queryPathForPage({ from, to, chargeType, search, sortKey, sortDirection
   return `/energy_rows?${params.toString()}`;
 }
 
-async function loadEnergyDateBounds() {
+async function loadEnergyDateBounds(accessToken: string) {
   const [earliest, latest] = await Promise.all([
-    supabaseFetch<Array<{ period_dt: string }>>("/energy_rows?select=period_dt&order=period_dt.asc&limit=1"),
-    supabaseFetch<Array<{ period_dt: string }>>("/energy_rows?select=period_dt&order=period_dt.desc&limit=1")
+    authenticatedSupabaseFetch<Array<{ period_dt: string }>>(
+      "/energy_rows?select=period_dt&order=period_dt.asc&limit=1",
+      accessToken
+    ),
+    authenticatedSupabaseFetch<Array<{ period_dt: string }>>(
+      "/energy_rows?select=period_dt&order=period_dt.desc&limit=1",
+      accessToken
+    )
   ]);
 
   const from = earliest[0]?.period_dt?.slice(0, 10) ?? "";
@@ -128,21 +134,21 @@ async function loadEnergyDateBounds() {
   return { from, to };
 }
 
-export async function loadEnergyRowsPage(query: EnergyRowsPageQuery): Promise<EnergyRowsPage> {
+export async function loadEnergyRowsPage(accessToken: string, query: EnergyRowsPageQuery): Promise<EnergyRowsPage> {
   const pageSize = Math.min(100, Math.max(25, query.pageSize ?? 50));
   const page = Math.max(1, query.page ?? 1);
   const offset = (page - 1) * pageSize;
   const path = queryPathForPage(query);
 
   const [response, bounds, sync] = await Promise.all([
-    supabaseResponse(path, {
+    authenticatedSupabaseResponse(path, accessToken, {
       headers: {
         Prefer: "count=exact",
         Range: `${offset}-${offset + pageSize - 1}`
       }
     }),
-    loadEnergyDateBounds(),
-    loadSyncMetadata()
+    loadEnergyDateBounds(accessToken),
+    loadSyncMetadata(accessToken)
   ]);
 
   const pageRows = (await response.json()) as EnergyRecordInput[];
@@ -155,9 +161,11 @@ export async function loadEnergyRowsPage(query: EnergyRowsPageQuery): Promise<En
     bounds
   };
 }
-async function loadSyncMetadata(): Promise<SyncMetadata> {
-  const runs = await supabaseFetch<SupabaseCaptureRun[]>(
-    "/capture_runs?select=started_at,finished_at,status,rows_in_csv,rows_synced&status=eq.success&order=finished_at.desc&limit=1"
+
+async function loadSyncMetadata(accessToken: string): Promise<SyncMetadata> {
+  const runs = await authenticatedSupabaseFetch<SupabaseCaptureRun[]>(
+    "/capture_runs?select=started_at,finished_at,status,rows_in_csv,rows_synced&status=eq.success&order=finished_at.desc&limit=1",
+    accessToken
   );
   const latest = runs[0];
 
@@ -168,9 +176,12 @@ async function loadSyncMetadata(): Promise<SyncMetadata> {
   };
 }
 
-export async function loadExportRows(query: Omit<EnergyRowsPageQuery, "page" | "pageSize">): Promise<EnergyRow[]> {
+export async function loadExportRows(
+  accessToken: string,
+  query: Omit<EnergyRowsPageQuery, "page" | "pageSize">
+): Promise<EnergyRow[]> {
   const basePath = queryPathForPage(query);
-  const rows = await supabaseFetchAllPages<EnergyRecordInput>(basePath);
+  const rows = await authenticatedSupabaseFetchAllPages<EnergyRecordInput>(basePath, accessToken);
 
   return rows.map(toEnergyRow);
 }

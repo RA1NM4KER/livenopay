@@ -30,6 +30,7 @@ export type AssistantTool = {
 };
 
 export type DashboardContext = {
+  accessToken: string;
   summary: DashboardSummary;
   dailyRows: DailyRollupRow[];
   hourlyRows: HourlyRollupRow[];

@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requireConnectedSession } from "@/lib/auth/session";
 import { loadDashboardSummary } from "@/lib/dashboard-data";
-import { runLivenopayWebSync } from "@/lib/livenopay-sync";
+import {
+  getConnectionRowForUser,
+  getDecryptedRefreshToken,
+  markConnectionSyncOutcome,
+  replaceConnectionRefreshToken
+} from "@/lib/livenopay-connection";
+import { runLivemopaySync, SyncAlreadyRunningError } from "@/lib/livenopay-sync";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,31 +17,50 @@ const syncRequestSchema = z.object({
   mode: z.enum(["incremental", "full"]).catch("incremental")
 });
 
-type SyncResult = Awaited<ReturnType<typeof runLivenopayWebSync>>;
-
-let activeSync: Promise<SyncResult> | null = null;
-
 export async function POST(request: Request) {
-  if (activeSync) {
-    return NextResponse.json({ message: "A sync is already running." }, { status: 409 });
+  const auth = await requireConnectedSession();
+  if (!auth.ok) {
+    return NextResponse.json(
+      { message: auth.status === 401 ? "Authentication required." : "Connect a LiveMopay account first." },
+      { status: auth.status }
+    );
+  }
+
+  const { session } = auth;
+  // requireConnectedSession() already resolved a safe connection projection;
+  // the sync needs the row's encrypted token fields too, which that
+  // projection deliberately omits, so it's fetched again here.
+  const connectionRow = await getConnectionRowForUser(session.userId);
+
+  if (!connectionRow || connectionRow.status !== "connected" || !connectionRow.account_id || !connectionRow.company_id || !connectionRow.property_id) {
+    return NextResponse.json({ message: "Connect a LiveMopay account first." }, { status: 409 });
   }
 
   try {
     const body = syncRequestSchema.parse(await request.json().catch(() => ({})));
-    activeSync = runLivenopayWebSync(body.mode);
+    const refreshToken = getDecryptedRefreshToken(connectionRow);
 
-    const result = await activeSync;
-    const summary = await loadDashboardSummary();
-
-    return NextResponse.json({
+    const result = await runLivemopaySync({
+      connectionId: connectionRow.id,
+      accountId: connectionRow.account_id,
+      companyId: connectionRow.company_id,
+      propertyId: connectionRow.property_id,
+      refreshToken,
       mode: body.mode,
-      summary,
-      output: result.output
+      onRefreshTokenRotated: (newRefreshToken) => replaceConnectionRefreshToken(connectionRow.id, newRefreshToken)
     });
+
+    await markConnectionSyncOutcome(connectionRow.id, null);
+    const summary = await loadDashboardSummary(session.accessToken);
+
+    return NextResponse.json({ mode: body.mode, summary, output: result.output });
   } catch (error) {
+    if (error instanceof SyncAlreadyRunningError) {
+      return NextResponse.json({ message: error.message }, { status: 409 });
+    }
+
     const message = error instanceof Error ? error.message : "Sync failed.";
-    return NextResponse.json({ message }, { status: 500 });
-  } finally {
-    activeSync = null;
+    await markConnectionSyncOutcome(connectionRow.id, message).catch(() => {});
+    return NextResponse.json({ message: "Sync failed." }, { status: 500 });
   }
 }

@@ -1,8 +1,12 @@
 import "server-only";
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { z } from "zod";
+import {
+  getLivenopayFirebaseApiKey,
+  getLivenopayWebAppFlavor,
+  getLivenopayWebBaseUrl,
+  getLivenopayWebPortalOrigin
+} from "./env";
 
 const ENERGY_LABEL_RE = /^(.+?) \((\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)$/;
 const WATER_LABEL_RE = /^(Water:.+?) \((\d{4}-\d{2}-\d{2} \d{2}:\d{2}) to \d{4}-\d{2}-\d{2} \d{2}:\d{2}\)$/;
@@ -27,12 +31,18 @@ export type LivenopayFieldName = (typeof livenopayFieldNames)[number];
 
 export type LivenopayCsvRow = Record<LivenopayFieldName, string>;
 
-type AuthSession = {
-  id_token: string;
-  refresh_token: string;
-  expires_at: string;
-  email?: string;
-  local_id?: string;
+export type LiveMopaySession = {
+  idToken: string;
+  refreshToken: string;
+  expiresAt: string;
+  localId?: string;
+};
+
+export type LiveMopayAccountCandidate = {
+  accountId: string;
+  companyId: string;
+  propertyId: string;
+  label: string;
 };
 
 type LedgerApiRow = {
@@ -49,48 +59,15 @@ type LedgerApiRow = {
   unitsDescriptionIncl?: string | null;
 };
 
-function defaultStateRoot() {
-  if (process.env.LIVENOPAY_STATE_DIR) {
-    return process.env.LIVENOPAY_STATE_DIR;
-  }
-
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    return path.join(os.tmpdir(), "livenopay");
-  }
-
-  return process.cwd();
-}
-
-function envPath(name: string, fallback: string) {
-  const configured = process.env[name];
-  const root = defaultStateRoot();
-  return path.isAbsolute(configured || "") ? configured! : path.join(root, configured || fallback);
-}
-
 function envString(name: string, fallback?: string) {
   const value = process.env[name];
   return value && value.length ? value : fallback;
 }
 
-function requireEnv(name: string) {
-  const value = envString(name);
-  if (!value) {
-    throw new Error(`MISSING_ENV: ${name} must be set in the environment.`);
-  }
-
-  return value;
-}
-
-const sessionPath = envPath("LIVENOPAY_WEB_SESSION_PATH", ".secrets/livemopay_auth.json");
-const csvPath = envPath("LIVENOPAY_CSV_PATH", "livemopay_energy.csv");
 const localTimeZone = envString("LIVENOPAY_TIMEZONE", "Africa/Johannesburg")!;
-const portalOrigin = envString("LIVENOPAY_WEB_PORTAL_ORIGIN", "https://app.livewalletportal.co.za")!;
-const apiBaseUrl = envString("LIVENOPAY_WEB_BASE_URL", "https://app.propertywallet.co.za")!;
 const authHeaderName = envString("LIVENOPAY_WEB_AUTH_HEADER", "Authorization")!;
 const authScheme = envString("LIVENOPAY_WEB_AUTH_SCHEME", "Bearer")!;
-const refreshBufferSeconds = Number(envString("LIVENOPAY_WEB_REFRESH_BUFFER_SECONDS", "300"));
 const acceptLanguage = envString("LIVENOPAY_WEB_ACCEPT_LANGUAGE", "en-US,en;q=0.9")!;
-const appFlavor = envString("LIVENOPAY_WEB_APP_FLAVOR", "livemopay")!;
 const userAgent =
   envString("LIVENOPAY_WEB_USER_AGENT") ||
   [
@@ -166,29 +143,6 @@ export function livenopayLedgerKey(row: Pick<LivenopayCsvRow, "charge_label" | "
   ].join("|");
 }
 
-async function ensureSessionDir() {
-  await mkdir(path.dirname(sessionPath), { recursive: true });
-}
-
-async function loadSession(): Promise<AuthSession | null> {
-  try {
-    const raw = await readFile(sessionPath, "utf8");
-    return JSON.parse(raw) as AuthSession;
-  } catch (error) {
-    const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-    if (code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
-async function saveSession(session: AuthSession) {
-  await ensureSessionDir();
-  await writeFile(sessionPath, `${JSON.stringify(session, null, 2)}\n`, "utf8");
-}
-
 async function readJsonResponse<T>(response: Response, context: string) {
   const text = await response.text();
 
@@ -241,41 +195,29 @@ function expiresAtFromSeconds(expiresIn: string | number) {
   return new Date(Date.now() + Number(expiresIn) * 1000).toISOString();
 }
 
-function firebaseResponseToSession(
-  response: { idToken: string; refreshToken: string; expiresIn: string; email?: string; localId?: string },
-  email?: string
-): AuthSession {
-  return {
-    id_token: response.idToken,
-    refresh_token: response.refreshToken,
-    expires_at: expiresAtFromSeconds(response.expiresIn),
-    email: email || response.email,
-    local_id: response.localId
-  };
-}
-
-async function firebaseLogin() {
-  const apiKey = requireEnv("LIVENOPAY_FIREBASE_API_KEY");
-  const email = requireEnv("LIVENOPAY_WEB_EMAIL");
-  const password = requireEnv("LIVENOPAY_WEB_PASSWORD");
+export async function loginWithLiveMopayCredentials(email: string, password: string): Promise<LiveMopaySession> {
+  const apiKey = getLivenopayFirebaseApiKey();
   const response = await postJson<{
     idToken: string;
     refreshToken: string;
     expiresIn: string;
-    email?: string;
     localId?: string;
   }>(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(apiKey)}`, {
     email,
     password,
     returnSecureToken: true
   });
-  const session = firebaseResponseToSession(response, email);
-  await saveSession(session);
-  return session;
+
+  return {
+    idToken: response.idToken,
+    refreshToken: response.refreshToken,
+    expiresAt: expiresAtFromSeconds(response.expiresIn),
+    localId: response.localId
+  };
 }
 
-async function firebaseRefresh(refreshToken: string, email?: string) {
-  const apiKey = requireEnv("LIVENOPAY_FIREBASE_API_KEY");
+export async function refreshLiveMopaySession(refreshToken: string): Promise<LiveMopaySession> {
+  const apiKey = getLivenopayFirebaseApiKey();
   const response = await postForm<{
     id_token: string;
     refresh_token: string;
@@ -286,33 +228,12 @@ async function firebaseRefresh(refreshToken: string, email?: string) {
     refresh_token: refreshToken
   });
 
-  const session: AuthSession = {
-    id_token: response.id_token,
-    refresh_token: response.refresh_token,
-    expires_at: expiresAtFromSeconds(response.expires_in),
-    email,
-    local_id: response.user_id
+  return {
+    idToken: response.id_token,
+    refreshToken: response.refresh_token,
+    expiresAt: expiresAtFromSeconds(response.expires_in),
+    localId: response.user_id
   };
-  await saveSession(session);
-  return session;
-}
-
-function isExpiringSoon(session: AuthSession) {
-  return Date.now() + refreshBufferSeconds * 1000 >= new Date(session.expires_at).getTime();
-}
-
-async function ensureValidSession() {
-  const session = await loadSession();
-
-  if (!session) {
-    return firebaseLogin();
-  }
-
-  if (isExpiringSoon(session)) {
-    return firebaseRefresh(session.refresh_token, session.email);
-  }
-
-  return session;
 }
 
 function decodeJwtClaims(token: string) {
@@ -324,25 +245,29 @@ function decodeJwtClaims(token: string) {
   return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as Record<string, unknown>;
 }
 
-function authHeaders(session: AuthSession) {
-  const claims = decodeJwtClaims(session.id_token);
-  const accountId = requireEnv("LIVENOPAY_ACCOUNT_ID");
-  const companyId = String(envString("LIVENOPAY_COMPANY_ID") || claims.company_id || "");
-  const propertyId = String(envString("LIVENOPAY_PROPERTY_ID") || claims.property_id || "");
+const LiveMopayJwtClaimsSchema = z
+  .object({
+    company_id: z.union([z.string(), z.number()]).optional(),
+    property_id: z.union([z.string(), z.number()]).optional()
+  })
+  .passthrough();
 
-  if (!companyId || !propertyId) {
-    throw new Error("Missing LIVENOPAY_COMPANY_ID or LIVENOPAY_PROPERTY_ID and JWT claims did not provide them.");
-  }
+function claimsFromIdToken(idToken: string) {
+  const decoded = decodeJwtClaims(idToken);
+  const parsed = LiveMopayJwtClaimsSchema.safeParse(decoded);
+  return parsed.success ? parsed.data : {};
+}
+
+// Base headers shared by every authenticated LiveMopay web-app request.
+function buildAuthHeaders(idToken: string): Record<string, string> {
+  const portalOrigin = getLivenopayWebPortalOrigin();
 
   return {
-    [authHeaderName]: `${authScheme} ${session.id_token}`.trim(),
+    [authHeaderName]: `${authScheme} ${idToken}`.trim(),
     Accept: "*/*",
     "Accept-Language": acceptLanguage,
-    accountid: accountId,
-    appflavor: appFlavor,
-    companyid: companyId,
+    appflavor: getLivenopayWebAppFlavor(),
     Origin: portalOrigin,
-    propertyid: propertyId,
     Referer: `${portalOrigin.replace(/\/$/, "")}/`,
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
@@ -351,22 +276,94 @@ function authHeaders(session: AuthSession) {
   };
 }
 
-async function discoverAccountId(session: AuthSession) {
-  const payload = await getJson<Array<Record<string, unknown>> | Record<string, unknown>>(
-    `${apiBaseUrl.replace(/\/$/, "")}/mobile/`,
-    authHeaders(session)
-  );
+// Account discovery must not require an account id -- that's the value we're
+// trying to discover. Company/property, when known from the JWT, narrow the
+// discovery request; when not, discovery is attempted without them.
+function buildAccountDiscoveryHeaders(idToken: string): Record<string, string> {
+  const claims = claimsFromIdToken(idToken);
+  const headers = buildAuthHeaders(idToken);
 
-  if (Array.isArray(payload)) {
-    for (const item of payload) {
-      const accountId = item.accountId ?? item.id;
-      if (accountId !== undefined && accountId !== null) {
-        return String(accountId);
-      }
+  if (claims.company_id !== undefined) {
+    headers.companyid = String(claims.company_id);
+  }
+
+  if (claims.property_id !== undefined) {
+    headers.propertyid = String(claims.property_id);
+  }
+
+  return headers;
+}
+
+function buildLedgerHeaders(
+  idToken: string,
+  accountId: string,
+  companyId: string,
+  propertyId: string
+): Record<string, string> {
+  return {
+    ...buildAuthHeaders(idToken),
+    accountid: accountId,
+    companyid: companyId,
+    propertyid: propertyId
+  };
+}
+
+const DiscoveryPayloadSchema = z.union([z.array(z.record(z.unknown())), z.record(z.unknown())]);
+
+function readIdLikeField(item: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = item[key];
+    if (value !== undefined && value !== null && value !== "") {
+      return String(value);
     }
   }
 
-  throw new Error("Could not discover account id from /mobile/. Set LIVENOPAY_ACCOUNT_ID in the environment.");
+  return undefined;
+}
+
+// The response shape of GET /mobile/ for discovery-only headers (no
+// accountid) has not been observed against a real account -- see
+// MULTI_USER_SETUP.md "LiveMopay discovery uncertainties". This parses
+// defensively: any array (or single object treated as a one-item array) of
+// records that expose an id-like field and resolvable company/property ids.
+// Items missing an id, or missing both a discovered and a JWT-fallback
+// company/property id, are skipped rather than assumed.
+export async function discoverLiveMopayAccounts(idToken: string): Promise<LiveMopayAccountCandidate[]> {
+  const claims = claimsFromIdToken(idToken);
+  const fallbackCompanyId = claims.company_id !== undefined ? String(claims.company_id) : undefined;
+  const fallbackPropertyId = claims.property_id !== undefined ? String(claims.property_id) : undefined;
+
+  const payload = await getJson<unknown>(
+    `${getLivenopayWebBaseUrl().replace(/\/$/, "")}/mobile/`,
+    buildAccountDiscoveryHeaders(idToken)
+  );
+
+  const parsed = DiscoveryPayloadSchema.safeParse(payload);
+  if (!parsed.success) {
+    return [];
+  }
+
+  const items = Array.isArray(parsed.data) ? parsed.data : [parsed.data];
+  const candidates: LiveMopayAccountCandidate[] = [];
+
+  for (const item of items) {
+    const accountId = readIdLikeField(item, ["accountId", "id"]);
+    if (!accountId) {
+      continue;
+    }
+
+    const companyId = readIdLikeField(item, ["companyId", "company_id"]) ?? fallbackCompanyId;
+    const propertyId = readIdLikeField(item, ["propertyId", "property_id"]) ?? fallbackPropertyId;
+    if (!companyId || !propertyId) {
+      continue;
+    }
+
+    const label = readIdLikeField(item, ["name", "label", "propertyName", "displayName"]) ?? `Account ${accountId}`;
+
+    candidates.push({ accountId, companyId, propertyId, label });
+  }
+
+  return candidates;
 }
 
 function normalizeLedgerRow(item: LedgerApiRow): LivenopayCsvRow | null {
@@ -472,13 +469,20 @@ export function dedupeLivenopayRows(rows: LivenopayCsvRow[]) {
   return unique;
 }
 
-export async function fetchLivenopayLedgerRows(startDate: string) {
-  const session = await ensureValidSession();
-  const accountId = envString("LIVENOPAY_ACCOUNT_ID") || (await discoverAccountId(session));
+export async function fetchLiveMopayLedger(params: {
+  idToken: string;
+  accountId: string;
+  companyId: string;
+  propertyId: string;
+  startDate: string;
+}): Promise<LivenopayCsvRow[]> {
   const url =
-    `${apiBaseUrl.replace(/\/$/, "")}/mobile/ledger/${encodeURIComponent(startDate)}` +
-    `?accountId=${encodeURIComponent(accountId)}`;
-  const payload = await getJson<unknown>(url, authHeaders(session));
+    `${getLivenopayWebBaseUrl().replace(/\/$/, "")}/mobile/ledger/${encodeURIComponent(params.startDate)}` +
+    `?accountId=${encodeURIComponent(params.accountId)}`;
+  const payload = await getJson<unknown>(
+    url,
+    buildLedgerHeaders(params.idToken, params.accountId, params.companyId, params.propertyId)
+  );
 
   if (!Array.isArray(payload)) {
     throw new Error(`Expected a list from ledger endpoint, got ${typeof payload}.`);
@@ -494,134 +498,6 @@ export async function fetchLivenopayLedgerRows(startDate: string) {
   }
 
   return dedupeLivenopayRows(rows);
-}
-
-function escapeCsvValue(value: string) {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replaceAll('"', '""')}"`;
-  }
-
-  return value;
-}
-
-function parseCsvLine(line: string) {
-  const cells: string[] = [];
-  let current = "";
-  let insideQuotes = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-
-    if (char === '"') {
-      if (insideQuotes && line[index + 1] === '"') {
-        current += '"';
-        index += 1;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-      continue;
-    }
-
-    if (char === "," && !insideQuotes) {
-      cells.push(current);
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  cells.push(current);
-  return cells;
-}
-
-export async function writeLivenopayCsv(rows: LivenopayCsvRow[], targetPath = csvPath) {
-  await mkdir(path.dirname(targetPath), { recursive: true });
-
-  const header = livenopayFieldNames.join(",");
-  const lines = rows.map((row) => livenopayFieldNames.map((field) => escapeCsvValue(row[field] || "")).join(","));
-  await writeFile(targetPath, `${[header, ...lines].join("\n")}\n`, "utf8");
-}
-
-export async function readLivenopayCsvRows(targetPath = csvPath) {
-  let raw: string;
-
-  try {
-    raw = await readFile(targetPath, "utf8");
-  } catch (error) {
-    const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
-    if (code === "ENOENT") {
-      throw new Error(`${targetPath} does not exist. Run capture before syncing.`);
-    }
-
-    throw error;
-  }
-
-  const lines = raw.replace(/\r\n/g, "\n").trim().split("\n");
-  if (lines.length <= 1) {
-    return [] as LivenopayCsvRow[];
-  }
-
-  const headers = parseCsvLine(lines[0]);
-  const required = new Set(livenopayFieldNames.filter((field) => field !== "source_ts" && field !== "water_kl"));
-  const seen = new Set<string>();
-  const rows: LivenopayCsvRow[] = [];
-
-  for (const line of lines.slice(1)) {
-    if (!line.trim()) {
-      continue;
-    }
-
-    const cells = parseCsvLine(line);
-    const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""])) as Record<
-      string,
-      string
-    >;
-
-    if (Array.from(required).some((field) => !row[field])) {
-      continue;
-    }
-
-    const normalized = Object.fromEntries(
-      livenopayFieldNames.map((field) => [field, row[field] || (field === "water_kl" ? "0" : "")])
-    ) as LivenopayCsvRow;
-    const key = livenopayLedgerKey(normalized);
-
-    if (seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    rows.push(normalized);
-  }
-
-  return rows;
-}
-
-export async function latestLivenopayCsvStartDate(targetPath = csvPath) {
-  try {
-    const rows = await readLivenopayCsvRows(targetPath);
-    let latestPeriod: string | null = null;
-
-    for (const row of rows) {
-      if (!latestPeriod || row.period_dt > latestPeriod) {
-        latestPeriod = row.period_dt;
-      }
-    }
-
-    return latestPeriod ? latestPeriod.split(" ", 1)[0] : null;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message.includes("does not exist")) {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
-export function getLivenopayCsvPath() {
-  return csvPath;
 }
 
 export function currentLivenopayLocalYear() {

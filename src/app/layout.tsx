@@ -6,16 +6,15 @@ import type { RootLayoutProps } from "./types";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LiveNoPay",
+  title: "NewinMeter",
   description: "Your electricity usage, your data, your control.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "LiveNoPay"
+    title: "NewinMeter"
   },
   icons: {
-    icon: [{ url: "/icon.png", sizes: "512x512", type: "image/png" }],
     apple: [{ url: "/apple-icon", sizes: "512x512", type: "image/png" }]
   }
 };

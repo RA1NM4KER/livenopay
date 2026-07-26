@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import { loadEnergyRowsPage } from "@/lib/energy-data";
 import { parseDataTableQuery } from "@/lib/data-table-query-params";
+import { requireConnectedSession } from "@/lib/auth/session";
 import { enforceRateLimit, getRateLimitIdentifier, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const auth = await requireConnectedSession();
+  if (!auth.ok) {
+    return NextResponse.json(
+      { message: auth.status === 401 ? "Authentication required." : "Connect a LiveMopay account first." },
+      { status: auth.status }
+    );
+  }
+
   try {
-    const identifier = getRateLimitIdentifier(request, "energy-rows");
+    const identifier = getRateLimitIdentifier(auth.session.userId, "energy-rows");
     const rateLimit = await enforceRateLimit(identifier);
     const rateHeaders = rateLimitHeaders(rateLimit);
 
@@ -21,7 +30,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const parsed = parseDataTableQuery(searchParams);
 
-    const result = await loadEnergyRowsPage({
+    const result = await loadEnergyRowsPage(auth.session.accessToken, {
       from: parsed.from || undefined,
       to: parsed.to || undefined,
       chargeType: parsed.chargeType,

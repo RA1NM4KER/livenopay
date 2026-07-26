@@ -9,15 +9,20 @@
   --color-ink: 24 24 24;
   --color-muted: 108 108 108;
   --color-line: 224 224 224;
-  --color-accent: 226 74 67;
-  --color-accent-soft: 252 232 231;
+  --color-accent: 0 128 82;
+  --color-accent-soft: 214 250 231;
   --color-amber-soft: 254 243 219;
   --color-rose-soft: 252 232 231;
   --color-success: 34 139 58;
   --color-fixed: 56 130 200;
   --color-projection: 143 118 105;
-  --color-spend: 226 74 67;
+  --color-spend: 0 128 82;
   --color-usage: 99 120 145;
+  /* Fixed (theme-independent) brand green for the signed-out auth pages,
+     whose background is permanently dark regardless of the app's own
+     light/dark toggle. --color-accent above flips with the toggle instead,
+     tuned separately for contrast in each mode. */
+  --color-brand-green: 0 255 155;
   --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.08);
   background: rgb(var(--color-canvas));
 }
@@ -29,14 +34,14 @@
   --color-ink: 238 238 238;
   --color-muted: 156 156 156;
   --color-line: 46 46 46;
-  --color-accent: 226 74 67;
-  --color-accent-soft: 60 24 22;
+  --color-accent: 0 224 140;
+  --color-accent-soft: 8 46 33;
   --color-amber-soft: 66 54 28;
   --color-rose-soft: 60 24 22;
   --color-success: 74 176 100;
   --color-fixed: 90 158 220;
   --color-projection: 180 151 135;
-  --color-spend: 226 74 67;
+  --color-spend: 0 224 140;
   --color-usage: 99 140 180;
   --shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.35);
 }
@@ -81,4 +86,26 @@ select {
 
 .snap-rail::-webkit-scrollbar {
   display: none;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -50% 0;
+  }
+}
+
+.skeleton {
+  background-color: rgb(var(--color-line) / 0.5);
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgb(var(--color-paper) / 0.7) 45%,
+    rgb(var(--color-paper) / 0.7) 55%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
 }

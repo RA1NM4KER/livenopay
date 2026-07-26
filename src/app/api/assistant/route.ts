@@ -2,7 +2,9 @@ import type { AssistantConversationMessage } from "@/lib/assistant/types";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { answerAssistantQuestion } from "@/lib/assistant/openai";
+import { requireConnectedSession } from "@/lib/auth/session";
 import { enforceRateLimit, getRateLimitIdentifier, rateLimitHeaders } from "@/lib/rate-limit";
+import { getOrCreateUserPermissions } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +24,21 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const auth = await requireConnectedSession();
+  if (!auth.ok) {
+    return NextResponse.json(
+      { message: auth.status === 401 ? "Authentication required." : "Connect a LiveMopay account first." },
+      { status: auth.status }
+    );
+  }
+
+  const permissions = await getOrCreateUserPermissions(auth.session.userId);
+  if (!permissions.aiAssistantEnabled) {
+    return NextResponse.json({ message: "The energy assistant is disabled for your account." }, { status: 403 });
+  }
+
   try {
-    const identifier = getRateLimitIdentifier(request, "assistant");
+    const identifier = getRateLimitIdentifier(auth.session.userId, "assistant");
     const rateLimit = await enforceRateLimit(identifier, "assistant");
     const rateHeaders = rateLimitHeaders(rateLimit);
 
@@ -36,6 +51,7 @@ export async function POST(request: Request) {
 
     const body = requestSchema.parse(await request.json());
     const result = await answerAssistantQuestion(
+      auth.session.accessToken,
       body.question,
       {
         from: body.from,

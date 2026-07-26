@@ -1,82 +1,129 @@
 "use client";
 
-import Image from "next/image";
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { parseDateRangeQuery, filterQueryParamKeys } from "@/lib/filter-query-params";
-import { queryHref } from "@/lib/url-query";
-import { ThemeToggle } from "./theme-toggle";
+import { usePathname } from "next/navigation";
+import { Heart, Menu } from "lucide-react";
+import { FullscreenDialog } from "@/components/ui/fullscreen-dialog";
+import { SidebarNav } from "./sidebar-nav";
+import { Wordmark } from "./wordmark";
 import type { AppShellProps } from "./types";
 
-export function AppShell({ children, mobileHeaderActions, lockViewport }: AppShellProps) {
+function SignOutForm() {
+  return (
+    <form action="/auth/sign-out" method="post">
+      <button type="submit" className="text-xs text-muted transition hover:text-ink">
+        Sign out
+      </button>
+    </form>
+  );
+}
+
+function KofiLink() {
+  return (
+    <a
+      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-canvas hover:text-ink"
+      href="https://ko-fi.com/kefasaleck"
+      rel="noreferrer"
+      target="_blank"
+    >
+      <Heart aria-hidden="true" className="h-4 w-4" />
+      Buy me a coffee
+    </a>
+  );
+}
+
+export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps) {
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { from, to } = parseDateRangeQuery(new URLSearchParams(searchParams.toString()));
-  const sharedDateParams = new URLSearchParams();
-
-  if (from) {
-    sharedDateParams.set(filterQueryParamKeys.from, from);
-  }
-
-  if (to) {
-    sharedDateParams.set(filterQueryParamKeys.to, to);
-  }
-
-  const dashboardHref = queryHref("/", sharedDateParams);
-  const dataHref = queryHref("/data", sharedDateParams);
-  const mainClassName = `mx-auto flex w-full max-w-7xl flex-col px-3 pt-2 sm:px-6 sm:pt-2 sm:pb-5 lg:px-8 ${
-    lockViewport ? "h-[100svh] min-h-0 overflow-hidden" : "min-h-screen"
-  }`;
+  const lockViewport = pathname === "/data";
 
   return (
-    <main className={mainClassName}>
-      <header className="flex flex-wrap items-end justify-between border-b border-line">
-        <Link href={dashboardHref} className="group hidden md:flex min-w-0 items-center">
-          <Image
-            src="/logo.png"
-            alt="Electricity Ledger"
-            height={300}
-            width={300}
-            unoptimized
-            className="h-20 w-auto flex-shrink-0 dark:hidden sm:h-24"
-          />
-          <Image
-            src="/logo-dark.png"
-            alt="Electricity Ledger"
-            height={300}
-            width={300}
-            unoptimized
-            className="hidden h-20 w-auto flex-shrink-0 dark:block sm:h-24"
-          />
-        </Link>
-        <div className="flex w-full items-end justify-between sm:w-auto sm:justify-start sm:gap-12">
-          <nav className="-mb-px flex items-center gap-1 text-sm">
-            <Link
-              href={dashboardHref}
-              className={`px-3 py-4 border-b-2 transition-colors ${
-                pathname === "/" ? "border-accent text-ink font-medium" : "border-transparent text-muted hover:text-ink"
-              }`}
-            >
-              Dashboard
+    <div className="flex h-[100svh] overflow-hidden">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-paper lg:flex">
+        <div className="flex h-16 shrink-0 items-center px-6">
+          <Link href="/">
+            <Wordmark className="text-2xl" textClassName="text-ink" accentClassName="text-accent" />
+          </Link>
+        </div>
+        <div className="min-h-0 flex-1 px-3">
+          <SidebarNav isAdmin={isAdmin} />
+        </div>
+        <div className="shrink-0 px-3 pb-3">
+          <KofiLink />
+        </div>
+        <div className="shrink-0 border-t border-line px-4 py-4">
+          <div className="flex items-center gap-2">
+            {userEmail ? <p className="min-w-0 max-w-[9.5rem] truncate text-xs text-muted">{userEmail}</p> : null}
+            <SignOutForm />
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Link className="text-xs text-muted transition hover:text-ink" href="/privacy">
+              Privacy
             </Link>
-            <Link
-              href={dataHref}
-              className={`px-3 py-4 border-b-2 transition-colors ${
-                pathname === "/data"
-                  ? "border-accent text-ink font-medium"
-                  : "border-transparent text-muted hover:text-ink"
-              }`}
-            >
-              Data
+            <Link className="text-xs text-muted transition hover:text-ink" href="/terms">
+              Terms
             </Link>
-          </nav>
-          <div className="flex items-center gap-2 pb-2">
-            {mobileHeaderActions ? <div className="sm:hidden">{mobileHeaderActions}</div> : null}
-            <ThemeToggle />
+            <a className="text-xs text-muted transition hover:text-ink" href="mailto:kefasa112@gmail.com">
+              Feedback
+            </a>
           </div>
         </div>
-      </header>
-      {children}
-    </main>
+      </aside>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4 lg:hidden">
+          <Link href="/">
+            <Wordmark className="text-base" textClassName="text-ink" accentClassName="text-accent" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsNavOpen(true)}
+              aria-label="Open menu"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted transition hover:text-ink"
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        </header>
+
+        {/* The shell itself never scrolls -- the sidebar must stay put.
+            Regular pages scroll their own content here; lockViewport pages
+            (the data table) instead delegate scrolling to a nested region
+            so their own header/toolbar can stay pinned too. */}
+        <main
+          className={`mx-auto flex w-full max-w-7xl flex-1 flex-col px-3 pb-5 sm:px-6 lg:px-8 ${
+            lockViewport ? "min-h-0 overflow-hidden" : "overflow-y-auto"
+          }`}
+        >
+          {children}
+        </main>
+      </div>
+
+      <FullscreenDialog isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} title="Menu">
+        <div className="flex flex-col gap-6">
+          <SidebarNav isAdmin={isAdmin} onNavigate={() => setIsNavOpen(false)} />
+          <KofiLink />
+          <div className="border-t border-line pt-4">
+            <div className="flex items-center gap-2">
+              {userEmail ? <p className="min-w-0 max-w-[9.5rem] truncate text-xs text-muted">{userEmail}</p> : null}
+              <SignOutForm />
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <Link className="text-xs text-muted transition hover:text-ink" href="/privacy">
+                Privacy
+              </Link>
+              <Link className="text-xs text-muted transition hover:text-ink" href="/terms">
+                Terms
+              </Link>
+              <a className="text-xs text-muted transition hover:text-ink" href="mailto:kefasa112@gmail.com">
+                Feedback
+              </a>
+            </div>
+          </div>
+        </div>
+      </FullscreenDialog>
+    </div>
   );
 }

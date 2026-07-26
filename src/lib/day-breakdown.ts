@@ -2,10 +2,13 @@ import type { IntervalRollupRow } from "./types";
 
 export type IntervalPoint = {
   time: string;
-  spend: number;
-  kwh: number;
-  waterSpend: number;
-  waterKl: number;
+  // null (not 0) for intervals with no captured row yet, so the day-detail
+  // line stops at the last real reading instead of drawing through zero for
+  // the rest of the day.
+  spend: number | null;
+  kwh: number | null;
+  waterSpend: number | null;
+  waterKl: number | null;
 };
 
 export type DayBreakdownDomains = {
@@ -30,13 +33,24 @@ export function buildIntervalPoints(rows: IntervalRollupRow[], selectedDate: str
     const minute = index % 2 === 0 ? "00" : "30";
     const time = `${String(hour).padStart(2, "0")}:${minute}`;
     const items = byTime.get(time) ?? [];
+    // A row exists for this slot whenever EITHER utility had activity (the
+    // rollup groups electricity and water together per period_time), so
+    // "a row is present" alone doesn't mean electricity specifically has
+    // data here -- water can keep reporting after electricity's cutoff, or
+    // vice versa. Each utility's own fields decide its own cutoff.
+    const energySpendSum = items.reduce((total, row) => total + row.spend, 0);
+    const energyKwhSum = items.reduce((total, row) => total + row.kwh, 0);
+    const waterSpendSum = items.reduce((total, row) => total + row.waterSpend, 0);
+    const waterKlSum = items.reduce((total, row) => total + row.waterKl, 0);
+    const hasEnergyData = energySpendSum !== 0 || energyKwhSum !== 0;
+    const hasWaterData = waterSpendSum !== 0 || waterKlSum !== 0;
 
     return {
       time,
-      spend: round(items.reduce((total, row) => total + row.spend, 0)),
-      kwh: round(items.reduce((total, row) => total + row.kwh, 0)),
-      waterSpend: round(items.reduce((total, row) => total + row.waterSpend, 0)),
-      waterKl: round(items.reduce((total, row) => total + row.waterKl, 0))
+      spend: hasEnergyData ? round(energySpendSum) : null,
+      kwh: hasEnergyData ? round(energyKwhSum) : null,
+      waterSpend: hasWaterData ? round(waterSpendSum) : null,
+      waterKl: hasWaterData ? round(waterKlSum) : null
     };
   });
 }

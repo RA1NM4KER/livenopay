@@ -1,5 +1,7 @@
-const minuteWindowMs = 60_000;
-const dayWindowMs = 86_400_000;
+import "server-only";
+
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 const RATE_LIMIT_POLICIES = {
   default: {
@@ -14,47 +16,12 @@ const RATE_LIMIT_POLICIES = {
 
 export type RateLimitPolicyName = keyof typeof RATE_LIMIT_POLICIES;
 
-type WindowState = {
-  count: number;
-  resetAt: number;
-};
-
-type RateLimitState = {
+export type RateLimitState = {
   success: boolean;
   limit: number;
   remaining: number;
   reset: number;
 };
-
-const minuteStates = new Map<string, WindowState>();
-const dayStates = new Map<string, WindowState>();
-
-function applyWindowLimit(
-  store: Map<string, WindowState>,
-  identifier: string,
-  limit: number,
-  windowMs: number
-): RateLimitState {
-  const now = Date.now();
-  const existing = store.get(identifier);
-  const state =
-    existing && now <= existing.resetAt
-      ? existing
-      : {
-          count: 0,
-          resetAt: now + windowMs
-        };
-
-  state.count += 1;
-  store.set(identifier, state);
-
-  return {
-    success: state.count <= limit,
-    limit,
-    remaining: Math.max(0, limit - state.count),
-    reset: Math.ceil(state.resetAt / 1000)
-  };
-}
 
 export type RateLimitResult = {
   allowed: boolean;
@@ -62,27 +29,94 @@ export type RateLimitResult = {
   day: RateLimitState;
 };
 
-export function getRateLimitIdentifier(request: Request, scope?: string) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const ip =
-    forwardedFor?.split(",")[0]?.trim() ?? request.headers.get("x-real-ip") ?? request.headers.get("cf-connecting-ip");
-  const base = ip ?? "unknown";
+// Backed by Upstash Redis so limits actually hold across serverless
+// instances and cold starts -- a plain in-memory counter resets per
+// instance on Vercel and doesn't enforce anything reliably. Lazily
+// constructed so missing env vars only break the first real request, not
+// module import (build/static analysis).
+//
+// Supports both naming conventions: UPSTASH_REDIS_REST_URL/TOKEN (signing
+// up at upstash.com directly) and KV_REST_API_URL/TOKEN (Vercel's Upstash
+// Marketplace integration, which keeps the older Vercel KV variable names).
+let redis: Redis | null = null;
 
-  return scope ? `${base}:${scope}` : base;
+function getRedis(): Redis {
+  if (!redis) {
+    const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
+
+    if (!url || !token) {
+      throw new Error(
+        "Missing Upstash Redis credentials (UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN)."
+      );
+    }
+
+    redis = new Redis({ url, token });
+  }
+
+  return redis;
+}
+
+const limitersByPolicy = new Map<RateLimitPolicyName, { minute: Ratelimit; day: Ratelimit }>();
+
+function getLimiters(policyName: RateLimitPolicyName) {
+  const cached = limitersByPolicy.get(policyName);
+  if (cached) {
+    return cached;
+  }
+
+  const policy = RATE_LIMIT_POLICIES[policyName];
+  const client = getRedis();
+  const created = {
+    minute: new Ratelimit({
+      redis: client,
+      limiter: Ratelimit.slidingWindow(policy.minuteLimit, "1 m"),
+      prefix: `ratelimit:${policyName}:minute`
+    }),
+    day: new Ratelimit({
+      redis: client,
+      limiter: Ratelimit.slidingWindow(policy.dayLimit, "1 d"),
+      prefix: `ratelimit:${policyName}:day`
+    })
+  };
+
+  limitersByPolicy.set(policyName, created);
+  return created;
+}
+
+// Identifier is always built from the authenticated user id, never IP --
+// every caller of this already resolves a session before rate limiting, and
+// keying by IP either double-counts users sharing a network or lets a
+// single user reset their own limit by switching networks.
+export function getRateLimitIdentifier(userId: string, scope?: string) {
+  return scope ? `${userId}:${scope}` : userId;
 }
 
 export async function enforceRateLimit(
   identifier: string,
   policyName: RateLimitPolicyName = "default"
 ): Promise<RateLimitResult> {
-  const policy = RATE_LIMIT_POLICIES[policyName];
-  const minute = applyWindowLimit(minuteStates, identifier, policy.minuteLimit, minuteWindowMs);
-  const day = applyWindowLimit(dayStates, identifier, policy.dayLimit, dayWindowMs);
+  const { minute, day } = getLimiters(policyName);
+  const [minuteResult, dayResult] = await Promise.all([minute.limit(identifier), day.limit(identifier)]);
+
+  const minuteState: RateLimitState = {
+    success: minuteResult.success,
+    limit: minuteResult.limit,
+    remaining: minuteResult.remaining,
+    reset: Math.ceil(minuteResult.reset / 1000)
+  };
+
+  const dayState: RateLimitState = {
+    success: dayResult.success,
+    limit: dayResult.limit,
+    remaining: dayResult.remaining,
+    reset: Math.ceil(dayResult.reset / 1000)
+  };
 
   return {
-    allowed: minute.success && day.success,
-    minute,
-    day
+    allowed: minuteState.success && dayState.success,
+    minute: minuteState,
+    day: dayState
   };
 }
 

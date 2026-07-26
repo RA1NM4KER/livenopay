@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardHeader } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -108,7 +108,7 @@ export function DayBreakdownChart({
 
   const renderChart = (axisInterval: number) => (
     <ResponsiveContainer height="100%" width="100%">
-      <BarChart data={intervalData} margin={chartMargin}>
+      <ComposedChart data={intervalData} margin={chartMargin}>
         <CartesianGrid stroke={chartColors.line} vertical={false} />
         <XAxis
           dataKey="time"
@@ -144,14 +144,22 @@ export function DayBreakdownChart({
             name === utilityConfig.spendKey ? utilityConfig.spendLabel : utilityConfig.usageLabel
           ]}
         />
-        <Bar yAxisId="spend" dataKey={utilityConfig.spendKey} fill={chartColors.spend} radius={[4, 4, 0, 0]} />
         <Bar
           yAxisId={utilityConfig.usageAxisId}
           dataKey={utilityConfig.usageKey}
           fill={chartColors.usage}
           radius={[4, 4, 0, 0]}
         />
-      </BarChart>
+        <Line
+          yAxisId="spend"
+          dataKey={utilityConfig.spendKey}
+          type="monotone"
+          stroke={chartColors.spend}
+          strokeWidth={2}
+          dot={false}
+          connectNulls={false}
+        />
+      </ComposedChart>
     </ResponsiveContainer>
   );
 
