@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { buildIntervalPoints, buildStableAxisDomains, sumRows } from "@/lib/day-breakdown";
@@ -194,16 +194,16 @@ export function DayBreakdownChart({
   return (
     <ExpandProvider>
       <Card>
-        <CardHeader
-          title="Day detail"
-          eyebrow={utilityConfig.eyebrow}
-          action={
-            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
-              {dateControl}
-              <ExpandChartButton />
-            </div>
-          }
-        />
+        <div className="border-b border-line px-4 py-4 sm:px-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">{utilityConfig.eyebrow}</p>
+            <ExpandChartButton />
+          </div>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-ink">Day detail</h2>
+            {dateControl}
+          </div>
+        </div>
         <div className="grid gap-4 p-3 sm:p-4 lg:grid-cols-[1fr_22rem]">
           <div className="h-72 sm:h-80">{renderChart(isCompactAxis ? 7 : 3)}</div>
           <aside className="grid content-start grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-2">

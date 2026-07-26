@@ -13,9 +13,6 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "NewinMeter"
-  },
-  icons: {
-    apple: [{ url: "/apple-icon", sizes: "512x512", type: "image/png" }]
   }
 };
 

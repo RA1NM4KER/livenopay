@@ -152,7 +152,7 @@ export function DropdownSelect({
                 type="button"
               >
                 {option.icon ? <span className="shrink-0">{option.icon}</span> : null}
-                <span>{option.label}</span>
+                <span className={triggerLabelClassName}>{option.label}</span>
               </button>
             );
           })}

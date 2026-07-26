@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabasePublicConfig } from "@/lib/supabase/public-config";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/auth/sign-out", "/privacy", "/terms"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/auth/sign-out", "/privacy", "/terms", "/install"];
 
 // Session refresh + gate for unauthenticated access. The connection-required
 // redirect (authenticated but not yet connected -> /connect) lives in the

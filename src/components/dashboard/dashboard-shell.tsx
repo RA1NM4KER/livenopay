@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { AssistantPanel } from "@/components/assistant/assistant-panel";
 import { DataSyncAction } from "@/components/data/data-sync-action";
 import { CumulativeSpendChart } from "@/components/charts/cumulative-spend-chart";
@@ -10,6 +10,7 @@ import { DailySpendChart } from "@/components/charts/daily-spend-chart";
 import { HourlyChart } from "@/components/charts/hourly-chart";
 import { TariffChart } from "@/components/charts/tariff-chart";
 import { MetricCard } from "@/components/ui/metric-card";
+import { ScrollHint } from "@/components/ui/scroll-hint";
 import { createAnalytics } from "@/lib/analytics";
 import { buildGlobalDomains } from "@/lib/day-breakdown";
 import { previousComparableScope } from "@/lib/period-comparison";
@@ -62,6 +63,9 @@ export function DashboardShell({ dailyRows, hourlyRows, summary, isAiAssistantEn
 
   const metrics = analytics.metrics;
   const metricCards = buildMetricCards(metrics, previousAnalytics?.metrics);
+  const metricsRailRef = useRef<HTMLElement>(null);
+  const spendKwhRailRef = useRef<HTMLElement>(null);
+  const otherChartsRailRef = useRef<HTMLElement>(null);
 
   return (
     <div className="flex flex-1 flex-col gap-5 py-6">
@@ -79,24 +83,36 @@ export function DashboardShell({ dailyRows, hourlyRows, summary, isAiAssistantEn
         />
       </div>
 
-      <section className="snap-rail touch-pan-x touch-pan-y flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 xl:grid-cols-5 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0">
-        {metricCards.map((card) => (
-          <MetricCard
-            key={card.label}
-            label={card.label}
-            value={card.value}
-            detail={card.detail}
-            description={card.description}
-            tone={card.tone}
-            comparison={card.comparison}
-          />
-        ))}
-      </section>
+      <div className="relative">
+        <section
+          ref={metricsRailRef}
+          className="snap-rail touch-pan-x touch-pan-y flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4 xl:grid-cols-5 [&>section]:min-w-max [&>section]:snap-start sm:[&>section]:min-w-0"
+        >
+          {metricCards.map((card) => (
+            <MetricCard
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              detail={card.detail}
+              description={card.description}
+              tone={card.tone}
+              comparison={card.comparison}
+            />
+          ))}
+        </section>
+        <ScrollHint containerRef={metricsRailRef} />
+      </div>
 
-      <section className="snap-rail touch-pan-x touch-pan-y -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0">
-        <DailySpendChart data={analytics.daily} />
-        <DailyKwhChart data={analytics.daily} />
-      </section>
+      <div className="relative">
+        <section
+          ref={spendKwhRailRef}
+          className="snap-rail touch-pan-x touch-pan-y -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0"
+        >
+          <DailySpendChart data={analytics.daily} />
+          <DailyKwhChart data={analytics.daily} />
+        </section>
+        <ScrollHint containerRef={spendKwhRailRef} />
+      </div>
 
       <DayBreakdownChart
         dailyRows={dailyRows}
@@ -105,12 +121,18 @@ export function DashboardShell({ dailyRows, hourlyRows, summary, isAiAssistantEn
         initialSelectedDate={summary.dateEnd ?? dateOptions[dateOptions.length - 1]}
       />
 
-      <section className="snap-rail touch-pan-x touch-pan-y -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0">
-        <CumulativeSpendChart data={analytics.daily} />
-        <TariffChart data={analytics.tariffTimeline} />
-        <HourlyChart data={analytics.hourly} metric="spend" title="Total energy spend by hour" />
-        <HourlyChart data={analytics.hourly} metric="kwh" title="Total energy usage by hour" />
-      </section>
+      <div className="relative">
+        <section
+          ref={otherChartsRailRef}
+          className="snap-rail touch-pan-x touch-pan-y -mx-3 flex snap-x gap-5 overflow-x-auto px-3 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0 lg:pb-0 [&>section]:min-w-[88vw] [&>section]:snap-center sm:[&>section]:min-w-[24rem] lg:[&>section]:min-w-0"
+        >
+          <CumulativeSpendChart data={analytics.daily} />
+          <TariffChart data={analytics.tariffTimeline} />
+          <HourlyChart data={analytics.hourly} metric="spend" title="Total energy spend by hour" />
+          <HourlyChart data={analytics.hourly} metric="kwh" title="Total energy usage by hour" />
+        </section>
+        <ScrollHint containerRef={otherChartsRailRef} />
+      </div>
 
       <Insights insights={analytics.insights} />
     </div>

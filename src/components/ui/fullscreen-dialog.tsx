@@ -66,7 +66,7 @@ export function FullscreenDialog({
   }
 
   return (
-    <div aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-canvas/94 backdrop-blur-sm" role="dialog">
+    <div aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-canvas/80 backdrop-blur-xl" role="dialog">
       <div className="flex items-center justify-between gap-3 border-b border-line bg-paper/95 px-4 py-2.5 sm:px-6">
         <div className="min-w-0">
           {eyebrow ? <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{eyebrow}</p> : null}

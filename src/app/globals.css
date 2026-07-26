@@ -88,6 +88,22 @@ select {
   display: none;
 }
 
+@keyframes nudge-x {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateX(5px);
+    opacity: 0.5;
+  }
+}
+
+.animate-nudge-x {
+  animation: nudge-x 1.6s ease-in-out infinite;
+}
+
 @keyframes skeleton-shimmer {
   0% {
     background-position: 150% 0;

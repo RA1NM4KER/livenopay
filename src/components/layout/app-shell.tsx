@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, Menu } from "lucide-react";
+import { Heart, Menu, Smartphone } from "lucide-react";
 import { FullscreenDialog } from "@/components/ui/fullscreen-dialog";
 import { SidebarNav } from "./sidebar-nav";
 import { Wordmark } from "./wordmark";
@@ -16,6 +16,18 @@ function SignOutForm() {
         Sign out
       </button>
     </form>
+  );
+}
+
+function InstallLink() {
+  return (
+    <Link
+      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition hover:bg-canvas hover:text-ink"
+      href="/install"
+    >
+      <Smartphone aria-hidden="true" className="h-4 w-4" />
+      Install app
+    </Link>
   );
 }
 
@@ -50,6 +62,7 @@ export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps
           <SidebarNav isAdmin={isAdmin} />
         </div>
         <div className="shrink-0 px-3 pb-3">
+          <InstallLink />
           <KofiLink />
         </div>
         <div className="shrink-0 border-t border-line px-4 py-4">
@@ -101,9 +114,15 @@ export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps
         </main>
       </div>
 
-      <FullscreenDialog isOpen={isNavOpen} onClose={() => setIsNavOpen(false)} title="Menu">
-        <div className="flex flex-col gap-6">
-          <SidebarNav isAdmin={isAdmin} onNavigate={() => setIsNavOpen(false)} />
+      <FullscreenDialog
+        contentClassName="flex h-full flex-col"
+        isOpen={isNavOpen}
+        onClose={() => setIsNavOpen(false)}
+        title="Menu"
+      >
+        <SidebarNav isAdmin={isAdmin} onNavigate={() => setIsNavOpen(false)} size="lg" />
+        <div className="mt-auto flex flex-col gap-3 pt-6">
+          <InstallLink />
           <KofiLink />
           <div className="border-t border-line pt-4">
             <div className="flex items-center gap-2">
