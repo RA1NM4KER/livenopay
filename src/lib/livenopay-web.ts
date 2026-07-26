@@ -9,7 +9,7 @@ import {
 } from "./env";
 
 const ENERGY_LABEL_RE = /^(.+?) \((\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)$/;
-const WATER_LABEL_RE = /^(Water:.+?) \((\d{4}-\d{2}-\d{2} \d{2}:\d{2}) to \d{4}-\d{2}-\d{2} \d{2}:\d{2}\)$/;
+const WATER_LABEL_RE = /^(Water:.+?) \((\d{4}-\d{2}-\d{2} \d{2}:\d{2})(?: to \d{4}-\d{2}-\d{2} \d{2}:\d{2})?\)$/;
 const FIXED_LABEL_RE = /^(Daily .+?) - (\d{4}-\d{2}-\d{2})$/;
 const ENERGY_UNITS_RE = /(-?[\d.]+)\s*kWh\s*@\s*R(-?[\d.]+)/;
 const WATER_UNITS_RE = /(-?[\d.]+)\s*kL\s*@\s*R(-?[\d.]+)/;
@@ -371,33 +371,20 @@ function normalizeLedgerRow(item: LedgerApiRow): LivenopayCsvRow | null {
   const captureDt = formatLocalCaptureDate(item.date);
   const balance = parseMoney(item.balanceIncl || item.balance);
 
-  const energyMatch = description.match(ENERGY_LABEL_RE);
-  if (energyMatch) {
-    const units = item.unitsDescriptionIncl || item.unitsDescription || "";
-    const unitsMatch = units.match(ENERGY_UNITS_RE);
-    if (!unitsMatch) {
-      throw new Error(`Could not parse energy units from ${JSON.stringify(units)}.`);
-    }
-
-    return {
-      capture_dt: captureDt,
-      source_ts: item.date,
-      charge_label: energyMatch[1],
-      period_dt: energyMatch[2],
-      kwh: unitsMatch[1],
-      water_kl: "0",
-      tariff: unitsMatch[2],
-      cost: parseMoney(item.debitIncl || item.debit),
-      balance
-    };
-  }
-
+  // Water is checked before energy: WATER_LABEL_RE requires a "Water:"
+  // prefix (with either a single timestamp or a "(X to Y)" range), while
+  // ENERGY_LABEL_RE is a broad "anything followed by one parenthesized
+  // timestamp" catch-all -- broad enough to also match water rows whose
+  // description doesn't fit the stricter water pattern. Checking the more
+  // specific pattern first means a row only ever falls through to the
+  // energy branch if it genuinely isn't a water charge.
   const waterMatch = description.match(WATER_LABEL_RE);
   if (waterMatch) {
     const units = item.unitsDescriptionIncl || item.unitsDescription || "";
     const unitsMatch = units.match(WATER_UNITS_RE);
     if (!unitsMatch) {
-      throw new Error(`Could not parse water units from ${JSON.stringify(units)}.`);
+      console.warn(`Skipping ledger row: could not parse water units from ${JSON.stringify(units)}.`);
+      return null;
     }
 
     return {
@@ -413,12 +400,35 @@ function normalizeLedgerRow(item: LedgerApiRow): LivenopayCsvRow | null {
     };
   }
 
+  const energyMatch = description.match(ENERGY_LABEL_RE);
+  if (energyMatch) {
+    const units = item.unitsDescriptionIncl || item.unitsDescription || "";
+    const unitsMatch = units.match(ENERGY_UNITS_RE);
+    if (!unitsMatch) {
+      console.warn(`Skipping ledger row: could not parse energy units from ${JSON.stringify(units)}.`);
+      return null;
+    }
+
+    return {
+      capture_dt: captureDt,
+      source_ts: item.date,
+      charge_label: energyMatch[1],
+      period_dt: energyMatch[2],
+      kwh: unitsMatch[1],
+      water_kl: "0",
+      tariff: unitsMatch[2],
+      cost: parseMoney(item.debitIncl || item.debit),
+      balance
+    };
+  }
+
   const fixedMatch = description.match(FIXED_LABEL_RE);
   if (fixedMatch) {
     const units = item.unitsDescriptionIncl || item.unitsDescription || "";
     const unitsMatch = units.match(FIXED_UNITS_RE);
     if (!unitsMatch) {
-      throw new Error(`Could not parse fixed-charge units from ${JSON.stringify(units)}.`);
+      console.warn(`Skipping ledger row: could not parse fixed-charge units from ${JSON.stringify(units)}.`);
+      return null;
     }
 
     return {

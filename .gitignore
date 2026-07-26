@@ -18,3 +18,4 @@ supabase/.temp
 !public/dashboard-preview.png
 .playwright-mcp/
 coverage/
+.vercel

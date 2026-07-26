@@ -1,0 +1,16 @@
+-- The previous migration's `set local statement_timeout` inside
+-- refresh_livenopay_rollups_for_run had no effect: that function only runs
+-- as an AFTER trigger side-effect of the PATCH to capture_runs, so it
+-- executes mid-flight within that same already-armed UPDATE statement.
+-- Postgres arms a statement's timeout once, at the start of that
+-- statement's execution, using whatever value was in effect at that
+-- moment -- a SET LOCAL issued by a trigger fired partway through the
+-- statement cannot retroactively extend its own deadline.
+--
+-- Raising statement_timeout at the role level takes effect when the
+-- session starts, strictly before the PATCH statement (and its cascading
+-- rollup-refresh trigger) ever begins executing, so it actually applies.
+-- Scoped to service_role only (used for server-side sync writes, not
+-- user-facing authenticated/anon reads), so this doesn't loosen protection
+-- against a runaway query anywhere a real user request could trigger one.
+alter role service_role set statement_timeout = '5min';

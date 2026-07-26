@@ -73,14 +73,18 @@ async function finishCaptureRun(
   status: "success" | "failed",
   options: { rowsSynced?: number; error?: string } = {}
 ) {
+  // Routed through the finish_capture_run RPC (not a plain PATCH) so it can
+  // raise statement_timeout for itself before the UPDATE -- and its
+  // cascading rollup-refresh trigger -- begins executing. See
+  // supabase/migrations/20260726030000_livenopay_finish_capture_run_rpc.sql.
   await adminSupabaseRequest(
-    "PATCH",
-    `/capture_runs?id=eq.${encodeURIComponent(runId)}`,
+    "POST",
+    "/rpc/finish_capture_run",
     {
-      finished_at: nowIso(),
-      status,
-      rows_synced: options.rowsSynced,
-      error: options.error
+      p_run_id: runId,
+      p_status: status,
+      p_rows_synced: options.rowsSynced ?? null,
+      p_error: options.error ?? null
     },
     "return=minimal"
   );
