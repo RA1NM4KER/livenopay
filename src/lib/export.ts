@@ -3,6 +3,19 @@ import type { EnergyRow } from "./types";
 
 type ExportRow = Record<string, string | number>;
 
+const exportHeaders = [
+  "Period",
+  "Type",
+  "Band",
+  "Usage",
+  "Usage unit",
+  "Tariff",
+  "Tariff unit",
+  "Cost (R)",
+  "Balance (R)",
+  "Captured"
+] as const;
+
 function toExportRows(rows: EnergyRow[]): ExportRow[] {
   return rows.map((row) => ({
     Period: row.periodDateTime.replace("T", " "),
@@ -25,13 +38,15 @@ function escapeCSV(value: string | number): string {
 
 export function toCSVString(rows: EnergyRow[]): string {
   const exportRows = toExportRows(rows);
-  const headers = Object.keys(exportRows[0] ?? {});
-  const lines = [headers.join(","), ...exportRows.map((row) => headers.map((h) => escapeCSV(row[h] ?? "")).join(","))];
+  const lines = [
+    exportHeaders.join(","),
+    ...exportRows.map((row) => exportHeaders.map((header) => escapeCSV(row[header] ?? "")).join(","))
+  ];
   return lines.join("\n");
 }
 
 export function toXLSXBuffer(rows: EnergyRow[]): Buffer {
-  const ws = utils.json_to_sheet(toExportRows(rows));
+  const ws = utils.json_to_sheet(toExportRows(rows), { header: [...exportHeaders] });
   const wb = utils.book_new();
   utils.book_append_sheet(wb, ws, "Ledger rows");
   return write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;

@@ -146,6 +146,27 @@ Users can permanently delete their own account from Settings (type `DELETE` to c
 row (cascading to every table keyed off it -- see "Supabase Schema" above) and deletes their
 Supabase Auth user entirely. Fully self-service, no admin action required.
 
+## Testing
+
+`npm test` runs the vitest suite (`npm run test:watch` for watch mode, `npm run test:coverage`
+for a coverage report). Tests are co-located as `*.test.ts` next to the code they cover.
+
+Coverage is deliberately focused on pure, deterministic logic with real business/money stakes
+rather than chasing a percentage: `analytics.ts` (the core spend/usage/projection math),
+`day-breakdown.ts`, `period-comparison.ts`, `filters.ts` (date-range presets), `csv.ts`/`export.ts`
+(ledger row parsing and CSV/XLSX export), `token-encryption.ts` (AES-256-GCM round-trip and
+tamper detection), `energy-data.ts`'s PostgREST query builders, the dashboard metric cards, and
+every assistant tool in `src/lib/assistant/tools` (what the AI is allowed to cite as fact,
+verified against fixture data with hand-computed expected values). `server-only` is aliased to a
+no-op stub for tests (see `vitest.config.ts`) since the real package throws outside a webpack
+"react-server" bundle.
+
+Not covered: React components/hooks (would need jsdom + Testing Library and heavy
+`next/navigation` mocking for uncertain payoff), and thin I/O wrappers around Supabase/LiveMopay
+(`dashboard-data.ts`, `livenopay-sync.ts`, `livenopay-connection.ts`, `supabase-rest.ts`) where
+the only real logic is "does the network call happen" -- lower value than the math it's fetching
+data for.
+
 ## Legal pages
 
 `/privacy` and `/terms` are static, unauthenticated pages (`src/app/privacy`, `src/app/terms`,
@@ -196,6 +217,13 @@ multi-user support:
 - `supabase/migrations` - database schema
 - `scripts/backfill-legacy-owner.ts` - one-time ownership backfill for pre-multi-user data
 - `MULTI_USER_SETUP.md` - full hosted setup guide
+
+## Ideas / not yet done
+
+- Auto-sync: silently trigger a sync when a user returns after `lastSyncedAt` is older than
+  some cooldown (6-12h?), instead of always requiring the manual Sync button. Needs a cooldown
+  so it doesn't hammer/flag the LiveMopay portal (it's scraped, not a real API) -- shouldn't
+  fire on every visit.
 
 ## Legacy Local Setup
 

@@ -64,6 +64,7 @@ export const getBalanceRunoutTool: AssistantTool = {
     return {
       scope: context.scope,
       asOfDate,
+      available: true,
       latestBalance: metrics.latestBalance,
       averageSpendPerDay: metrics.averageSpendPerDay,
       daysRemaining: Number(daysRemaining.toFixed(1)),

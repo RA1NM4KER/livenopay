@@ -206,14 +206,19 @@ function buildInsights(
 
   const insights: Insight[] = [];
 
-  if (topSpendHour) {
+  // `hourly` always has all 24 hours (buildHourly zero-pads it for the
+  // chart's x-axis), so maxBy always returns something even when there's no
+  // real activity at all -- guard on actual spend, not just truthiness, or
+  // an empty range surfaces a fabricated "00:00 is your most expensive
+  // hour at R0.00" insight.
+  if (topSpendHour && topSpendHour.spend > 0) {
     insights.push({
       title: "Energy cost pressure",
       body: `${topSpendHour.hour} is your most expensive energy hour at ${formatCurrency(topSpendHour.spend)} across this range.`
     });
   }
 
-  if (topHours.length) {
+  if (topHours.length && totalSpend > 0) {
     insights.push({
       title: "Concentration",
       body: `The top three hours carry ${Math.round(topHourShare * 100)}% of spend: ${topHours.map((hour) => hour.hour).join(", ")}.`,

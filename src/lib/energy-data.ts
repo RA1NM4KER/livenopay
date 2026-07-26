@@ -46,7 +46,7 @@ const sortColumnByKey: Record<SortKey, string> = {
   captured: "capture_ts"
 };
 
-function contentRangeTotal(contentRange: string | null) {
+export function contentRangeTotal(contentRange: string | null) {
   if (!contentRange) {
     return 0;
   }
@@ -56,7 +56,7 @@ function contentRangeTotal(contentRange: string | null) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function searchFilterOrClause(value: string) {
+export function searchFilterOrClause(value: string) {
   const escaped = value.replace(/\*/g, "").trim();
 
   if (!escaped) {
@@ -66,7 +66,7 @@ function searchFilterOrClause(value: string) {
   return `charge_label.ilike.*${escaped}*,period_dt.ilike.*${escaped}*,capture_dt.ilike.*${escaped}*`;
 }
 
-function orderClauseForQuery(sortKey?: SortKey, sortDirection?: SortDirection) {
+export function orderClauseForQuery(sortKey?: SortKey, sortDirection?: SortDirection) {
   const resolvedSortKey = sortKey ?? "captured";
   const mappedSortColumn = sortColumnByKey[resolvedSortKey];
   const mappedSortDirection = sortDirection === "asc" ? "asc" : "desc";
@@ -82,7 +82,7 @@ function orderClauseForQuery(sortKey?: SortKey, sortDirection?: SortDirection) {
   return `${mappedSortColumn}.${mappedSortDirection},source_ts.desc.nullslast,capture_ts.desc,period_ts.desc`;
 }
 
-function queryPathForPage({ from, to, chargeType, search, sortKey, sortDirection }: EnergyRowsPageQuery) {
+export function queryPathForPage({ from, to, chargeType, search, sortKey, sortDirection }: EnergyRowsPageQuery) {
   const params = new URLSearchParams();
   params.set("select", "capture_dt,charge_label,period_dt,kwh,water_kl,tariff,cost,balance");
   params.set("order", orderClauseForQuery(sortKey, sortDirection));
