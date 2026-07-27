@@ -67,22 +67,30 @@ export function FullscreenDialog({
 
   return (
     <div aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-canvas/80 backdrop-blur-xl" role="dialog">
-      <div className="flex items-center justify-between gap-3 border-b border-line bg-paper/95 px-4 py-2.5 sm:px-6">
-        <div className="min-w-0">
-          {eyebrow ? <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{eyebrow}</p> : null}
-          <h2 className={`${eyebrow ? "mt-0.5" : ""} truncate text-base font-semibold text-ink sm:text-lg`}>{title}</h2>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {headerAction}
+      <div className="border-b border-line bg-paper/95 px-4 py-2.5 sm:px-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            {eyebrow ? <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{eyebrow}</p> : null}
+            <h2 className={`${eyebrow ? "mt-0.5" : ""} truncate text-base font-semibold text-ink sm:text-lg`}>
+              {title}
+            </h2>
+          </div>
+          {/* Close button lives on its own row with the title, not grouped
+              with headerAction -- headerAction can be several controls wide
+              (chart filters + zoom buttons) and on narrow viewports would
+              otherwise push close past the edge of the screen. */}
           <button
             aria-label={closeLabel}
-            className={closeButtonClassName(closeButtonVariant)}
+            className={`shrink-0 ${closeButtonClassName(closeButtonVariant)}`}
             onClick={onClose}
             type="button"
           >
             <CloseIcon className="h-4 w-4" />
           </button>
         </div>
+        {headerAction ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">{headerAction}</div>
+        ) : null}
       </div>
       <div className={bodyClassName}>
         <div className={`mx-auto flex h-full flex-col ${panelClassName}`.trim()}>

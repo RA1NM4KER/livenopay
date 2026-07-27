@@ -100,7 +100,12 @@ export function MetricCard({ label, value, detail, description, tone = "neutral"
       {detail ? <p className="mt-2 break-words text-xs text-muted">{detail}</p> : null}
 
       {isExpanded && description ? (
-        <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-line bg-paper p-3 text-xs text-muted shadow-soft">
+        // Deliberately in normal flow, not `absolute` -- the mobile card
+        // rail scrolls with overflow-x-auto, which forces overflow-y to
+        // clip too (a standing CSS rule: any non-"visible" overflow-x
+        // makes overflow-y compute to "auto"), so an absolutely
+        // positioned popup escaping the card's own box got cut off there.
+        <div className="mt-3 rounded-lg border border-line bg-paper p-3 text-xs text-muted shadow-soft">
           {description}
         </div>
       ) : null}
