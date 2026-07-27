@@ -49,9 +49,18 @@ export async function getOrCreateUserPermissions(userId: string): Promise<UserPe
   return toPermissions(created[0]);
 }
 
+export type LivemopayConnectionStatus = "connected" | "pending_selection" | "disconnected" | "error";
+
 export type AdminUserListItem = UserPermissions & {
   email: string | null;
   createdAt: string;
+  connectionStatus: LivemopayConnectionStatus | null;
+};
+
+type ConnectionStatusRow = {
+  user_id: string;
+  status: LivemopayConnectionStatus;
+  updated_at: string;
 };
 
 // Admin's user list: role/permission rows joined against Supabase Auth's
@@ -70,6 +79,20 @@ export async function listAllUserPermissions(): Promise<AdminUserListItem[]> {
   const roleRows = await adminSupabaseFetch<UserRoleRow[]>(`/user_roles?select=${SELECT}`);
   const roleByUserId = new Map(roleRows.map((row) => [row.user_id, toPermissions(row)]));
 
+  // A user can have more than one connection row over time (e.g. an old
+  // 'error'/'disconnected' row plus a later reconnect) -- ordering by
+  // updated_at desc and keeping the first hit per user_id gives the current
+  // one.
+  const connectionRows = await adminSupabaseFetch<ConnectionStatusRow[]>(
+    "/livemopay_connections?select=user_id,status,updated_at&order=updated_at.desc"
+  );
+  const connectionStatusByUserId = new Map<string, LivemopayConnectionStatus>();
+  for (const row of connectionRows) {
+    if (!connectionStatusByUserId.has(row.user_id)) {
+      connectionStatusByUserId.set(row.user_id, row.status);
+    }
+  }
+
   return data.users
     .map((user) => {
       const permissions = roleByUserId.get(user.id);
@@ -79,10 +102,50 @@ export async function listAllUserPermissions(): Promise<AdminUserListItem[]> {
         email: user.email ?? null,
         createdAt: user.created_at,
         role: permissions?.role ?? "user",
-        aiAssistantEnabled: permissions?.aiAssistantEnabled ?? true
+        aiAssistantEnabled: permissions?.aiAssistantEnabled ?? true,
+        connectionStatus: connectionStatusByUserId.get(user.id) ?? null
       };
     })
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+export type AdminUsersSortDirection = "asc" | "desc";
+
+export type AdminUsersPage = {
+  rows: AdminUserListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+// The Supabase Auth admin API only takes page/perPage -- no sort_by, no
+// filtered count. It's a different data source to energy_rows (this is
+// Auth's user list, not a PostgREST table), so the Range/count=planned
+// trick /data uses doesn't apply here. Since listAllUserPermissions already
+// has to enumerate every user to join role rows, sorting/paging happens
+// in memory afterwards -- fine at this scale (tens of users, not tens of
+// thousands of rows).
+export async function listAdminUsersPage(query: {
+  page?: number;
+  pageSize?: number;
+  sortDirection?: AdminUsersSortDirection;
+}): Promise<AdminUsersPage> {
+  const page = Math.max(1, query.page ?? 1);
+  const pageSize = Math.max(1, query.pageSize ?? 10);
+
+  // listAllUserPermissions returns oldest-joined-first (ascending).
+  const ascending = await listAllUserPermissions();
+  const sorted = query.sortDirection === "desc" ? [...ascending].reverse() : ascending;
+
+  const total = sorted.length;
+  const offset = (page - 1) * pageSize;
+
+  return {
+    rows: sorted.slice(offset, offset + pageSize),
+    total,
+    page,
+    pageSize
+  };
 }
 
 export async function setUserRole(userId: string, role: UserRole): Promise<void> {

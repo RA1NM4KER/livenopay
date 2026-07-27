@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth/session";
-import { listAllUserPermissions } from "@/lib/user-roles";
+import { adminUsersPageSize, parseAdminUsersQuery } from "@/lib/admin-users-query-params";
+import { listAdminUsersPage } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireAdminSession();
   if (!auth.ok) {
     return NextResponse.json(
@@ -14,6 +15,14 @@ export async function GET() {
     );
   }
 
-  const users = await listAllUserPermissions();
-  return NextResponse.json({ users });
+  const { searchParams } = new URL(request.url);
+  const parsed = parseAdminUsersQuery(searchParams);
+
+  const result = await listAdminUsersPage({
+    page: parsed.page,
+    pageSize: adminUsersPageSize,
+    sortDirection: parsed.sortDirection
+  });
+
+  return NextResponse.json(result);
 }

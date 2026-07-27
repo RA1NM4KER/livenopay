@@ -48,7 +48,7 @@ function KofiLink() {
 export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps) {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const pathname = usePathname();
-  const lockViewport = pathname === "/data";
+  const lockViewport = pathname === "/data" || pathname === "/admin";
 
   return (
     <div className="flex h-[100svh] overflow-hidden">
@@ -103,8 +103,9 @@ export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps
 
         {/* The shell itself never scrolls -- the sidebar must stay put.
             Regular pages scroll their own content here; lockViewport pages
-            (the data table) instead delegate scrolling to a nested region
-            so their own header/toolbar can stay pinned too. */}
+            (data table, admin users table) instead delegate scrolling to a
+            nested region so their own header/toolbar/footer can stay pinned
+            too. */}
         <main
           className={`mx-auto flex w-full max-w-7xl flex-1 flex-col px-3 pb-5 sm:px-6 lg:px-8 ${
             lockViewport ? "min-h-0 overflow-hidden" : "overflow-y-auto"
