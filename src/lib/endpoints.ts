@@ -16,7 +16,3 @@ export function buildDayIntervalsUrl(periodDate: string) {
 export function buildEnergyRowsUrl(params: URLSearchParams) {
   return `${apiEndpoints.energyRows}?${params.toString()}`;
 }
-
-export function buildAdminUsersUrl(params: URLSearchParams) {
-  return `${apiEndpoints.adminUsers}?${params.toString()}`;
-}

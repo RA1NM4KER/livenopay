@@ -8,10 +8,8 @@ import { applyQueryUpdates, queryHref } from "@/lib/url-query";
 export type AdminUsersUrlState = {
   sortKey: "joined";
   sortDirection: "asc" | "desc";
-  page: number;
   isPending: boolean;
   onSortChange: () => void;
-  onPageChange: (page: number) => void;
 };
 
 export function useAdminUsersUrlState(): AdminUsersUrlState {
@@ -22,35 +20,22 @@ export function useAdminUsersUrlState(): AdminUsersUrlState {
 
   const state = useMemo(() => parseAdminUsersQuery(new URLSearchParams(searchParams.toString())), [searchParams]);
 
-  const updateSearchParams = (updates: Record<string, string | null>) => {
-    const next = applyQueryUpdates(searchParams, updates);
-    startTransition(() => {
-      router.replace(queryHref(pathname, next), { scroll: false });
-    });
-  };
-
   const onSortChange = () => {
     const nextDirection = state.sortDirection === "asc" ? "desc" : "asc";
-
-    updateSearchParams({
+    const next = applyQueryUpdates(searchParams, {
       [adminUsersQueryParamKeys.sort]: "joined",
-      [adminUsersQueryParamKeys.direction]: nextDirection === "asc" ? null : nextDirection,
-      [adminUsersQueryParamKeys.page]: null
+      [adminUsersQueryParamKeys.direction]: nextDirection === "asc" ? null : nextDirection
     });
-  };
 
-  const onPageChange = (page: number) => {
-    updateSearchParams({
-      [adminUsersQueryParamKeys.page]: page > 1 ? String(Math.floor(page)) : null
+    startTransition(() => {
+      router.replace(queryHref(pathname, next), { scroll: false });
     });
   };
 
   return {
     sortKey: state.sortKey,
     sortDirection: state.sortDirection,
-    page: state.page,
     isPending,
-    onSortChange,
-    onPageChange
+    onSortChange
   };
 }

@@ -1,13 +1,13 @@
 "use client";
 
 import { ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
-import { useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { buildAdminUsersUrl } from "@/lib/endpoints";
+import { apiEndpoints } from "@/lib/endpoints";
 import { useAdminUsersUrlState } from "@/lib/use-admin-users-url-state";
 import type { AdminUserListItem, LivemopayConnectionStatus, UserRole } from "@/lib/user-roles";
 
@@ -18,8 +18,6 @@ type AdminUsersTableProps = {
 type AdminUsersApiResponse = {
   rows: AdminUserListItem[];
   total: number;
-  page: number;
-  pageSize: number;
 };
 
 const roleOptions = [
@@ -59,8 +57,8 @@ function ConnectionStatusBadge({ status }: { status: LivemopayConnectionStatus |
   );
 }
 
-async function fetchAdminUsers(params: URLSearchParams) {
-  const response = await fetch(buildAdminUsersUrl(params), { cache: "no-store" });
+async function fetchAdminUsers() {
+  const response = await fetch(apiEndpoints.adminUsers, { cache: "no-store" });
 
   if (!response.ok) {
     const body = await response.text();
@@ -97,33 +95,28 @@ function TableSkeletonRows({ rowCount }: { rowCount: number }) {
 }
 
 export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
-  const { sortDirection, page, isPending, onSortChange, onPageChange } = useAdminUsersUrlState();
+  const { sortDirection, onSortChange } = useAdminUsersUrlState();
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [errorByUserId, setErrorByUserId] = useState<Record<string, string>>({});
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const queryClient = useQueryClient();
 
-  const queryParams = new URLSearchParams();
-  if (page > 1) {
-    queryParams.set("page", String(page));
-  }
-  if (sortDirection !== "asc") {
-    queryParams.set("dir", sortDirection);
-  }
-
-  const queryKey = ["admin-users", page, sortDirection];
+  // The whole list, fetched once. Supabase Auth's admin API has no
+  // sort/filter params of its own -- paginating "server-side" would just
+  // mean refetching this same full list on every click for no benefit.
+  // Sorting/pagination (if ever needed again) happens client-side instead.
+  const queryKey = ["admin-users"];
   const { data, isFetching, isLoading, error, refetch } = useQuery({
     queryKey,
-    queryFn: () => fetchAdminUsers(queryParams),
-    placeholderData: keepPreviousData
+    queryFn: fetchAdminUsers
   });
 
-  const users = data?.rows ?? [];
+  // Server returns oldest-joined-first.
+  const users = useMemo(() => {
+    const rows = data?.rows ?? [];
+    return sortDirection === "desc" ? [...rows].reverse() : rows;
+  }, [data?.rows, sortDirection]);
   const total = data?.total ?? 0;
-  const pageSize = data?.pageSize ?? 15;
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const hasPreviousPage = page > 1;
-  const hasNextPage = page < pageCount;
   const showTableSkeleton = isLoading || isManualRefreshing;
 
   function patchLocalUser(userId: string, patch: Partial<AdminUserListItem>) {
@@ -229,7 +222,7 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
           </thead>
           <tbody className="divide-y divide-line">
             {showTableSkeleton ? (
-              <TableSkeletonRows rowCount={Math.min(pageSize, 15)} />
+              <TableSkeletonRows rowCount={8} />
             ) : (
               users.map((user) => {
                 const isSelf = user.userId === currentUserId;
@@ -281,40 +274,21 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
 
       <div className="shrink-0 flex flex-col gap-3 border-t border-line px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted">
-          Page {Math.min(page, pageCount)} of {pageCount}
-          {!isLoading ? ` · ${total} users` : ""}
-          {(isFetching || isPending) && !isLoading ? " · updating..." : ""}
+          {!isLoading ? `${total} users` : "Loading users..."}
+          {isFetching && !isLoading ? " · updating..." : ""}
         </p>
-        <div className="flex items-center gap-2">
-          <button
-            aria-label="Refresh users"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm text-muted transition enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isManualRefreshing}
-            onClick={() => {
-              void handleRefresh();
-            }}
-            type="button"
-            title="Refresh users"
-          >
-            <RefreshCw aria-hidden="true" className={`h-4 w-4 ${isManualRefreshing ? "animate-spin" : ""}`} />
-          </button>
-          <button
-            className="inline-flex h-9 items-center rounded-md border border-line bg-paper px-3 text-sm text-muted transition enabled:hover:bg-canvas enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={!hasPreviousPage}
-            onClick={() => onPageChange(page - 1)}
-            type="button"
-          >
-            Previous
-          </button>
-          <button
-            className="inline-flex h-9 items-center rounded-md border border-line bg-paper px-3 text-sm text-muted transition enabled:hover:bg-canvas enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={!hasNextPage}
-            onClick={() => onPageChange(page + 1)}
-            type="button"
-          >
-            Next
-          </button>
-        </div>
+        <button
+          aria-label="Refresh users"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm text-muted transition enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isManualRefreshing}
+          onClick={() => {
+            void handleRefresh();
+          }}
+          type="button"
+          title="Refresh users"
+        >
+          <RefreshCw aria-hidden="true" className={`h-4 w-4 ${isManualRefreshing ? "animate-spin" : ""}`} />
+        </button>
       </div>
 
       {error instanceof Error ? <p className="px-3 py-2 text-sm text-red-500">{error.message}</p> : null}

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth/session";
-import { adminUsersPageSize, parseAdminUsersQuery } from "@/lib/admin-users-query-params";
-import { listAdminUsersPage } from "@/lib/user-roles";
+import { listAllUserPermissions } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
+export async function GET() {
   const auth = await requireAdminSession();
   if (!auth.ok) {
     return NextResponse.json(
@@ -15,14 +14,10 @@ export async function GET(request: Request) {
     );
   }
 
-  const { searchParams } = new URL(request.url);
-  const parsed = parseAdminUsersQuery(searchParams);
-
-  const result = await listAdminUsersPage({
-    page: parsed.page,
-    pageSize: adminUsersPageSize,
-    sortDirection: parsed.sortDirection
-  });
-
-  return NextResponse.json(result);
+  // Supabase Auth's admin API has no sort/filter params of its own, so there's
+  // nothing to page server-side without refetching the same full list on
+  // every click. Given that, the honest design is: send the whole list once,
+  // sort/paginate (if ever needed again) on the client.
+  const rows = await listAllUserPermissions();
+  return NextResponse.json({ rows, total: rows.length });
 }

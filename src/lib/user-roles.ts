@@ -109,45 +109,6 @@ export async function listAllUserPermissions(): Promise<AdminUserListItem[]> {
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-export type AdminUsersSortDirection = "asc" | "desc";
-
-export type AdminUsersPage = {
-  rows: AdminUserListItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-};
-
-// The Supabase Auth admin API only takes page/perPage -- no sort_by, no
-// filtered count. It's a different data source to energy_rows (this is
-// Auth's user list, not a PostgREST table), so the Range/count=planned
-// trick /data uses doesn't apply here. Since listAllUserPermissions already
-// has to enumerate every user to join role rows, sorting/paging happens
-// in memory afterwards -- fine at this scale (tens of users, not tens of
-// thousands of rows).
-export async function listAdminUsersPage(query: {
-  page?: number;
-  pageSize?: number;
-  sortDirection?: AdminUsersSortDirection;
-}): Promise<AdminUsersPage> {
-  const page = Math.max(1, query.page ?? 1);
-  const pageSize = Math.max(1, query.pageSize ?? 10);
-
-  // listAllUserPermissions returns oldest-joined-first (ascending).
-  const ascending = await listAllUserPermissions();
-  const sorted = query.sortDirection === "desc" ? [...ascending].reverse() : ascending;
-
-  const total = sorted.length;
-  const offset = (page - 1) * pageSize;
-
-  return {
-    rows: sorted.slice(offset, offset + pageSize),
-    total,
-    page,
-    pageSize
-  };
-}
-
 export async function setUserRole(userId: string, role: UserRole): Promise<void> {
   await getOrCreateUserPermissions(userId);
 
