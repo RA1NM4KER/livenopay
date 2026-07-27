@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import type { MetricCardProps } from "./types";
+
+type PopoverRect = { top: number; left: number; width: number };
 
 const toneStyles = {
   neutral: "",
@@ -27,9 +30,38 @@ const comparisonToneStyles = {
 
 export function MetricCard({ label, value, detail, description, tone = "neutral", comparison }: MetricCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [popoverRect, setPopoverRect] = useState<PopoverRect | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
 
   const toggle = () => setIsExpanded((previous) => !previous);
+
+  // Rendered through a portal (below), positioned from the card's own
+  // on-screen rect, rather than `position: absolute` inside the card.
+  // The mobile card rail scrolls with overflow-x-auto, and CSS forces
+  // overflow-y to clip too whenever overflow-x isn't "visible" on the
+  // same element -- no z-index escapes that. A portal isn't a descendant
+  // of the clipping container at all, so it floats freely on mobile the
+  // same way it always did on desktop's non-scrolling grid layout.
+  useLayoutEffect(() => {
+    if (!isExpanded) {
+      setPopoverRect(null);
+      return;
+    }
+
+    const updateRect = () => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        setPopoverRect({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+      }
+    };
+
+    updateRect();
+    window.addEventListener("resize", updateRect);
+
+    return () => {
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [isExpanded]);
 
   useEffect(() => {
     if (!isExpanded) {
@@ -48,16 +80,24 @@ export function MetricCard({ label, value, detail, description, tone = "neutral"
       }
     };
 
+    // Capture phase: the card rail's own horizontal scroll doesn't bubble
+    // to window, so this is the only way to hear it (and any other
+    // scrollable ancestor) and close rather than leave a stale-positioned
+    // popover floating over the wrong card.
+    const handleScroll = () => setIsExpanded(false);
+
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", handleScroll, true);
 
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", handleScroll, true);
     };
   }, [isExpanded]);
 
-  return (
+  const card = (
     <section
       aria-expanded={description ? isExpanded : undefined}
       className={`relative min-w-0 rounded-lg border border-line bg-paper p-4 text-left ${
@@ -98,19 +138,25 @@ export function MetricCard({ label, value, detail, description, tone = "neutral"
         </p>
       </div>
       {detail ? <p className="mt-2 break-words text-xs text-muted">{detail}</p> : null}
-
-      {isExpanded && description ? (
-        // Mobile (below sm:) stays in normal flow: the card rail scrolls
-        // with overflow-x-auto there, which forces overflow-y to clip too
-        // (any non-"visible" overflow-x makes overflow-y compute to
-        // "auto"), so an absolutely positioned popup escaping the card's
-        // box was getting cut off. Desktop (sm:) switches back to the
-        // original floating absolute overlay -- that layout uses
-        // sm:overflow-visible, so it was never clipped there.
-        <div className="mt-3 rounded-lg border border-line bg-paper p-3 text-xs text-muted shadow-soft sm:absolute sm:left-0 sm:right-0 sm:top-full sm:z-20 sm:mt-2">
-          {description}
-        </div>
-      ) : null}
     </section>
   );
+
+  if (isExpanded && description && popoverRect) {
+    return (
+      <>
+        {card}
+        {createPortal(
+          <div
+            className="fixed z-[999] rounded-lg border border-line bg-paper p-3 text-xs text-muted shadow-soft"
+            style={{ top: popoverRect.top, left: popoverRect.left, width: popoverRect.width }}
+          >
+            {description}
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
+
+  return card;
 }
