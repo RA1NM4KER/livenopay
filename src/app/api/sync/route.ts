@@ -5,10 +5,12 @@ import { loadDashboardSummary } from "@/lib/dashboard-data";
 import {
   getConnectionRowForUser,
   getDecryptedRefreshToken,
+  markConnectionAuthError,
   markConnectionSyncOutcome,
   replaceConnectionRefreshToken
 } from "@/lib/livenopay-connection";
 import { runLivemopaySync, SyncAlreadyRunningError } from "@/lib/livenopay-sync";
+import { TokenDecryptionError } from "@/lib/token-encryption";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -57,6 +59,19 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof SyncAlreadyRunningError) {
       return NextResponse.json({ message: error.message }, { status: 409 });
+    }
+
+    if (error instanceof TokenDecryptionError) {
+      // Not retryable -- the stored token can never decrypt successfully
+      // again (see markConnectionAuthError). Flip the connection out of
+      // "connected" now rather than leaving the user stuck on a sync
+      // button that will fail identically forever.
+      console.error("livemopay_sync_failed", error.message);
+      await markConnectionAuthError(connectionRow.id).catch(() => {});
+      return NextResponse.json(
+        { message: "Your LiveMopay connection needs to be reconnected.", reauthRequired: true },
+        { status: 409 }
+      );
     }
 
     const message = error instanceof Error ? error.message : "Sync failed.";

@@ -254,3 +254,26 @@ export async function markConnectionSyncOutcome(connectionId: string, lastError:
     "return=minimal"
   );
 }
+
+// The stored refresh token is unrecoverable once it fails AES-GCM
+// auth-tag verification (almost always a LIVENOPAY_TOKEN_ENCRYPTION_KEY
+// rotation orphaning it) -- retrying decryption can never succeed, so the
+// connection is flipped out of "connected" (requireConnectedSession then
+// naturally routes the user back through /connect) and the dead token
+// fields are cleared rather than left around unusable.
+export async function markConnectionAuthError(connectionId: string): Promise<void> {
+  await adminSupabaseRequest(
+    "PATCH",
+    `/livemopay_connections?id=eq.${encodeURIComponent(connectionId)}`,
+    {
+      status: "error",
+      last_error: "Stored refresh token could not be decrypted. Reconnect your LiveMopay account.",
+      last_synced_at: new Date().toISOString(),
+      refresh_token_ciphertext: null,
+      refresh_token_iv: null,
+      refresh_token_auth_tag: null,
+      updated_at: new Date().toISOString()
+    },
+    "return=minimal"
+  );
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, RefreshCw } from "lucide-react";
 import { triggerIconToneClass, triggerToneClass, type ControlTone } from "./control-tone";
 
@@ -25,6 +26,7 @@ const popoverWidth = 256;
 const popoverMargin = 12;
 
 export function SyncButton({ iconOnly = false, className, tone = "light", onSuccess }: SyncButtonProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [position, setPosition] = useState<PopoverPosition>({ left: popoverMargin, top: popoverMargin });
@@ -95,6 +97,12 @@ export function SyncButton({ iconOnly = false, className, tone = "light", onSucc
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
+
+        if (body?.reauthRequired) {
+          router.push("/connect");
+          return;
+        }
+
         throw new Error(body?.message || "Sync failed.");
       }
 
