@@ -18,7 +18,7 @@ export default function DashboardLoading() {
         onDateChange={onDateChange}
         onQuickRange={onQuickRange}
         loading={isPending}
-        leftControls={<DataSyncAction />}
+        leftControls={<DataSyncAction loading />}
         rightControls={<AssistantPanel from={from} to={to} compact />}
         rightControlsExpanded
         fullBleed

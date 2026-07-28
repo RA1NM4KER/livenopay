@@ -41,7 +41,7 @@ export default function DataLoading() {
         onDateChange={onDateChange}
         onQuickRange={onQuickRange}
         loading={isDatePending}
-        leftControls={<DataSyncAction />}
+        leftControls={<DataSyncAction loading />}
         extraControls={
           <DropdownSelect
             ariaLabel="Charge type"

@@ -5,6 +5,10 @@ import { SyncButton } from "@/components/ui/sync-button";
 type DataSyncActionProps = {
   iconOnly?: boolean;
   lastSyncedAt?: string | null;
+  // True while the real lastSyncedAt is still unknown (first load, no cached
+  // data yet) -- distinct from lastSyncedAt genuinely being null/undefined
+  // because a connected account has never run a sync, which should nudge.
+  loading?: boolean;
 };
 
 // Threshold picked from observed real-world sync gaps (median ~2-3h, one
@@ -22,7 +26,7 @@ function isStale(lastSyncedAt?: string | null): boolean {
   return hoursSinceSync > STALE_AFTER_HOURS;
 }
 
-export function DataSyncAction({ iconOnly = false, lastSyncedAt }: DataSyncActionProps) {
+export function DataSyncAction({ iconOnly = false, lastSyncedAt, loading = false }: DataSyncActionProps) {
   const handleSyncSuccess = async () => {
     window.location.reload();
   };
@@ -34,7 +38,7 @@ export function DataSyncAction({ iconOnly = false, lastSyncedAt }: DataSyncActio
       iconOnly={iconOnly}
       onSuccess={handleSyncSuccess}
       tone="dark"
-      showNudge={isStale(lastSyncedAt)}
+      showNudge={!loading && isStale(lastSyncedAt)}
     />
   );
 }
