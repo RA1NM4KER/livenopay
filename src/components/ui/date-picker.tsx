@@ -162,7 +162,7 @@ export function DatePicker({
         type="button"
       >
         <span>{value}</span>
-        {loading ? (
+        {loading || !value ? (
           <Loader2 aria-hidden="true" className={`h-4 w-4 shrink-0 animate-spin ${triggerIconToneClass(tone)}`} />
         ) : (
           <svg

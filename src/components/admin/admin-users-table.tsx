@@ -90,9 +90,11 @@ type StatTileProps = { label: string; value: number; tone?: "default" | "warning
 
 function StatTile({ label, value, tone = "default" }: StatTileProps) {
   return (
-    <Card className="flex-1 px-4 py-3">
-      <p className="text-xs uppercase tracking-[0.12em] text-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold tabular-nums ${tone === "warning" && value > 0 ? "text-red-500" : "text-ink"}`}>
+    <Card className="flex-1 px-2 py-2 sm:px-4 sm:py-3">
+      <p className="truncate text-[0.6rem] uppercase tracking-[0.1em] text-muted sm:text-xs sm:tracking-[0.12em]">{label}</p>
+      <p
+        className={`mt-1 text-lg font-semibold tabular-nums sm:text-2xl ${tone === "warning" && value > 0 ? "text-red-500" : "text-ink"}`}
+      >
         {value}
       </p>
     </Card>
@@ -101,11 +103,11 @@ function StatTile({ label, value, tone = "default" }: StatTileProps) {
 
 function StatStripSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-4 gap-2 sm:gap-3">
       {Array.from({ length: 4 }, (_, index) => (
-        <Card key={index} className="px-4 py-3">
-          <Skeleton className="h-3 w-16" />
-          <Skeleton className="mt-2 h-7 w-10" />
+        <Card key={index} className="px-2 py-2 sm:px-4 sm:py-3">
+          <Skeleton className="h-3 w-10 sm:w-16" />
+          <Skeleton className="mt-2 h-5 w-6 sm:h-7 sm:w-10" />
         </Card>
       ))}
     </div>
@@ -292,7 +294,7 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
       {showTableSkeleton ? (
         <StatStripSkeleton />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
           <StatTile label="Total users" value={total} />
           <StatTile label="Connected" value={stats.connected} />
           <StatTile label="Active (7d)" value={stats.active} />
@@ -317,9 +319,15 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
                 </button>
               </th>
               <th className="px-4 py-3 font-medium">Role</th>
-              <th className="px-4 py-3 font-medium">AI assistant</th>
+              <th className="px-4 py-3 font-medium">
+                <span className="sm:hidden">AI</span>
+                <span className="hidden sm:inline">AI assistant</span>
+              </th>
               <th className="px-4 py-3 font-medium">LiveMopay</th>
-              <th className="px-4 py-3 font-medium">Last sync</th>
+              <th className="px-4 py-3 font-medium">
+                <span className="sm:hidden">Sync</span>
+                <span className="hidden sm:inline">Last sync</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">

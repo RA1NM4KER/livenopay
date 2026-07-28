@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpRight, Loader2, Sparkles, X } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { FullscreenDialog } from "@/components/ui/fullscreen-dialog";
 import type { AssistantConversationMessage, AssistantResponse } from "@/lib/assistant/types";
 import { BorderBeam } from "@/components/ui/border-beam";
@@ -27,15 +27,6 @@ export function AssistantPanel({ from, to, compact = false }: AssistantPanelProp
   const [error, setError] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const dialogInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    dialogInputRef.current?.focus();
-  }, [isOpen]);
 
   const submitQuestion = (value: string) => {
     const nextQuestion = value.trim();
@@ -180,24 +171,25 @@ export function AssistantPanel({ from, to, compact = false }: AssistantPanelProp
           </div>
 
           <div className="border-t border-line px-4 py-4 sm:px-5">
-            <div className="mb-3 flex flex-wrap gap-2">
-              {starterQuestions.map((starter) => (
-                <button
-                  className="rounded-full border border-line bg-canvas px-3 py-1.5 text-xs text-muted transition hover:border-accent hover:text-ink"
-                  key={starter}
-                  onClick={() => submitQuestion(starter)}
-                  type="button"
-                >
-                  {starter}
-                </button>
-              ))}
-            </div>
+            {conversation.length === 0 ? (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {starterQuestions.map((starter) => (
+                  <button
+                    className="rounded-full border border-line bg-canvas px-3 py-1.5 text-xs text-muted transition hover:border-accent hover:text-ink"
+                    key={starter}
+                    onClick={() => submitQuestion(starter)}
+                    type="button"
+                  >
+                    {starter}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <label className="flex-1">
                 <span className="sr-only">Ask the NewinMeter assistant</span>
                 <input
-                  ref={dialogInputRef}
                   className="h-11 w-full rounded-md border border-line bg-paper px-4 text-sm text-ink outline-none transition focus:border-accent"
                   value={dialogQuestion}
                   onChange={(event) => setDialogQuestion(event.target.value)}
