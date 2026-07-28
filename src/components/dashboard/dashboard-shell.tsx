@@ -76,7 +76,7 @@ export function DashboardShell({ dailyRows, hourlyRows, summary, isAiAssistantEn
         onDateChange={onDateChange}
         onQuickRange={onQuickRange}
         loading={isPending}
-        leftControls={<DataSyncAction />}
+        leftControls={<DataSyncAction lastSyncedAt={summary.lastSyncedAt} />}
         rightControls={isAiAssistantEnabled ? <AssistantPanel from={from} to={to} compact /> : undefined}
         rightControlsExpanded
         fullBleed

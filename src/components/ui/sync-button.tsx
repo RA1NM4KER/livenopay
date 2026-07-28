@@ -10,6 +10,7 @@ export type SyncButtonProps = {
   className?: string;
   tone?: ControlTone;
   onSuccess?: () => void | Promise<void>;
+  showNudge?: boolean;
 };
 
 const syncModes = [
@@ -25,7 +26,7 @@ type PopoverPosition = {
 const popoverWidth = 256;
 const popoverMargin = 12;
 
-export function SyncButton({ iconOnly = false, className, tone = "light", onSuccess }: SyncButtonProps) {
+export function SyncButton({ iconOnly = false, className, tone = "light", onSuccess, showNudge = false }: SyncButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -124,19 +125,26 @@ export function SyncButton({ iconOnly = false, className, tone = "light", onSucc
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-busy={isLoading}
-        className={`inline-flex h-9 items-center gap-2 rounded-md border text-sm outline-none transition disabled:cursor-not-allowed disabled:opacity-60 ${triggerToneClass(tone)} ${
+        className={`relative inline-flex h-9 items-center gap-2 rounded-md border text-sm outline-none transition disabled:cursor-not-allowed disabled:opacity-60 ${triggerToneClass(tone)} ${
           iconOnly ? "px-2" : "px-3"
         } ${className ?? ""}`}
         disabled={isLoading}
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >
+        {showNudge && !isLoading ? (
+          <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5" aria-hidden="true">
+            <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+          </span>
+        ) : null}
         {isLoading ? (
           <Loader2 aria-hidden="true" className={`h-4 w-4 animate-spin ${triggerIconToneClass(tone)}`} />
         ) : (
           <RefreshCw aria-hidden="true" className={`h-4 w-4 ${triggerIconToneClass(tone)}`} />
         )}
         {iconOnly ? <span className="sr-only">Sync</span> : <span>Sync</span>}
+        {showNudge && !isLoading ? <span className="sr-only"> (new data may be available)</span> : null}
         <ChevronDown
           aria-hidden="true"
           className={`ml-auto h-4 w-4 transition ${triggerIconToneClass(tone)} ${isOpen ? "rotate-180" : ""}`}
@@ -158,7 +166,12 @@ export function SyncButton({ iconOnly = false, className, tone = "light", onSucc
               onClick={() => void handleSync(value)}
               type="button"
             >
-              <span className="text-sm text-ink">{label}</span>
+              <span className="inline-flex items-center gap-1.5 text-sm text-ink">
+                {label}
+                {showNudge && value === "incremental" ? (
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                ) : null}
+              </span>
               <span className="text-xs text-muted">{subtitle}</span>
             </button>
           ))}

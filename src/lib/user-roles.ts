@@ -51,16 +51,32 @@ export async function getOrCreateUserPermissions(userId: string): Promise<UserPe
 
 export type LivemopayConnectionStatus = "connected" | "pending_selection" | "disconnected" | "error";
 
+export type CaptureRunStatus = "running" | "success" | "failed";
+
 export type AdminUserListItem = UserPermissions & {
   email: string | null;
   createdAt: string;
   connectionStatus: LivemopayConnectionStatus | null;
+  lastRunStatus: CaptureRunStatus | null;
+  lastRunAt: string | null;
+  lastRunError: string | null;
+  lastRunRowsSynced: number | null;
 };
 
-type ConnectionStatusRow = {
+type ConnectionRow = {
+  id: string;
   user_id: string;
   status: LivemopayConnectionStatus;
   updated_at: string;
+};
+
+type CaptureRunRow = {
+  connection_id: string | null;
+  status: CaptureRunStatus;
+  started_at: string;
+  finished_at: string | null;
+  rows_synced: number | null;
+  error: string | null;
 };
 
 // Admin's user list: role/permission rows joined against Supabase Auth's
@@ -83,19 +99,40 @@ export async function listAllUserPermissions(): Promise<AdminUserListItem[]> {
   // 'error'/'disconnected' row plus a later reconnect) -- ordering by
   // updated_at desc and keeping the first hit per user_id gives the current
   // one.
-  const connectionRows = await adminSupabaseFetch<ConnectionStatusRow[]>(
-    "/livemopay_connections?select=user_id,status,updated_at&order=updated_at.desc"
+  const connectionRows = await adminSupabaseFetch<ConnectionRow[]>(
+    "/livemopay_connections?select=id,user_id,status,updated_at&order=updated_at.desc"
   );
   const connectionStatusByUserId = new Map<string, LivemopayConnectionStatus>();
+  const userIdByConnectionId = new Map<string, string>();
   for (const row of connectionRows) {
     if (!connectionStatusByUserId.has(row.user_id)) {
       connectionStatusByUserId.set(row.user_id, row.status);
+    }
+    userIdByConnectionId.set(row.id, row.user_id);
+  }
+
+  // Same latest-row-wins approach for sync history: a connection accrues one
+  // capture_runs row per sync attempt, so this is "what happened last time
+  // we tried to pull this user's data" -- the thing that actually tells you
+  // who's stuck vs. who's syncing fine.
+  const captureRunRows = await adminSupabaseFetch<CaptureRunRow[]>(
+    "/capture_runs?select=connection_id,status,started_at,finished_at,rows_synced,error&order=started_at.desc"
+  );
+  const lastRunByUserId = new Map<string, CaptureRunRow>();
+  for (const row of captureRunRows) {
+    if (!row.connection_id) {
+      continue;
+    }
+    const userId = userIdByConnectionId.get(row.connection_id);
+    if (userId && !lastRunByUserId.has(userId)) {
+      lastRunByUserId.set(userId, row);
     }
   }
 
   return data.users
     .map((user) => {
       const permissions = roleByUserId.get(user.id);
+      const lastRun = lastRunByUserId.get(user.id);
 
       return {
         userId: user.id,
@@ -103,7 +140,11 @@ export async function listAllUserPermissions(): Promise<AdminUserListItem[]> {
         createdAt: user.created_at,
         role: permissions?.role ?? "user",
         aiAssistantEnabled: permissions?.aiAssistantEnabled ?? true,
-        connectionStatus: connectionStatusByUserId.get(user.id) ?? null
+        connectionStatus: connectionStatusByUserId.get(user.id) ?? null,
+        lastRunStatus: lastRun?.status ?? null,
+        lastRunAt: lastRun?.finished_at ?? lastRun?.started_at ?? null,
+        lastRunError: lastRun?.error ?? null,
+        lastRunRowsSynced: lastRun?.rows_synced ?? null
       };
     })
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));

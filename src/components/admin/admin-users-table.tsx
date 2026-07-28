@@ -9,7 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiEndpoints } from "@/lib/endpoints";
 import { useAdminUsersUrlState } from "@/lib/use-admin-users-url-state";
-import type { AdminUserListItem, LivemopayConnectionStatus, UserRole } from "@/lib/user-roles";
+import type { AdminUserListItem, CaptureRunStatus, LivemopayConnectionStatus, UserRole } from "@/lib/user-roles";
+
+const ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 type AdminUsersTableProps = {
   currentUserId: string;
@@ -38,6 +40,77 @@ const connectionStatusDotClass: Record<LivemopayConnectionStatus, string> = {
   disconnected: "bg-muted",
   error: "bg-red-500"
 };
+
+function formatRelativeTime(isoDate: string): string {
+  const diffMs = Date.now() - new Date(isoDate).getTime();
+  const diffMinutes = Math.round(diffMs / 60_000);
+
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.round(diffHours / 24);
+  if (diffDays < 30) return `${diffDays}d ago`;
+
+  const diffMonths = Math.round(diffDays / 30);
+  return `${diffMonths}mo ago`;
+}
+
+const lastRunLabel: Record<CaptureRunStatus, string> = {
+  success: "Synced",
+  failed: "Failed",
+  running: "Syncing"
+};
+
+const lastRunDotClass: Record<CaptureRunStatus, string> = {
+  success: "bg-accent",
+  failed: "bg-red-500",
+  running: "bg-amber-500"
+};
+
+function LastSyncCell({ user }: { user: AdminUserListItem }) {
+  if (!user.lastRunStatus || !user.lastRunAt) {
+    return <span className="text-xs text-muted">No sync yet</span>;
+  }
+
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs text-ink"
+      title={user.lastRunStatus === "failed" ? user.lastRunError ?? "Sync failed" : undefined}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${lastRunDotClass[user.lastRunStatus]}`} aria-hidden="true" />
+      {lastRunLabel[user.lastRunStatus]} · {formatRelativeTime(user.lastRunAt)}
+    </span>
+  );
+}
+
+type StatTileProps = { label: string; value: number; tone?: "default" | "warning" };
+
+function StatTile({ label, value, tone = "default" }: StatTileProps) {
+  return (
+    <Card className="flex-1 px-4 py-3">
+      <p className="text-xs uppercase tracking-[0.12em] text-muted">{label}</p>
+      <p className={`mt-1 text-2xl font-semibold tabular-nums ${tone === "warning" && value > 0 ? "text-red-500" : "text-ink"}`}>
+        {value}
+      </p>
+    </Card>
+  );
+}
+
+function StatStripSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {Array.from({ length: 4 }, (_, index) => (
+        <Card key={index} className="px-4 py-3">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="mt-2 h-7 w-10" />
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 function ConnectionStatusBadge({ status }: { status: LivemopayConnectionStatus | null }) {
   if (!status) {
@@ -88,6 +161,9 @@ function TableSkeletonRows({ rowCount }: { rowCount: number }) {
           <td className="px-4 py-3">
             <Skeleton className="h-4 w-24" />
           </td>
+          <td className="px-4 py-3">
+            <Skeleton className="h-4 w-24" />
+          </td>
         </tr>
       ))}
     </>
@@ -118,6 +194,19 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
   }, [data?.rows, sortDirection]);
   const total = data?.total ?? 0;
   const showTableSkeleton = isLoading || isManualRefreshing;
+
+  const stats = useMemo(() => {
+    const rows = data?.rows ?? [];
+    const now = Date.now();
+
+    return {
+      connected: rows.filter((user) => user.connectionStatus === "connected").length,
+      needsHelp: rows.filter((user) => user.lastRunStatus === "failed").length,
+      active: rows.filter(
+        (user) => user.lastRunStatus === "success" && user.lastRunAt && now - new Date(user.lastRunAt).getTime() < ACTIVE_WINDOW_MS
+      ).length
+    };
+  }, [data?.rows]);
 
   function patchLocalUser(userId: string, patch: Partial<AdminUserListItem>) {
     queryClient.setQueryData<AdminUsersApiResponse | undefined>(queryKey, (current) => {
@@ -199,7 +288,19 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
   }
 
   return (
-    <Card className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
+      {showTableSkeleton ? (
+        <StatStripSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile label="Total users" value={total} />
+          <StatTile label="Connected" value={stats.connected} />
+          <StatTile label="Active (7d)" value={stats.active} />
+          <StatTile label="Needs help" value={stats.needsHelp} tone="warning" />
+        </div>
+      )}
+
+      <Card className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full min-w-[640px] border-separate border-spacing-0 text-left text-sm">
           <thead className="sticky top-0 z-10 border-b border-line bg-accentSoft text-xs uppercase tracking-[0.16em] text-brandTeal dark:text-accent shadow-[0_1px_0_rgb(var(--color-line))]">
@@ -218,6 +319,7 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
               <th className="px-4 py-3 font-medium">Role</th>
               <th className="px-4 py-3 font-medium">AI assistant</th>
               <th className="px-4 py-3 font-medium">LiveMopay</th>
+              <th className="px-4 py-3 font-medium">Last sync</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -264,6 +366,9 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
                     <td className="px-4 py-3">
                       <ConnectionStatusBadge status={user.connectionStatus} />
                     </td>
+                    <td className="px-4 py-3">
+                      <LastSyncCell user={user} />
+                    </td>
                   </tr>
                 );
               })
@@ -292,6 +397,7 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
       </div>
 
       {error instanceof Error ? <p className="px-3 py-2 text-sm text-red-500">{error.message}</p> : null}
-    </Card>
+      </Card>
+    </div>
   );
 }
