@@ -365,7 +365,7 @@ export function DataTable() {
         onDateChange={onDateChange}
         onQuickRange={handleQuickRangeChange}
         loading={isDatePending}
-        leftControls={<DataSyncAction />}
+        leftControls={<DataSyncAction lastSyncedAt={data?.sync.lastSyncedAt} />}
         extraControls={chargeTypeFilterControl}
         rightControls={
           <div className="flex items-center gap-2">
