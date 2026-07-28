@@ -19,3 +19,4 @@ supabase/.temp
 .playwright-mcp/
 coverage/
 .vercel
+*.tsbuildinfo
