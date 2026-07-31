@@ -357,6 +357,22 @@ create trigger capture_runs_refresh_rollups_update
   )
   execute function public.handle_newinmeter_capture_run_refresh();
 
+-- energy_rows.period_ts / capture_ts are stored generated columns built
+-- from the old parse functions; rebuild against the new ones before drop.
+alter table public.energy_rows drop column period_ts;
+alter table public.energy_rows
+  add column period_ts timestamp without time zone
+  generated always as (public.parse_newinmeter_period_ts(period_dt)) stored;
+create index if not exists energy_rows_period_ts_idx
+  on public.energy_rows (period_ts);
+
+alter table public.energy_rows drop column capture_ts;
+alter table public.energy_rows
+  add column capture_ts timestamp without time zone
+  generated always as (public.parse_newinmeter_capture_ts(capture_dt)) stored;
+create index if not exists energy_rows_capture_ts_idx
+  on public.energy_rows (capture_ts);
+
 -- old names are no longer referenced by any trigger or app code once the
 -- above runs; drop them last so nothing can be mid-call against them.
 drop function if exists public.handle_livenopay_capture_run_refresh();
