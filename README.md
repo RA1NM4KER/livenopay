@@ -107,7 +107,7 @@ dates, and never runs arbitrary SQL.
 
 Every signed-in user gets a `user_roles` row on first authenticated request (role `'user'`,
 `ai_assistant_enabled: true` by default). One seed admin is set in
-`supabase/migrations/20260726000000_newinmeter_user_roles.sql` (currently `kefasa112@gmail.com`).
+`supabase/migrations/20260726000000_newinmeter_user_roles.sql`.
 
 Admins get an "Admin" nav item (hidden entirely from non-admins; `/admin` 404s for them) with a
 table of every user, where they can:
