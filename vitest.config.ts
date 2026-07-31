@@ -22,7 +22,7 @@ export default defineConfig({
         "src/**/types.ts",
         "src/app/**",
         "src/lib/supabase/**",
-        "src/lib/livenopay-web.ts"
+        "src/lib/newinmeter-web.ts"
       ]
     }
   }

@@ -12,9 +12,9 @@ if [[ -f ".env.local" ]]; then
   set +a
 fi
 
-AVD_NAME="${LIVENOPAY_AVD_NAME:-}"
-PACKAGE_NAME="${LIVENOPAY_PACKAGE_NAME:-livemopay.co.za}"
-ACTIVITY_NAME="${LIVENOPAY_ACTIVITY_NAME:-com.example.property_wallet.MainActivity}"
+AVD_NAME="${NEWINMETER_AVD_NAME:-}"
+PACKAGE_NAME="${NEWINMETER_PACKAGE_NAME:-livemopay.co.za}"
+ACTIVITY_NAME="${NEWINMETER_ACTIVITY_NAME:-com.example.property_wallet.MainActivity}"
 ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}"
 EMULATOR_CMD="${EMULATOR_CMD:-$ANDROID_SDK_ROOT/emulator/emulator}"
 ADB_CMD="${ADB_PATH:-$ANDROID_SDK_ROOT/platform-tools/adb}"
@@ -74,13 +74,13 @@ start_emulator_if_needed() {
   fi
 
   if [[ -z "$AVD_NAME" ]]; then
-    echo "Missing LIVENOPAY_AVD_NAME. Set it in .env.local to your Android Studio AVD name." >&2
+    echo "Missing NEWINMETER_AVD_NAME. Set it in .env.local to your Android Studio AVD name." >&2
     echo "List AVDs with: \"${EMULATOR_CMD}\" -list-avds" >&2
     exit 1
   fi
 
   echo "Starting emulator: $AVD_NAME"
-  "$EMULATOR_CMD" "@${AVD_NAME}" -no-snapshot-load -no-snapshot-save >/tmp/livenopay-emulator.log 2>&1 &
+  "$EMULATOR_CMD" "@${AVD_NAME}" -no-snapshot-load -no-snapshot-save >/tmp/newinmeter-emulator.log 2>&1 &
   local emulator_pid=$!
 
   for _ in {1..90}; do
@@ -92,7 +92,7 @@ start_emulator_if_needed() {
   done
 
   if [[ -z "$EMULATOR_SERIAL" ]]; then
-    echo "Failed to detect emulator after launch. Check /tmp/livenopay-emulator.log" >&2
+    echo "Failed to detect emulator after launch. Check /tmp/newinmeter-emulator.log" >&2
     kill "$emulator_pid" 2>/dev/null || true
     exit 1
   fi

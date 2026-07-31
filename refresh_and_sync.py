@@ -10,7 +10,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-from livenopay_web import dedupe_rows, fetch_ledger_rows, write_csv
+from newinmeter_web import dedupe_rows, fetch_ledger_rows, write_csv
 CSV_PATH = Path("livemopay_energy.csv")
 CAPTURE_SCRIPT = Path("capture_livemopay.py")
 FIELDNAMES = [
@@ -44,7 +44,7 @@ def read_dotenv(path: Path):
 
 
 read_dotenv(Path(".env.local"))
-CSV_PATH = Path(os.environ.get("LIVENOPAY_CSV_PATH", str(CSV_PATH)))
+CSV_PATH = Path(os.environ.get("NEWINMETER_CSV_PATH", str(CSV_PATH)))
 
 
 def now_iso():
@@ -173,7 +173,7 @@ def latest_csv_start_date():
 
 
 def run_web_capture(full):
-    start_date = os.environ.get("LIVENOPAY_WEB_START_DATE")
+    start_date = os.environ.get("NEWINMETER_WEB_START_DATE")
     if not start_date:
         if full:
             start_date = "2000-01-01"

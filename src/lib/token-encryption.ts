@@ -8,7 +8,7 @@ const IV_LENGTH = 12;
 
 // Thrown specifically when AES-GCM auth-tag verification fails -- in
 // practice this means the ciphertext was encrypted under a different
-// LIVENOPAY_TOKEN_ENCRYPTION_KEY than the one currently configured (e.g.
+// NEWINMETER_TOKEN_ENCRYPTION_KEY than the one currently configured (e.g.
 // after a key rotation), not a transient failure. Callers use this to
 // distinguish "this connection needs to be re-authenticated" from any
 // other sync error.

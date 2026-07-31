@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getConnectionForUser, type LivemopayConnection } from "@/lib/livenopay-connection";
+import { getConnectionForUser, type LivemopayConnection } from "@/lib/newinmeter-connection";
 import { createServerSupabaseClient } from "@/lib/supabase/server-client";
 import { getOrCreateUserPermissions, type UserPermissions } from "@/lib/user-roles";
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedSession } from "@/lib/auth/session";
-import { deleteAccountForUser } from "@/lib/livenopay-connection";
+import { deleteAccountForUser } from "@/lib/newinmeter-connection";
 import { createServerSupabaseClient } from "@/lib/supabase/server-client";
 
 export const dynamic = "force-dynamic";

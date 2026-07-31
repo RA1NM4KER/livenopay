@@ -3,7 +3,7 @@ import "server-only";
 import { adminSupabaseFetch, adminSupabaseRequest } from "./supabase-rest";
 import { createSupabaseAdminClient } from "./supabase/admin-client";
 import { decryptRefreshToken, encryptRefreshToken } from "./token-encryption";
-import type { LiveMopayAccountCandidate } from "./livenopay-web";
+import type { LiveMopayAccountCandidate } from "./newinmeter-web";
 
 export type ConnectionStatus = "connected" | "pending_selection" | "disconnected" | "error";
 
@@ -256,7 +256,7 @@ export async function markConnectionSyncOutcome(connectionId: string, lastError:
 }
 
 // The stored refresh token is unrecoverable once it fails AES-GCM
-// auth-tag verification (almost always a LIVENOPAY_TOKEN_ENCRYPTION_KEY
+// auth-tag verification (almost always a NEWINMETER_TOKEN_ENCRYPTION_KEY
 // rotation orphaning it) -- retrying decryption can never succeed, so the
 // connection is flipped out of "connected" (requireConnectedSession then
 // naturally routes the user back through /connect) and the dead token

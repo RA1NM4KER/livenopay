@@ -29,30 +29,30 @@ export function getSupabaseServiceRoleKey() {
 }
 
 export function getTokenEncryptionKey(): Buffer {
-  const raw = required("LIVENOPAY_TOKEN_ENCRYPTION_KEY");
+  const raw = required("NEWINMETER_TOKEN_ENCRYPTION_KEY");
   const key = Buffer.from(raw, "base64");
 
   if (key.length !== 32) {
-    throw new Error("LIVENOPAY_TOKEN_ENCRYPTION_KEY must decode to exactly 32 bytes (base64-encoded AES-256 key).");
+    throw new Error("NEWINMETER_TOKEN_ENCRYPTION_KEY must decode to exactly 32 bytes (base64-encoded AES-256 key).");
   }
 
   return key;
 }
 
-export function getLivenopayFirebaseApiKey() {
-  return required("LIVENOPAY_FIREBASE_API_KEY");
+export function getNewinmeterFirebaseApiKey() {
+  return required("NEWINMETER_FIREBASE_API_KEY");
 }
 
-export function getLivenopayWebBaseUrl() {
-  return optional("LIVENOPAY_WEB_BASE_URL", "https://app.propertywallet.co.za");
+export function getNewinmeterWebBaseUrl() {
+  return optional("NEWINMETER_WEB_BASE_URL", "https://app.propertywallet.co.za");
 }
 
-export function getLivenopayWebPortalOrigin() {
-  return optional("LIVENOPAY_WEB_PORTAL_ORIGIN", "https://app.livewalletportal.co.za");
+export function getNewinmeterWebPortalOrigin() {
+  return optional("NEWINMETER_WEB_PORTAL_ORIGIN", "https://app.livewalletportal.co.za");
 }
 
-export function getLivenopayWebAppFlavor() {
-  return optional("LIVENOPAY_WEB_APP_FLAVOR", "livemopay");
+export function getNewinmeterWebAppFlavor() {
+  return optional("NEWINMETER_WEB_APP_FLAVOR", "livemopay");
 }
 
 export function getOpenAiApiKey(): string | undefined {

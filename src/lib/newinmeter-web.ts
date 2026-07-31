@@ -2,10 +2,10 @@ import "server-only";
 
 import { z } from "zod";
 import {
-  getLivenopayFirebaseApiKey,
-  getLivenopayWebAppFlavor,
-  getLivenopayWebBaseUrl,
-  getLivenopayWebPortalOrigin
+  getNewinmeterFirebaseApiKey,
+  getNewinmeterWebAppFlavor,
+  getNewinmeterWebBaseUrl,
+  getNewinmeterWebPortalOrigin
 } from "./env";
 
 const ENERGY_LABEL_RE = /^(.+?) \((\d{4}-\d{2}-\d{2} \d{2}:\d{2})\)$/;
@@ -15,7 +15,7 @@ const ENERGY_UNITS_RE = /(-?[\d.]+)\s*kWh\s*@\s*R(-?[\d.]+)/;
 const WATER_UNITS_RE = /(-?[\d.]+)\s*kL\s*@\s*R(-?[\d.]+)/;
 const FIXED_UNITS_RE = /(-?[\d.]+)\s*@\s*R(-?[\d.]+)/;
 
-export const livenopayFieldNames = [
+export const newinmeterFieldNames = [
   "capture_dt",
   "source_ts",
   "charge_label",
@@ -27,9 +27,9 @@ export const livenopayFieldNames = [
   "balance"
 ] as const;
 
-export type LivenopayFieldName = (typeof livenopayFieldNames)[number];
+export type NewinmeterFieldName = (typeof newinmeterFieldNames)[number];
 
-export type LivenopayCsvRow = Record<LivenopayFieldName, string>;
+export type NewinmeterCsvRow = Record<NewinmeterFieldName, string>;
 
 export type LiveMopaySession = {
   idToken: string;
@@ -64,12 +64,12 @@ function envString(name: string, fallback?: string) {
   return value && value.length ? value : fallback;
 }
 
-const localTimeZone = envString("LIVENOPAY_TIMEZONE", "Africa/Johannesburg")!;
-const authHeaderName = envString("LIVENOPAY_WEB_AUTH_HEADER", "Authorization")!;
-const authScheme = envString("LIVENOPAY_WEB_AUTH_SCHEME", "Bearer")!;
-const acceptLanguage = envString("LIVENOPAY_WEB_ACCEPT_LANGUAGE", "en-US,en;q=0.9")!;
+const localTimeZone = envString("NEWINMETER_TIMEZONE", "Africa/Johannesburg")!;
+const authHeaderName = envString("NEWINMETER_WEB_AUTH_HEADER", "Authorization")!;
+const authScheme = envString("NEWINMETER_WEB_AUTH_SCHEME", "Bearer")!;
+const acceptLanguage = envString("NEWINMETER_WEB_ACCEPT_LANGUAGE", "en-US,en;q=0.9")!;
 const userAgent =
-  envString("LIVENOPAY_WEB_USER_AGENT") ||
+  envString("NEWINMETER_WEB_USER_AGENT") ||
   [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
     "AppleWebKit/537.36 (KHTML, like Gecko)",
@@ -134,7 +134,7 @@ function normalizeNumericString(value: string, scale: number) {
   return numeric.toFixed(scale);
 }
 
-export function livenopayLedgerKey(row: Pick<LivenopayCsvRow, "charge_label" | "period_dt" | "cost" | "balance">) {
+export function newinmeterLedgerKey(row: Pick<NewinmeterCsvRow, "charge_label" | "period_dt" | "cost" | "balance">) {
   return [
     row.charge_label.trim(),
     row.period_dt.trim(),
@@ -196,7 +196,7 @@ function expiresAtFromSeconds(expiresIn: string | number) {
 }
 
 export async function loginWithLiveMopayCredentials(email: string, password: string): Promise<LiveMopaySession> {
-  const apiKey = getLivenopayFirebaseApiKey();
+  const apiKey = getNewinmeterFirebaseApiKey();
   const response = await postJson<{
     idToken: string;
     refreshToken: string;
@@ -217,7 +217,7 @@ export async function loginWithLiveMopayCredentials(email: string, password: str
 }
 
 export async function refreshLiveMopaySession(refreshToken: string): Promise<LiveMopaySession> {
-  const apiKey = getLivenopayFirebaseApiKey();
+  const apiKey = getNewinmeterFirebaseApiKey();
   const response = await postForm<{
     id_token: string;
     refresh_token: string;
@@ -260,13 +260,13 @@ function claimsFromIdToken(idToken: string) {
 
 // Base headers shared by every authenticated LiveMopay web-app request.
 function buildAuthHeaders(idToken: string): Record<string, string> {
-  const portalOrigin = getLivenopayWebPortalOrigin();
+  const portalOrigin = getNewinmeterWebPortalOrigin();
 
   return {
     [authHeaderName]: `${authScheme} ${idToken}`.trim(),
     Accept: "*/*",
     "Accept-Language": acceptLanguage,
-    appflavor: getLivenopayWebAppFlavor(),
+    appflavor: getNewinmeterWebAppFlavor(),
     Origin: portalOrigin,
     Referer: `${portalOrigin.replace(/\/$/, "")}/`,
     "Sec-Fetch-Dest": "empty",
@@ -334,7 +334,7 @@ export async function discoverLiveMopayAccounts(idToken: string): Promise<LiveMo
   const fallbackPropertyId = claims.property_id !== undefined ? String(claims.property_id) : undefined;
 
   const payload = await getJson<unknown>(
-    `${getLivenopayWebBaseUrl().replace(/\/$/, "")}/mobile/`,
+    `${getNewinmeterWebBaseUrl().replace(/\/$/, "")}/mobile/`,
     buildAccountDiscoveryHeaders(idToken)
   );
 
@@ -366,7 +366,7 @@ export async function discoverLiveMopayAccounts(idToken: string): Promise<LiveMo
   return candidates;
 }
 
-function normalizeLedgerRow(item: LedgerApiRow): LivenopayCsvRow | null {
+function normalizeLedgerRow(item: LedgerApiRow): NewinmeterCsvRow | null {
   const description = (item.description || "").trim();
   const captureDt = formatLocalCaptureDate(item.date);
   const balance = parseMoney(item.balanceIncl || item.balance);
@@ -462,12 +462,12 @@ function normalizeLedgerRow(item: LedgerApiRow): LivenopayCsvRow | null {
   return null;
 }
 
-export function dedupeLivenopayRows(rows: LivenopayCsvRow[]) {
+export function dedupeNewinmeterRows(rows: NewinmeterCsvRow[]) {
   const seen = new Set<string>();
-  const unique: LivenopayCsvRow[] = [];
+  const unique: NewinmeterCsvRow[] = [];
 
   for (const row of rows) {
-    const key = livenopayLedgerKey(row);
+    const key = newinmeterLedgerKey(row);
     if (seen.has(key)) {
       continue;
     }
@@ -485,9 +485,9 @@ export async function fetchLiveMopayLedger(params: {
   companyId: string;
   propertyId: string;
   startDate: string;
-}): Promise<LivenopayCsvRow[]> {
+}): Promise<NewinmeterCsvRow[]> {
   const url =
-    `${getLivenopayWebBaseUrl().replace(/\/$/, "")}/mobile/ledger/${encodeURIComponent(params.startDate)}` +
+    `${getNewinmeterWebBaseUrl().replace(/\/$/, "")}/mobile/ledger/${encodeURIComponent(params.startDate)}` +
     `?accountId=${encodeURIComponent(params.accountId)}`;
   const payload = await getJson<unknown>(
     url,
@@ -498,7 +498,7 @@ export async function fetchLiveMopayLedger(params: {
     throw new Error(`Expected a list from ledger endpoint, got ${typeof payload}.`);
   }
 
-  const rows: LivenopayCsvRow[] = [];
+  const rows: NewinmeterCsvRow[] = [];
 
   for (const item of payload) {
     const normalized = normalizeLedgerRow(item as LedgerApiRow);
@@ -507,9 +507,9 @@ export async function fetchLiveMopayLedger(params: {
     }
   }
 
-  return dedupeLivenopayRows(rows);
+  return dedupeNewinmeterRows(rows);
 }
 
-export function currentLivenopayLocalYear() {
+export function currentNewinmeterLocalYear() {
   return localYearFormatter.format(new Date());
 }

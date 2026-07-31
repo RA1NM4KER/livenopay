@@ -42,21 +42,21 @@ Set these in the Vercel project (Production and Preview):
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-LIVENOPAY_FIREBASE_API_KEY=
-LIVENOPAY_WEB_BASE_URL=https://app.propertywallet.co.za
-LIVENOPAY_WEB_PORTAL_ORIGIN=https://app.livewalletportal.co.za
-LIVENOPAY_WEB_APP_FLAVOR=livemopay
-LIVENOPAY_TOKEN_ENCRYPTION_KEY=
+NEWINMETER_FIREBASE_API_KEY=
+NEWINMETER_WEB_BASE_URL=https://app.propertywallet.co.za
+NEWINMETER_WEB_PORTAL_ORIGIN=https://app.livewalletportal.co.za
+NEWINMETER_WEB_APP_FLAVOR=livemopay
+NEWINMETER_TOKEN_ENCRYPTION_KEY=
 NEXT_PUBLIC_APP_URL=https://your-deployment.vercel.app
 OPENAI_API_KEY=        # optional, enables the assistant
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-Do not set `LIVENOPAY_WEB_EMAIL`, `LIVENOPAY_WEB_PASSWORD`, `LIVENOPAY_ACCOUNT_ID`,
-`LIVENOPAY_COMPANY_ID`, or `LIVENOPAY_PROPERTY_ID` in the hosted environment -- the multi-user
+Do not set `NEWINMETER_WEB_EMAIL`, `NEWINMETER_WEB_PASSWORD`, `NEWINMETER_ACCOUNT_ID`,
+`NEWINMETER_COMPANY_ID`, or `NEWINMETER_PROPERTY_ID` in the hosted environment -- the multi-user
 flow never reads per-user identity from environment variables.
 
-## 4. Generating LIVENOPAY_TOKEN_ENCRYPTION_KEY
+## 4. Generating NEWINMETER_TOKEN_ENCRYPTION_KEY
 
 ```
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
@@ -81,14 +81,14 @@ Apply every file in `supabase/migrations` in timestamp order. The four migration
 multi-user support, and where the legacy-owner backfill fits between them:
 
 ```
-20260725000000_livenopay_connections.sql            <- livemopay_connections table + ownership function
-20260725010000_livenopay_ownership_columns.sql       <- nullable connection_id on 6 tables
-20260725015000_livenopay_legacy_backfill_function.sql <- transactional backfill RPC
+20260725000000_newinmeter_connections.sql            <- livemopay_connections table + ownership function
+20260725010000_newinmeter_ownership_columns.sql       <- nullable connection_id on 6 tables
+20260725015000_newinmeter_legacy_backfill_function.sql <- transactional backfill RPC
 
     --- run scripts/backfill-legacy-owner.ts here (see section 7) ---
 
-20260725020000_livenopay_enforce_ownership.sql        <- NOT NULL, PK/unique swaps, RLS cutover
-20260725030000_livenopay_connection_scoped_summary.sql <- dashboard_summary PK swap + rollup rewrite
+20260725020000_newinmeter_enforce_ownership.sql        <- NOT NULL, PK/unique swaps, RLS cutover
+20260725030000_newinmeter_connection_scoped_summary.sql <- dashboard_summary PK swap + rollup rewrite
 ```
 
 The last two migrations will fail (by design -- a `NOT NULL` violation) if any row still has a
@@ -102,7 +102,7 @@ script and apply all migrations straight through -- there's nothing to backfill.
 
 For an existing deployment with production data already in Supabase:
 
-1. Apply migrations through `20260725015000_livenopay_legacy_backfill_function.sql`.
+1. Apply migrations through `20260725015000_newinmeter_legacy_backfill_function.sql`.
 2. Create (or identify) the Supabase Auth user who should own the existing data -- sign up
    through `/login` once, or create the user directly in the Supabase dashboard.
 3. Set in `.env.local`:
@@ -204,11 +204,11 @@ back the app code independently of the database.
 
 ## 14. LiveMopay discovery uncertainties
 
-`discoverLiveMopayAccounts` (in `src/lib/livenopay-web.ts`) calls `GET /mobile/` with
+`discoverLiveMopayAccounts` (in `src/lib/newinmeter-web.ts`) calls `GET /mobile/` with
 discovery-only headers (no `accountid`) and parses the response defensively -- any array (or
 single object) of records exposing an id-like field, with company/property ids resolved from
 either the response or the JWT claims. This path was previously unreachable in the codebase (the
-old code required `LIVENOPAY_ACCOUNT_ID` even to call the discovery endpoint), so its actual
+old code required `NEWINMETER_ACCOUNT_ID` even to call the discovery endpoint), so its actual
 response shape against a real account has not been observed. If accounts aren't discovered
 correctly:
 

@@ -67,18 +67,18 @@ def require_env(name: str) -> str:
     return value
 
 
-SESSION_PATH = env_path("LIVENOPAY_WEB_SESSION_PATH", ".secrets/livemopay_auth.json")
-CSV_PATH = env_path("LIVENOPAY_CSV_PATH", "livemopay_energy.csv")
-LOCAL_TZ = ZoneInfo(os.environ.get("LIVENOPAY_TIMEZONE", "Africa/Johannesburg"))
-PORTAL_ORIGIN = os.environ.get("LIVENOPAY_WEB_PORTAL_ORIGIN", "https://app.livewalletportal.co.za")
-API_BASE_URL = os.environ.get("LIVENOPAY_WEB_BASE_URL", "https://app.propertywallet.co.za")
-AUTH_HEADER = os.environ.get("LIVENOPAY_WEB_AUTH_HEADER", "Authorization")
-AUTH_SCHEME = os.environ.get("LIVENOPAY_WEB_AUTH_SCHEME", "Bearer")
-REFRESH_BUFFER_SECONDS = int(os.environ.get("LIVENOPAY_WEB_REFRESH_BUFFER_SECONDS", "300"))
-ACCEPT_LANGUAGE = os.environ.get("LIVENOPAY_WEB_ACCEPT_LANGUAGE", "en-US,en;q=0.9")
-APP_FLAVOR = os.environ.get("LIVENOPAY_WEB_APP_FLAVOR", "livemopay")
+SESSION_PATH = env_path("NEWINMETER_WEB_SESSION_PATH", ".secrets/livemopay_auth.json")
+CSV_PATH = env_path("NEWINMETER_CSV_PATH", "livemopay_energy.csv")
+LOCAL_TZ = ZoneInfo(os.environ.get("NEWINMETER_TIMEZONE", "Africa/Johannesburg"))
+PORTAL_ORIGIN = os.environ.get("NEWINMETER_WEB_PORTAL_ORIGIN", "https://app.livewalletportal.co.za")
+API_BASE_URL = os.environ.get("NEWINMETER_WEB_BASE_URL", "https://app.propertywallet.co.za")
+AUTH_HEADER = os.environ.get("NEWINMETER_WEB_AUTH_HEADER", "Authorization")
+AUTH_SCHEME = os.environ.get("NEWINMETER_WEB_AUTH_SCHEME", "Bearer")
+REFRESH_BUFFER_SECONDS = int(os.environ.get("NEWINMETER_WEB_REFRESH_BUFFER_SECONDS", "300"))
+ACCEPT_LANGUAGE = os.environ.get("NEWINMETER_WEB_ACCEPT_LANGUAGE", "en-US,en;q=0.9")
+APP_FLAVOR = os.environ.get("NEWINMETER_WEB_APP_FLAVOR", "livemopay")
 USER_AGENT = os.environ.get(
-    "LIVENOPAY_WEB_USER_AGENT",
+    "NEWINMETER_WEB_USER_AGENT",
     (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -185,9 +185,9 @@ def firebase_response_to_session(response: dict, email: str | None = None) -> Au
 
 
 def firebase_login() -> AuthSession:
-    api_key = require_env("LIVENOPAY_FIREBASE_API_KEY")
-    email = require_env("LIVENOPAY_WEB_EMAIL")
-    password = require_env("LIVENOPAY_WEB_PASSWORD")
+    api_key = require_env("NEWINMETER_FIREBASE_API_KEY")
+    email = require_env("NEWINMETER_WEB_EMAIL")
+    password = require_env("NEWINMETER_WEB_PASSWORD")
     response = post_json(
         f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={urllib.parse.quote(api_key, safe='')}",
         {
@@ -202,7 +202,7 @@ def firebase_login() -> AuthSession:
 
 
 def firebase_refresh(refresh_token: str, email: str | None = None) -> AuthSession:
-    api_key = require_env("LIVENOPAY_FIREBASE_API_KEY")
+    api_key = require_env("NEWINMETER_FIREBASE_API_KEY")
     response = post_form(
         f"https://securetoken.googleapis.com/v1/token?key={urllib.parse.quote(api_key, safe='')}",
         {
@@ -243,9 +243,9 @@ def decode_jwt_claims(token: str) -> dict:
 
 def auth_headers(session: AuthSession) -> dict[str, str]:
     claims = decode_jwt_claims(session.id_token)
-    account_id = require_env("LIVENOPAY_ACCOUNT_ID")
-    company_id = str(env_str("LIVENOPAY_COMPANY_ID") or claims["company_id"])
-    property_id = str(env_str("LIVENOPAY_PROPERTY_ID") or claims["property_id"])
+    account_id = require_env("NEWINMETER_ACCOUNT_ID")
+    company_id = str(env_str("NEWINMETER_COMPANY_ID") or claims["company_id"])
+    property_id = str(env_str("NEWINMETER_PROPERTY_ID") or claims["property_id"])
 
     return {
         AUTH_HEADER: f"{AUTH_SCHEME} {session.id_token}".strip(),
@@ -376,12 +376,12 @@ def discover_account_id(session: AuthSession) -> str:
             account_id = item.get("accountId") or item.get("id")
             if account_id is not None:
                 return str(account_id)
-    raise RuntimeError("Could not discover account id from /mobile/. Set LIVENOPAY_ACCOUNT_ID in .env.local.")
+    raise RuntimeError("Could not discover account id from /mobile/. Set NEWINMETER_ACCOUNT_ID in .env.local.")
 
 
 def fetch_ledger_rows(start_date: str) -> list[dict]:
     session = ensure_valid_session()
-    account_id = env_str("LIVENOPAY_ACCOUNT_ID") or discover_account_id(session)
+    account_id = env_str("NEWINMETER_ACCOUNT_ID") or discover_account_id(session)
     url = (
         API_BASE_URL.rstrip("/")
         + f"/mobile/ledger/{urllib.parse.quote(start_date, safe='')}?accountId={urllib.parse.quote(account_id, safe='')}"

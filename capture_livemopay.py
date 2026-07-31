@@ -53,17 +53,17 @@ def env_float(name: str, default: float) -> float:
 
 
 ANDROID_STUDIO_ADB = Path.home() / "Library/Android/sdk/platform-tools/adb"
-OUT_DIR = env_path("LIVENOPAY_DUMPS_DIR", "livemopay_dumps")
+OUT_DIR = env_path("NEWINMETER_DUMPS_DIR", "livemopay_dumps")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-CSV_PATH = env_path("LIVENOPAY_CSV_PATH", "livemopay_energy.csv")
-LOG_PATH = env_path("LIVENOPAY_CAPTURE_LOG", "livemopay_capture.log")
+CSV_PATH = env_path("NEWINMETER_CSV_PATH", "livemopay_energy.csv")
+LOG_PATH = env_path("NEWINMETER_CAPTURE_LOG", "livemopay_capture.log")
 CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-REMOTE_DUMP_PATH = os.environ.get("LIVENOPAY_REMOTE_DUMP_PATH", "/sdcard/view.xml")
-MAX_ITERATIONS = env_int("LIVENOPAY_MAX_ITERATIONS", 500)
-MAX_STAGNANT_ROUNDS = env_int("LIVENOPAY_MAX_STAGNANT_ROUNDS", 4)
-SCREEN_WAIT_ATTEMPTS = env_int("LIVENOPAY_SCREEN_WAIT_ATTEMPTS", 15)
-SCREEN_WAIT_SECONDS = env_float("LIVENOPAY_SCREEN_WAIT_SECONDS", 2.0)
+REMOTE_DUMP_PATH = os.environ.get("NEWINMETER_REMOTE_DUMP_PATH", "/sdcard/view.xml")
+MAX_ITERATIONS = env_int("NEWINMETER_MAX_ITERATIONS", 500)
+MAX_STAGNANT_ROUNDS = env_int("NEWINMETER_MAX_STAGNANT_ROUNDS", 4)
+SCREEN_WAIT_ATTEMPTS = env_int("NEWINMETER_SCREEN_WAIT_ATTEMPTS", 15)
+SCREEN_WAIT_SECONDS = env_float("NEWINMETER_SCREEN_WAIT_SECONDS", 2.0)
 FIELDNAMES = [
     "capture_dt",
     "source_ts",

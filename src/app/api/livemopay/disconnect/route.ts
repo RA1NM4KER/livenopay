@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedSession } from "@/lib/auth/session";
-import { disconnectLivemopayConnection } from "@/lib/livenopay-connection";
+import { disconnectLivemopayConnection } from "@/lib/newinmeter-connection";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

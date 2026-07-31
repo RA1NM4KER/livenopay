@@ -8,8 +8,8 @@ import {
   markConnectionAuthError,
   markConnectionSyncOutcome,
   replaceConnectionRefreshToken
-} from "@/lib/livenopay-connection";
-import { runLivemopaySync, SyncAlreadyRunningError } from "@/lib/livenopay-sync";
+} from "@/lib/newinmeter-connection";
+import { runLivemopaySync, SyncAlreadyRunningError } from "@/lib/newinmeter-sync";
 import { TokenDecryptionError } from "@/lib/token-encryption";
 
 export const dynamic = "force-dynamic";

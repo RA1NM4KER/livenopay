@@ -65,7 +65,7 @@ migrations add:
   Read/written exclusively via the service-role REST helpers (same as `livemopay_connections`);
   authorization is enforced in code (`requireAdminSession`), not by RLS. Rows are created lazily
   on first authenticated request; the one seed admin is set by
-  `20260726000000_livenopay_user_roles.sql`.
+  `20260726000000_newinmeter_user_roles.sql`.
 
 The original single-user schema (`energy_rows` with the CSV-shaped columns, `capture_runs`,
 rollup tables, the water-support columns) is unchanged in shape; multi-user support only adds
@@ -107,7 +107,7 @@ dates, and never runs arbitrary SQL.
 
 Every signed-in user gets a `user_roles` row on first authenticated request (role `'user'`,
 `ai_assistant_enabled: true` by default). One seed admin is set in
-`supabase/migrations/20260726000000_livenopay_user_roles.sql` (currently `kefasa112@gmail.com`).
+`supabase/migrations/20260726000000_newinmeter_user_roles.sql` (currently `kefasa112@gmail.com`).
 
 Admins get an "Admin" nav item (hidden entirely from non-admins; `/admin` 404s for them) with a
 table of every user, where they can:
@@ -142,7 +142,7 @@ Needs one of these env var pairs (see `.env.example`):
 ## Account deletion
 
 Users can permanently delete their own account from Settings (type `DELETE` to confirm):
-`deleteAccountForUser` (`src/lib/livenopay-connection.ts`) removes their `livemopay_connections`
+`deleteAccountForUser` (`src/lib/newinmeter-connection.ts`) removes their `livemopay_connections`
 row (cascading to every table keyed off it -- see "Supabase Schema" above) and deletes their
 Supabase Auth user entirely. Fully self-service, no admin action required.
 
@@ -163,7 +163,7 @@ no-op stub for tests (see `vitest.config.ts`) since the real package throws outs
 
 Not covered: React components/hooks (would need jsdom + Testing Library and heavy
 `next/navigation` mocking for uncertain payoff), and thin I/O wrappers around Supabase/LiveMopay
-(`dashboard-data.ts`, `livenopay-sync.ts`, `livenopay-connection.ts`, `supabase-rest.ts`) where
+(`dashboard-data.ts`, `newinmeter-sync.ts`, `newinmeter-connection.ts`, `supabase-rest.ts`) where
 the only real logic is "does the network call happen" -- lower value than the math it's fetching
 data for.
 
@@ -176,7 +176,7 @@ out auth pages and the signed-in sidebar footer.
 
 ## Data Semantics
 
-Rows are normalized in `src/lib/livenopay-web.ts` (upstream ledger response) and
+Rows are normalized in `src/lib/newinmeter-web.ts` (upstream ledger response) and
 `src/lib/csv.ts` (Supabase row shape), then summarized in `src/lib/analytics.ts`. Unchanged by
 multi-user support:
 
@@ -210,9 +210,9 @@ multi-user support:
 - `src/lib/user-roles.ts` - role/permission reads and writes (`user_roles` table)
 - `src/lib/rate-limit.ts` - Upstash-backed per-user rate limiting
 - `src/lib/assistant` - assistant prompt, tool loop, and grounded analytics tools
-- `src/lib/livenopay-web.ts` - LiveMopay Firebase auth, account discovery, ledger fetch (pure, argument-based)
-- `src/lib/livenopay-connection.ts` - LiveMopay connection persistence (encrypted tokens), account deletion
-- `src/lib/livenopay-sync.ts` - connection-scoped ledger sync into Supabase
+- `src/lib/newinmeter-web.ts` - LiveMopay Firebase auth, account discovery, ledger fetch (pure, argument-based)
+- `src/lib/newinmeter-connection.ts` - LiveMopay connection persistence (encrypted tokens), account deletion
+- `src/lib/newinmeter-sync.ts` - connection-scoped ledger sync into Supabase
 - `src/lib` (remainder) - Supabase access, CSV normalization, filtering, formatting, and analytics
 - `supabase/migrations` - database schema
 - `scripts/backfill-legacy-owner.ts` - one-time ownership backfill for pre-multi-user data
@@ -227,9 +227,9 @@ multi-user support:
 
 ## Legacy Local Setup
 
-`livenopay_web.py`, `capture_livemopay.py`, and `refresh_and_sync.py` are a standalone Python CLI
+`newinmeter_web.py`, `capture_livemopay.py`, and `refresh_and_sync.py` are a standalone Python CLI
 that predates multi-user support. It authenticates against LiveMopay using
-`LIVENOPAY_WEB_EMAIL`/`LIVENOPAY_WEB_PASSWORD` from `.env.local`, writes `livemopay_energy.csv`
+`NEWINMETER_WEB_EMAIL`/`NEWINMETER_WEB_PASSWORD` from `.env.local`, writes `livemopay_energy.csv`
 locally, and syncs it to Supabase with the service-role key -- independent of Supabase Auth and
 the connection flow described above. It is not used by the deployed multi-user app; nothing in
 `src/` calls into it or vice versa.

@@ -4,7 +4,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { ConnectionCard } from "@/components/settings/connection-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { getAuthenticatedSession } from "@/lib/auth/session";
-import { getConnectionForUser } from "@/lib/livenopay-connection";
+import { getConnectionForUser } from "@/lib/newinmeter-connection";
 
 export const dynamic = "force-dynamic";
 

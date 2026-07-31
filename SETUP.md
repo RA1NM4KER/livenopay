@@ -1,4 +1,4 @@
-# Livenopay Setup
+# Newinmeter Setup
 
 This guide now covers both local ingestion paths:
 
@@ -29,24 +29,24 @@ Add these to `.env.local`:
 
     SUPABASE_URL=...
     SUPABASE_SERVICE_ROLE_KEY=...
-    LIVENOPAY_WEB_EMAIL=you@example.com
-    LIVENOPAY_WEB_PASSWORD=your-livewallet-password
-    LIVENOPAY_FIREBASE_API_KEY=your-firebase-web-api-key
-    LIVENOPAY_ACCOUNT_ID=your-account-id
+    NEWINMETER_WEB_EMAIL=you@example.com
+    NEWINMETER_WEB_PASSWORD=your-livewallet-password
+    NEWINMETER_FIREBASE_API_KEY=your-firebase-web-api-key
+    NEWINMETER_ACCOUNT_ID=your-account-id
 
 Optional overrides:
 
-    LIVENOPAY_COMPANY_ID=your-company-id
-    LIVENOPAY_PROPERTY_ID=your-property-id
-    LIVENOPAY_WEB_BASE_URL=https://app.propertywallet.co.za
-    LIVENOPAY_WEB_PORTAL_ORIGIN=https://app.livewalletportal.co.za
-    LIVENOPAY_WEB_SESSION_PATH=.secrets/livemopay_auth.json
-    LIVENOPAY_WEB_AUTH_HEADER=Authorization
-    LIVENOPAY_WEB_AUTH_SCHEME=Bearer
-    LIVENOPAY_WEB_APP_FLAVOR=livemopay
-    LIVENOPAY_WEB_REFRESH_BUFFER_SECONDS=300
-    LIVENOPAY_WEB_START_DATE=2026-01-01
-    LIVENOPAY_TIMEZONE=Africa/Johannesburg
+    NEWINMETER_COMPANY_ID=your-company-id
+    NEWINMETER_PROPERTY_ID=your-property-id
+    NEWINMETER_WEB_BASE_URL=https://app.propertywallet.co.za
+    NEWINMETER_WEB_PORTAL_ORIGIN=https://app.livewalletportal.co.za
+    NEWINMETER_WEB_SESSION_PATH=.secrets/livemopay_auth.json
+    NEWINMETER_WEB_AUTH_HEADER=Authorization
+    NEWINMETER_WEB_AUTH_SCHEME=Bearer
+    NEWINMETER_WEB_APP_FLAVOR=livemopay
+    NEWINMETER_WEB_REFRESH_BUFFER_SECONDS=300
+    NEWINMETER_WEB_START_DATE=2026-01-01
+    NEWINMETER_TIMEZONE=Africa/Johannesburg
 
 Run it:
 
@@ -60,10 +60,10 @@ To sync the existing CSV without refetching:
 
     python3 refresh_and_sync.py --skip-capture
 
-The session file at `LIVENOPAY_WEB_SESSION_PATH` stores auth tokens locally so refreshes can reuse them.
+The session file at `NEWINMETER_WEB_SESSION_PATH` stores auth tokens locally so refreshes can reuse them.
 
 The deployed dashboard does **not** use this script. Its in-app sync action calls `/api/sync`, which runs the sync
-directly in the Next.js backend (`src/lib/livenopay-sync.ts` and `src/lib/livenopay-web.ts`, pure TypeScript, no
+directly in the Next.js backend (`src/lib/newinmeter-sync.ts` and `src/lib/newinmeter-web.ts`, pure TypeScript, no
 Python involved). This script is only for the legacy single-user local CLI described in `README.md`'s "Legacy Local
 Setup" section.
 
@@ -142,19 +142,19 @@ Use this if you want the most repeatable Android fallback flow.
 2. create an Android virtual device
 3. install LiveMopay inside the emulator and log in
 4. copy `.env.example` to `.env.local`
-5. set `LIVENOPAY_AVD_NAME` in `.env.local` to your emulator's AVD name
+5. set `NEWINMETER_AVD_NAME` in `.env.local` to your emulator's AVD name
 6. run `npm run refresh:emulator`
 
 The wrapper uses these optional `.env.local` values:
 
-    LIVENOPAY_AVD_NAME=Your_AVD_Name
-    LIVENOPAY_PACKAGE_NAME=livemopay.co.za
-    LIVENOPAY_ACTIVITY_NAME=com.example.property_wallet.MainActivity
+    NEWINMETER_AVD_NAME=Your_AVD_Name
+    NEWINMETER_PACKAGE_NAME=livemopay.co.za
+    NEWINMETER_ACTIVITY_NAME=com.example.property_wallet.MainActivity
     EMULATOR_CMD=/path/to/emulator
     ADB_PATH=/path/to/adb
     ADB_SERIAL=emulator-5554
 
-Most people should only need `LIVENOPAY_AVD_NAME`. The package and activity are configurable in case LiveMopay changes its Android entry point. `ADB_SERIAL` is useful when you have more than one Android device or emulator connected.
+Most people should only need `NEWINMETER_AVD_NAME`. The package and activity are configurable in case LiveMopay changes its Android entry point. `ADB_SERIAL` is useful when you have more than one Android device or emulator connected.
 
 If you also want the in-app dashboard assistant, add these optional server-side values to `.env.local`:
 
@@ -165,13 +165,13 @@ The assistant is optional. Capture, sync, and the dashboard itself still work wi
 
 The capture script also reads `.env.local` directly. These optional values control output locations and scan behavior:
 
-    LIVENOPAY_CSV_PATH=livemopay_energy.csv
-    LIVENOPAY_DUMPS_DIR=livemopay_dumps
-    LIVENOPAY_CAPTURE_LOG=livemopay_capture.log
-    LIVENOPAY_MAX_ITERATIONS=500
-    LIVENOPAY_MAX_STAGNANT_ROUNDS=4
-    LIVENOPAY_SCREEN_WAIT_ATTEMPTS=15
-    LIVENOPAY_SCREEN_WAIT_SECONDS=2.0
+    NEWINMETER_CSV_PATH=livemopay_energy.csv
+    NEWINMETER_DUMPS_DIR=livemopay_dumps
+    NEWINMETER_CAPTURE_LOG=livemopay_capture.log
+    NEWINMETER_MAX_ITERATIONS=500
+    NEWINMETER_MAX_STAGNANT_ROUNDS=4
+    NEWINMETER_SCREEN_WAIT_ATTEMPTS=15
+    NEWINMETER_SCREEN_WAIT_SECONDS=2.0
 
 Once capture starts, do not touch the emulator until it finishes.
 

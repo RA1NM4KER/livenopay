@@ -2,13 +2,13 @@ import "server-only";
 
 import { adminSupabaseFetch, adminSupabaseRequest } from "./supabase-rest";
 import {
-  currentLivenopayLocalYear,
-  dedupeLivenopayRows,
+  currentNewinmeterLocalYear,
+  dedupeNewinmeterRows,
   fetchLiveMopayLedger,
-  livenopayLedgerKey,
+  newinmeterLedgerKey,
   refreshLiveMopaySession,
-  type LivenopayCsvRow
-} from "./livenopay-web";
+  type NewinmeterCsvRow
+} from "./newinmeter-web";
 
 const BATCH_SIZE = 500;
 
@@ -76,7 +76,7 @@ async function finishCaptureRun(
   // Routed through the finish_capture_run RPC (not a plain PATCH) so it can
   // raise statement_timeout for itself before the UPDATE -- and its
   // cascading rollup-refresh trigger -- begins executing. See
-  // supabase/migrations/20260726030000_livenopay_finish_capture_run_rpc.sql.
+  // supabase/migrations/20260726030000_newinmeter_finish_capture_run_rpc.sql.
   await adminSupabaseRequest(
     "POST",
     "/rpc/finish_capture_run",
@@ -90,16 +90,16 @@ async function finishCaptureRun(
   );
 }
 
-async function upsertRows(connectionId: string, rows: LivenopayCsvRow[], runId: string) {
+async function upsertRows(connectionId: string, rows: NewinmeterCsvRow[], runId: string) {
   const syncedAt = nowIso();
   const onConflict = encodeURIComponent("connection_id,charge_label,period_dt,cost,balance");
   let total = 0;
 
   for (let index = 0; index < rows.length; index += BATCH_SIZE) {
-    const batchRows = dedupeLivenopayRows(rows.slice(index, index + BATCH_SIZE));
+    const batchRows = dedupeNewinmeterRows(rows.slice(index, index + BATCH_SIZE));
     const batchSeen = new Set<string>();
     const batch = batchRows.flatMap((row) => {
-      const key = livenopayLedgerKey(row);
+      const key = newinmeterLedgerKey(row);
       if (batchSeen.has(key)) {
         return [];
       }
@@ -161,7 +161,7 @@ export async function runLivemopaySync(params: LivemopaySyncParams) {
     const startDate =
       params.mode === "full"
         ? "2000-01-01"
-        : (await latestPeriodDateForConnection(params.connectionId)) || `${currentLivenopayLocalYear()}-01-01`;
+        : (await latestPeriodDateForConnection(params.connectionId)) || `${currentNewinmeterLocalYear()}-01-01`;
 
     const rows = await fetchLiveMopayLedger({
       idToken: session.idToken,

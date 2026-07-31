@@ -4,7 +4,7 @@ import { decryptRefreshToken, encryptRefreshToken } from "@/lib/token-encryption
 
 beforeEach(() => {
   // A valid AES-256 key must decode to exactly 32 bytes.
-  process.env.LIVENOPAY_TOKEN_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+  process.env.NEWINMETER_TOKEN_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 });
 
 describe("encryptRefreshToken / decryptRefreshToken", () => {
@@ -50,7 +50,7 @@ describe("encryptRefreshToken / decryptRefreshToken", () => {
 
   it("throws when decrypting with the wrong key", () => {
     const encrypted = encryptRefreshToken("original-token");
-    process.env.LIVENOPAY_TOKEN_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+    process.env.NEWINMETER_TOKEN_ENCRYPTION_KEY = randomBytes(32).toString("base64");
 
     expect(() => decryptRefreshToken(encrypted)).toThrow();
   });

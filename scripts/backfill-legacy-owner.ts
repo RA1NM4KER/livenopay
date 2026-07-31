@@ -2,7 +2,7 @@
 // capture_runs, rollup, and dashboard_summary row to a single Supabase Auth
 // user's LiveMopay connection. Run this after applying migrations
 // 20260725000000-20260725015000 and before 20260725020000
-// (livenopay_enforce_ownership), which requires connection_id to already be
+// (newinmeter_enforce_ownership), which requires connection_id to already be
 // backfilled everywhere.
 //
 // Usage:
@@ -177,7 +177,7 @@ async function main() {
   if (hasNullOwnersAfter) {
     console.error(
       "\nFAIL: rows with a null connection_id remain. Do not apply " +
-        "20260725020000_livenopay_enforce_ownership.sql until this is resolved -- " +
+        "20260725020000_newinmeter_enforce_ownership.sql until this is resolved -- " +
         "it will fail on the NOT NULL constraint, which is the intended safety behavior."
     );
     process.exitCode = 1;
