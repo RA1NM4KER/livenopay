@@ -82,10 +82,28 @@ function hourlyRow(overrides: Partial<HourlyRollupRow>): HourlyRollupRow {
 }
 
 const hourlyRows = [
-  hourlyRow({ periodDate: "2026-07-01", hour: 8, spend: 10, kwh: 4, waterSpend: 1, waterKl: 0.2, intervals: 2, waterIntervals: 2 }),
+  hourlyRow({
+    periodDate: "2026-07-01",
+    hour: 8,
+    spend: 10,
+    kwh: 4,
+    waterSpend: 1,
+    waterKl: 0.2,
+    intervals: 2,
+    waterIntervals: 2
+  }),
   hourlyRow({ periodDate: "2026-07-01", hour: 18, spend: 15, kwh: 6, intervals: 2 }),
   hourlyRow({ periodDate: "2026-07-02", hour: 18, spend: 25, kwh: 10, intervals: 2 }),
-  hourlyRow({ periodDate: "2026-07-03", hour: 8, spend: 5, kwh: 2, waterSpend: 0.5, waterKl: 0.1, intervals: 1, waterIntervals: 1 })
+  hourlyRow({
+    periodDate: "2026-07-03",
+    hour: 8,
+    spend: 5,
+    kwh: 2,
+    waterSpend: 0.5,
+    waterKl: 0.1,
+    intervals: 1,
+    waterIntervals: 1
+  })
 ];
 
 describe("createAnalytics totals", () => {
@@ -222,6 +240,152 @@ describe("createAnalytics daily projections", () => {
     const { daily } = createAnalytics([earlyDay], []);
     expect(daily[0].projectedSpend).toBeUndefined();
     expect(daily[0].projectedKwh).toBeUndefined();
+  });
+
+  it("uses completed history outside the visible range as the projection baseline", () => {
+    const history = Array.from({ length: 7 }, (_, index) =>
+      dailyRow({
+        periodDate: `2026-07-${String(index + 1).padStart(2, "0")}`,
+        energySpend: 50,
+        fixedSpend: 10,
+        totalSpend: 60,
+        energyKwh: 20,
+        energyIntervals: 48,
+        isComplete: true
+      })
+    );
+    const current = dailyRow({
+      periodDate: "2026-07-08",
+      energySpend: 2,
+      fixedSpend: 10,
+      totalSpend: 12,
+      energyKwh: 0.8,
+      energyIntervals: 18,
+      latestPeriod: "2026-07-08T08:30",
+      isComplete: false
+    });
+    const historyHours = history.flatMap((day) => [
+      hourlyRow({ periodDate: day.periodDate, hour: 8, spend: 10, kwh: 4, intervals: 2 }),
+      hourlyRow({ periodDate: day.periodDate, hour: 18, spend: 40, kwh: 16, intervals: 2 })
+    ]);
+
+    const { daily } = createAnalytics(
+      [...history, current],
+      [...historyHours, hourlyRow({ periodDate: current.periodDate, hour: 8, spend: 2, kwh: 0.8, intervals: 2 })],
+      current.periodDate,
+      current.periodDate
+    );
+
+    expect(daily).toHaveLength(1);
+    expect(daily[0].projectedSpend).toBeGreaterThan(50);
+    expect(daily[0].projectedSpend).toBeLessThan(60);
+    expect(daily[0].projectedKwh).toBeGreaterThan(16);
+  });
+
+  it("keeps a lagging energy feed anchored to history instead of treating missing slots as zero", () => {
+    const history = Array.from({ length: 7 }, (_, index) =>
+      dailyRow({
+        periodDate: `2026-07-${String(index + 1).padStart(2, "0")}`,
+        energySpend: 50,
+        waterSpend: 5,
+        fixedSpend: 10,
+        totalSpend: 65,
+        energyKwh: 20,
+        energyIntervals: 48,
+        waterIntervals: 48,
+        isComplete: true
+      })
+    );
+    const current = dailyRow({
+      periodDate: "2026-07-08",
+      energySpend: 0,
+      waterSpend: 0.5,
+      fixedSpend: 10,
+      totalSpend: 10.5,
+      energyKwh: 0,
+      energyIntervals: 0,
+      waterIntervals: 18,
+      latestPeriod: "2026-07-08T08:30",
+      isComplete: false
+    });
+    const historyHours = history.flatMap((day) => [
+      hourlyRow({
+        periodDate: day.periodDate,
+        hour: 8,
+        spend: 10,
+        kwh: 4,
+        waterSpend: 1,
+        intervals: 2,
+        waterIntervals: 2
+      }),
+      hourlyRow({
+        periodDate: day.periodDate,
+        hour: 18,
+        spend: 40,
+        kwh: 16,
+        waterSpend: 4,
+        intervals: 2,
+        waterIntervals: 2
+      })
+    ]);
+
+    const { daily } = createAnalytics([...history, current], historyHours);
+
+    expect(daily.at(-1)?.projectedSpend).toBeGreaterThan(60);
+    expect(daily.at(-1)?.projectedKwh).toBe(20);
+  });
+
+  it("never projects a total below spend already incurred", () => {
+    const history = Array.from({ length: 7 }, (_, index) =>
+      dailyRow({
+        periodDate: `2026-07-${String(index + 1).padStart(2, "0")}`,
+        energySpend: 10,
+        fixedSpend: 10,
+        totalSpend: 20,
+        energyKwh: 4,
+        energyIntervals: 48,
+        isComplete: true
+      })
+    );
+    const current = dailyRow({
+      periodDate: "2026-07-08",
+      energySpend: 70,
+      fixedSpend: 10,
+      totalSpend: 80,
+      energyKwh: 28,
+      energyIntervals: 18,
+      latestPeriod: "2026-07-08T08:30",
+      isComplete: false
+    });
+
+    const { daily } = createAnalytics([...history, current], []);
+
+    expect(daily.at(-1)?.projectedSpend).toBeGreaterThanOrEqual(80);
+    expect(daily.at(-1)?.projectedKwh).toBeGreaterThanOrEqual(28);
+  });
+
+  it("does not project an old incomplete day when newer data exists", () => {
+    const oldIncomplete = dailyRow({
+      periodDate: "2026-07-01",
+      energySpend: 20,
+      fixedSpend: 10,
+      totalSpend: 30,
+      energyIntervals: 20,
+      latestPeriod: "2026-07-01T09:30",
+      isComplete: false
+    });
+    const newerComplete = dailyRow({
+      periodDate: "2026-07-02",
+      energySpend: 40,
+      fixedSpend: 10,
+      totalSpend: 50,
+      energyIntervals: 48,
+      isComplete: true
+    });
+
+    const { daily } = createAnalytics([oldIncomplete, newerComplete], []);
+
+    expect(daily[0].projectedSpend).toBeUndefined();
   });
 
   it("tracks a running cumulative spend total across the sorted days", () => {

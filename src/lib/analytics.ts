@@ -18,6 +18,57 @@ function round(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+const PROJECTION_ALPHA = 0.2;
+const PROJECTION_HISTORY_DAYS = 28;
+const MIN_PROJECTION_HISTORY_DAYS = 7;
+const MIN_PROJECTION_SLOTS = 12;
+const SLOTS_PER_DAY = 48;
+
+type ProjectionComponent = {
+  dailyValue: (row: DailyRollupRow) => number;
+  dailyIntervals: (row: DailyRollupRow) => number;
+  hourlyValue: (row: HourlyRollupRow) => number;
+  hourlyIntervals: (row: HourlyRollupRow) => number;
+};
+
+const energySpendProjection: ProjectionComponent = {
+  dailyValue: (row) => row.energySpend,
+  dailyIntervals: (row) => row.energyIntervals,
+  hourlyValue: (row) => row.spend,
+  hourlyIntervals: (row) => row.intervals
+};
+
+const waterSpendProjection: ProjectionComponent = {
+  dailyValue: (row) => row.waterSpend,
+  dailyIntervals: (row) => row.waterIntervals,
+  hourlyValue: (row) => row.waterSpend,
+  hourlyIntervals: (row) => row.waterIntervals
+};
+
+const energyKwhProjection: ProjectionComponent = {
+  dailyValue: (row) => row.energyKwh,
+  dailyIntervals: (row) => row.energyIntervals,
+  hourlyValue: (row) => row.kwh,
+  hourlyIntervals: (row) => row.intervals
+};
+
+function median(values: number[]) {
+  const sorted = values.slice().sort((left, right) => left - right);
+  const midpoint = Math.floor(sorted.length / 2);
+
+  return sorted.length % 2 === 0 ? (sorted[midpoint - 1] + sorted[midpoint]) / 2 : sorted[midpoint];
+}
+
+function exponentiallyWeightedAverage(values: number[]) {
+  return values
+    .slice(1)
+    .reduce((average, value) => PROJECTION_ALPHA * value + (1 - PROJECTION_ALPHA) * average, values[0]);
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
 function getElapsedHalfHourSlots(periodDate: string, latestPeriod?: string) {
   if (!latestPeriod || !latestPeriod.startsWith(periodDate)) {
     return 0;
@@ -35,25 +86,119 @@ function getElapsedHalfHourSlots(periodDate: string, latestPeriod?: string) {
   return hour * 2 + (minute >= 30 ? 2 : 1);
 }
 
-function buildProjectedSpend(row: DailyRollupRow) {
-  const elapsedSlots = getElapsedHalfHourSlots(row.periodDate, row.latestPeriod);
+function componentSlots(row: DailyRollupRow, component: ProjectionComponent) {
+  const intervals = component.dailyIntervals(row);
+  const hasPerFeedCoverage = row.energyIntervals > 0 || row.waterIntervals > 0;
+  const resolvedIntervals =
+    intervals > 0 ? intervals : hasPerFeedCoverage ? 0 : getElapsedHalfHourSlots(row.periodDate, row.latestPeriod);
 
-  if (elapsedSlots < 12) {
-    return undefined;
-  }
-
-  const intervalSpend = row.energySpend + row.waterSpend;
-  return round((intervalSpend / elapsedSlots) * 48 + row.fixedSpend);
+  return clamp(resolvedIntervals, 0, SLOTS_PER_DAY);
 }
 
-function buildProjectedKwh(row: DailyRollupRow) {
-  const elapsedSlots = getElapsedHalfHourSlots(row.periodDate, row.latestPeriod);
+function cumulativeHourlyValue(rows: HourlyRollupRow[], slots: number, component: ProjectionComponent) {
+  const completeHours = Math.floor(slots / 2);
+  const includesHalfHour = slots % 2 === 1;
 
-  if (elapsedSlots < 12) {
+  return rows.reduce((total, row) => {
+    if (row.hour < completeHours) {
+      return total + component.hourlyValue(row);
+    }
+
+    if (row.hour !== completeHours || !includesHalfHour) {
+      return total;
+    }
+
+    const intervalCount = Math.max(1, component.hourlyIntervals(row));
+    return total + component.hourlyValue(row) / intervalCount;
+  }, 0);
+}
+
+function forecastComponent(
+  currentRow: DailyRollupRow,
+  globalSlots: number,
+  historyRows: DailyRollupRow[],
+  hourlyByDate: Map<string, HourlyRollupRow[]>,
+  component: ProjectionComponent
+) {
+  const currentValue = component.dailyValue(currentRow);
+  const slots = componentSlots(currentRow, component);
+  const history = historyRows
+    .filter((row) => {
+      const intervals = component.dailyIntervals(row);
+      return intervals >= SLOTS_PER_DAY || (intervals === 0 && row.isComplete);
+    })
+    .slice(-PROJECTION_HISTORY_DAYS);
+
+  // New accounts do not have enough history for a stable personal baseline.
+  // Retain a coverage-aware fallback, but scale each feed by its own observed
+  // slots instead of using another feed's later timestamp.
+  if (history.length < MIN_PROJECTION_HISTORY_DAYS) {
+    return slots >= MIN_PROJECTION_SLOTS ? (currentValue / slots) * SLOTS_PER_DAY : currentValue;
+  }
+
+  const baseline = exponentiallyWeightedAverage(history.map(component.dailyValue));
+
+  // A lagging feed should remain anchored to its historical baseline. It must
+  // not be interpreted as genuine zero usage merely because another feed has
+  // delivered more recent intervals.
+  if (slots < MIN_PROJECTION_SLOTS || baseline <= 0) {
+    return Math.max(currentValue, baseline);
+  }
+
+  const historicalFractions = history
+    .map((row) => {
+      const dailyValue = component.dailyValue(row);
+      if (dailyValue <= 0) {
+        return 0;
+      }
+
+      return cumulativeHourlyValue(hourlyByDate.get(row.periodDate) ?? [], slots, component) / dailyValue;
+    })
+    .filter((fraction) => fraction >= 0.01 && fraction <= 1);
+
+  if (historicalFractions.length < MIN_PROJECTION_HISTORY_DAYS) {
+    return Math.max(currentValue, baseline);
+  }
+
+  const expectedShare = median(historicalFractions);
+  const profileForecast = currentValue / expectedShare;
+  // A single unusual partial day must not overwhelm the stable baseline.
+  // These guardrails still allow a meaningful adjustment in either direction.
+  const guardedProfileForecast = clamp(profileForecast, baseline * 0.45, baseline * 1.75);
+  const progress = clamp(globalSlots / SLOTS_PER_DAY, 0, 1);
+  const profileWeight = progress ** 1.5;
+  const forecast = baseline + (guardedProfileForecast - baseline) * profileWeight;
+
+  return Math.max(currentValue, forecast);
+}
+
+function buildProjection(
+  row: DailyRollupRow,
+  historyRows: DailyRollupRow[],
+  hourlyByDate: Map<string, HourlyRollupRow[]>
+) {
+  const globalSlots = Math.max(
+    componentSlots(row, energySpendProjection),
+    componentSlots(row, waterSpendProjection),
+    getElapsedHalfHourSlots(row.periodDate, row.latestPeriod)
+  );
+
+  if (globalSlots < MIN_PROJECTION_SLOTS) {
     return undefined;
   }
 
-  return round((row.energyKwh / elapsedSlots) * 48);
+  const projectedEnergySpend = forecastComponent(row, globalSlots, historyRows, hourlyByDate, energySpendProjection);
+  const projectedWaterSpend = forecastComponent(row, globalSlots, historyRows, hourlyByDate, waterSpendProjection);
+  const fixedHistory = historyRows.filter((historyRow) => historyRow.isComplete).slice(-PROJECTION_HISTORY_DAYS);
+  const projectedFixedSpend =
+    row.fixedSpend > 0 || fixedHistory.length < MIN_PROJECTION_HISTORY_DAYS
+      ? row.fixedSpend
+      : exponentiallyWeightedAverage(fixedHistory.map((historyRow) => historyRow.fixedSpend));
+
+  return {
+    spend: round(Math.max(row.totalSpend, projectedEnergySpend + projectedWaterSpend + projectedFixedSpend)),
+    kwh: round(forecastComponent(row, globalSlots, historyRows, hourlyByDate, energyKwhProjection))
+  };
 }
 
 function maxBy<T>(items: T[], getValue: (item: T) => number) {
@@ -76,31 +221,50 @@ function filterByRange<T extends { periodDate: string }>(rows: T[], from?: strin
   });
 }
 
-function buildDaily(rows: DailyRollupRow[]): DailyPoint[] {
+function buildDaily(
+  rows: DailyRollupRow[],
+  hourlyRows: HourlyRollupRow[] = [],
+  projectionDailyRows: DailyRollupRow[] = rows,
+  projectionHourlyRows: HourlyRollupRow[] = hourlyRows
+): DailyPoint[] {
   let cumulativeSpend = 0;
-
-  return rows
+  const sortedRows = rows.slice().sort((left, right) => left.periodDate.localeCompare(right.periodDate));
+  const sortedProjectionRows = projectionDailyRows
     .slice()
-    .sort((left, right) => left.periodDate.localeCompare(right.periodDate))
-    .map((row) => {
-      cumulativeSpend += row.totalSpend;
+    .sort((left, right) => left.periodDate.localeCompare(right.periodDate));
+  const latestProjectionDate = sortedProjectionRows[sortedProjectionRows.length - 1]?.periodDate;
+  const hourlyByDate = new Map<string, HourlyRollupRow[]>();
 
-      return {
-        date: row.periodDate,
-        spend: round(row.totalSpend),
-        kwh: round(row.energyKwh),
-        waterSpend: round(row.waterSpend),
-        waterKl: round(row.waterKl),
-        averageTariff: round(row.weightedTariff),
-        balance: round(row.balanceEnd),
-        cumulativeSpend: round(cumulativeSpend),
-        energyIntervals: row.energyIntervals,
-        waterIntervals: row.waterIntervals,
-        isComplete: row.isComplete,
-        projectedSpend: !row.isComplete ? buildProjectedSpend(row) : undefined,
-        projectedKwh: !row.isComplete ? buildProjectedKwh(row) : undefined
-      };
-    });
+  projectionHourlyRows.forEach((row) => {
+    const dateRows = hourlyByDate.get(row.periodDate) ?? [];
+    dateRows.push(row);
+    hourlyByDate.set(row.periodDate, dateRows);
+  });
+
+  return sortedRows.map((row) => {
+    cumulativeSpend += row.totalSpend;
+    const canProject = !row.isComplete && row.periodDate === latestProjectionDate;
+    const historyRows = canProject
+      ? sortedProjectionRows.filter((historyRow) => historyRow.periodDate < row.periodDate)
+      : [];
+    const projection = canProject ? buildProjection(row, historyRows, hourlyByDate) : undefined;
+
+    return {
+      date: row.periodDate,
+      spend: round(row.totalSpend),
+      kwh: round(row.energyKwh),
+      waterSpend: round(row.waterSpend),
+      waterKl: round(row.waterKl),
+      averageTariff: round(row.weightedTariff),
+      balance: round(row.balanceEnd),
+      cumulativeSpend: round(cumulativeSpend),
+      energyIntervals: row.energyIntervals,
+      waterIntervals: row.waterIntervals,
+      isComplete: row.isComplete,
+      projectedSpend: projection?.spend,
+      projectedKwh: projection?.kwh
+    };
+  });
 }
 
 function buildHourly(rows: HourlyRollupRow[]): HourlyPoint[] {
@@ -274,7 +438,7 @@ export function createAnalytics(
 ): Analytics {
   const filteredDailyRows = filterByRange(dailyRows, from, to);
   const filteredHourlyRows = filterByRange(hourlyRows, from, to);
-  const daily = buildDaily(filteredDailyRows);
+  const daily = buildDaily(filteredDailyRows, filteredHourlyRows, dailyRows, hourlyRows);
   const hourly = buildHourly(filteredHourlyRows);
   const tariffTimeline = buildDailyTariffTimeline(filteredDailyRows);
   const totalSpend = round(sum(filteredDailyRows.map((row) => row.totalSpend)));

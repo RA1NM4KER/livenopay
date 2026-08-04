@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -19,11 +20,13 @@ import type { DailyChartProps } from "./types";
 export function DailySpendChart({ data }: DailyChartProps) {
   const latestDay = data[data.length - 1];
   const projectedDay = latestDay && !latestDay.isComplete && latestDay.projectedSpend ? latestDay : undefined;
-  const previousDay = projectedDay ? data[data.length - 2] : undefined;
-  const averageSpend = data.length ? data.reduce((sum, point) => sum + point.spend, 0) / data.length : 0;
+  const completedDays = data.filter((point) => point.isComplete);
+  const averageSpend = completedDays.length
+    ? completedDays.reduce((sum, point) => sum + point.spend, 0) / completedDays.length
+    : 0;
   const chartData = data.map((point) => ({
     ...point,
-    actualSpend: projectedDay && point.date === projectedDay.date ? null : point.spend,
+    actualSpend: point.spend,
     currentSpend: projectedDay && point.date === projectedDay.date ? point.spend : null,
     projectedSpendValue: projectedDay && point.date === projectedDay.date ? projectedDay.projectedSpend : null
   }));
@@ -85,7 +88,7 @@ export function DailySpendChart({ data }: DailyChartProps) {
             activeDot={{ r: 5, fill: chartColors.spend, stroke: chartColors.paper, strokeWidth: 2 }}
           />
           <Line dataKey="projectedSpendValue" stroke="transparent" strokeWidth={8} dot={false} activeDot={false} />
-          {data.length ? (
+          {completedDays.length ? (
             <ReferenceLine y={averageSpend} stroke={chartColors.average} strokeDasharray="4 4" strokeWidth={1.5} />
           ) : null}
           {projectedDay ? (
@@ -93,12 +96,23 @@ export function DailySpendChart({ data }: DailyChartProps) {
               ifOverflow="extendDomain"
               isFront
               segment={[
-                { x: previousDay?.date ?? projectedDay.date, y: previousDay?.spend ?? projectedDay.spend },
+                { x: projectedDay.date, y: projectedDay.spend },
                 { x: projectedDay.date, y: projectedDay.projectedSpend }
               ]}
               stroke={chartColors.projection}
               strokeDasharray="3 4"
               strokeWidth={2.4}
+            />
+          ) : null}
+          {projectedDay ? (
+            <ReferenceDot
+              isFront
+              x={projectedDay.date}
+              y={projectedDay.projectedSpend}
+              r={4}
+              fill={chartColors.projection}
+              stroke={chartColors.paper}
+              strokeWidth={2}
             />
           ) : null}
         </ComposedChart>
