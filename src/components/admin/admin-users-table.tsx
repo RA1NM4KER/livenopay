@@ -15,6 +15,7 @@ const ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 type AdminUsersTableProps = {
   currentUserId: string;
+  initialData: AdminUsersApiResponse;
 };
 
 type AdminUsersApiResponse = {
@@ -172,7 +173,7 @@ function TableSkeletonRows({ rowCount }: { rowCount: number }) {
   );
 }
 
-export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
+export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableProps) {
   const { sortDirection, onSortChange } = useAdminUsersUrlState();
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [errorByUserId, setErrorByUserId] = useState<Record<string, string>>({});
@@ -186,7 +187,8 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
   const queryKey = ["admin-users"];
   const { data, isFetching, isLoading, error, refetch } = useQuery({
     queryKey,
-    queryFn: fetchAdminUsers
+    queryFn: fetchAdminUsers,
+    initialData
   });
 
   // Server returns oldest-joined-first.
@@ -385,14 +387,14 @@ export function AdminUsersTable({ currentUserId }: AdminUsersTableProps) {
         </table>
       </div>
 
-      <div className="shrink-0 flex flex-col gap-3 border-t border-line px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-t border-line px-3">
         <p className="text-sm text-muted">
           {!isLoading ? `${total} users` : "Loading users..."}
           {isFetching && !isLoading ? " · updating..." : ""}
         </p>
         <button
           aria-label="Refresh users"
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm text-muted transition enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-sm text-muted transition enabled:hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isManualRefreshing}
           onClick={() => {
             void handleRefresh();
