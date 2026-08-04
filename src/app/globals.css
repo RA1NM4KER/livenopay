@@ -65,6 +65,26 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+/* Safari before 18 only supports the prefixed backdrop-filter property.
+   Keep the legacy rgba() color first as a usable fallback for old iOS PWAs;
+   newer browsers override it with the theme-aware color below. */
+.fullscreen-glass {
+  /* autoprefixer: off */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(246, 246, 246, 0.8);
+  background-color: rgb(var(--color-canvas) / 0.8);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+.dark .fullscreen-glass {
+  background-color: rgba(18, 18, 18, 0.8);
+  background-color: rgb(var(--color-canvas) / 0.8);
+}
+
 ::selection {
   background: rgb(var(--color-accent-soft));
 }
