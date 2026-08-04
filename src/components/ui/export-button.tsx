@@ -67,11 +67,11 @@ export function ExportButton({
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >
-        <FileDown aria-hidden="true" className={`h-4 w-4 ${triggerIconToneClass(tone)}`} />
-        {iconOnly ? <span className="sr-only">Export</span> : <span>Export</span>}
+        <FileDown aria-hidden="true" className={`h-4 w-4 shrink-0 ${triggerIconToneClass(tone)}`} />
+        {iconOnly ? <span className="sr-only">Export</span> : <span className="shrink-0">Export</span>}
         <ChevronDown
           aria-hidden="true"
-          className={`h-4 w-4 transition ${triggerIconToneClass(tone)} ${isOpen ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 transition ${triggerIconToneClass(tone)} ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 

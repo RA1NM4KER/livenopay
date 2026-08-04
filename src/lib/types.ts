@@ -109,6 +109,39 @@ export type IntervalRollupRow = {
   waterKl: number;
 };
 
+export type UsageActivity = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  allDay: boolean;
+  tags: string[];
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ActivityReportRow = UsageActivity & {
+  date: string;
+  durationMinutes: number;
+  electricityKwh: number;
+  averageKw: number;
+  electricitySpend: number;
+  waterKl: number;
+  waterSpend: number;
+};
+
+export type ActivityReportSummary = {
+  activityCount: number;
+  taggedDurationMinutes: number;
+  electricityKwh: number;
+  averageElectricityKwhPerActivity: number;
+  electricitySpend: number;
+  waterKl: number;
+  waterSpend: number;
+};
+
+export type ActivityMetric = "electricityKwh" | "averageKw" | "electricitySpend" | "waterKl" | "waterSpend";
+
 export type TariffPoint = {
   periodDateTime: string;
   dateLabel: string;

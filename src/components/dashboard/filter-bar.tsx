@@ -64,6 +64,7 @@ function FilterBarContent({
   extraControls,
   rightControls,
   rightControlsExpanded = false,
+  splitMobileRow = false,
   fullBleed = false,
   sticky = false
 }: FilterBarProps) {
@@ -120,8 +121,22 @@ function FilterBarContent({
         </div>
         {(extraControls ?? rightControls) ? (
           <div className="flex items-center gap-2">
-            {extraControls}
-            {rightControls ? <div className="min-w-0 flex-1">{rightControls}</div> : null}
+            {splitMobileRow ? (
+              <div className="min-w-0 flex-1 [&_button]:w-full [&_summary]:w-full">{extraControls}</div>
+            ) : (
+              extraControls
+            )}
+            {rightControls ? (
+              // splitMobileRow grows both cells to an even 50/50 split
+              // (Activities: extraControls is just TagFilter, rightControls
+              // just Export -- both fixed content, forced to share the row
+              // evenly). Everywhere else, rightControls keeps its original
+              // min-w-0 flex-1 so multi-control blocks (Data's search input
+              // + export button) can still shrink/wrap internally.
+              <div className={splitMobileRow ? "min-w-0 flex-1 [&_button]:w-full" : "min-w-0 flex-1"}>
+                {rightControls}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

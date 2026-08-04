@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminSession } from "@/lib/auth/session";
-import { setAiAssistantEnabled } from "@/lib/user-roles";
+import { setActivitiesEnabled, setAiAssistantEnabled } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const bodySchema = z.object({
-  aiAssistantEnabled: z.boolean()
-});
+const bodySchema = z
+  .object({
+    aiAssistantEnabled: z.boolean().optional(),
+    activitiesEnabled: z.boolean().optional()
+  })
+  .refine((body) => body.aiAssistantEnabled !== undefined || body.activitiesEnabled !== undefined, {
+    message: "Provide at least one permission to update."
+  });
 
 export async function PATCH(request: Request, { params }: { params: { userId: string } }) {
   const auth = await requireAdminSession();
@@ -19,8 +24,15 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
     );
   }
 
-  const { aiAssistantEnabled } = bodySchema.parse(await request.json());
+  const { aiAssistantEnabled, activitiesEnabled } = bodySchema.parse(await request.json());
 
-  await setAiAssistantEnabled(params.userId, aiAssistantEnabled);
+  if (aiAssistantEnabled !== undefined) {
+    await setAiAssistantEnabled(params.userId, aiAssistantEnabled);
+  }
+
+  if (activitiesEnabled !== undefined) {
+    await setActivitiesEnabled(params.userId, activitiesEnabled);
+  }
+
   return NextResponse.json({ status: "updated" });
 }

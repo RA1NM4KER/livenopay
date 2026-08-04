@@ -15,7 +15,11 @@ export default async function AppGroupLayout({ children }: { children: ReactNode
 
   return (
     <QueryProvider>
-      <AppShell userEmail={session.email} isAdmin={permissions.role === "admin"}>
+      <AppShell
+        userEmail={session.email}
+        isAdmin={permissions.role === "admin"}
+        isActivitiesEnabled={permissions.activitiesEnabled}
+      >
         {children}
       </AppShell>
     </QueryProvider>

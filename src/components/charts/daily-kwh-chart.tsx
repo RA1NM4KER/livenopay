@@ -1,15 +1,32 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceDot,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import { displayActivityTag } from "@/lib/activity-utils";
 import { chartDate, formatKwh } from "@/lib/format";
 import { chartColors, chartMargin } from "./chart-config";
 import { ChartShell } from "./chart-shell";
-import { buildDailyKwhChartModel } from "./daily-kwh-chart-model";
+import { buildDailyKwhChartModel, groupActivitiesByDate } from "./daily-kwh-chart-model";
 import { ProjectedBarShape } from "./projected-bar-shape";
 import type { DailyChartProps } from "./types";
 
-export function DailyKwhChart({ data }: DailyChartProps) {
+export function DailyKwhChart({ data, activities = [], onSelectDate }: DailyChartProps) {
   const { chartData, completedDays, averageKwh } = buildDailyKwhChartModel(data);
+  const activitiesByDate = groupActivitiesByDate(activities);
+  const chartMaximum = Math.max(
+    1,
+    averageKwh,
+    ...chartData.map((point) => Math.max(point.kwh, point.projectedKwh ?? 0))
+  );
 
   return (
     <ChartShell title="Daily usage" eyebrow="kWh">
@@ -40,15 +57,54 @@ export function DailyKwhChart({ data }: DailyChartProps) {
                   ) : (
                     <div className="text-muted">Usage: {formatKwh(point.kwh)}</div>
                   )}
+                  {activitiesByDate[point.date]?.length ? (
+                    <div className="mt-2 border-t border-line pt-2 text-muted">
+                      <div>
+                        {activitiesByDate[point.date].length}{" "}
+                        {activitiesByDate[point.date].length === 1 ? "activity" : "activities"}
+                      </div>
+                      <div className="mt-0.5 text-xs">
+                        {Array.from(new Set(activitiesByDate[point.date].flatMap((activity) => activity.tags)))
+                          .map(displayActivityTag)
+                          .join(", ")}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               );
             }}
           />
-          <Bar dataKey="kwh" stackId="day" fill={chartColors.usage} radius={[4, 4, 0, 0]} />
+          <Bar
+            dataKey="kwh"
+            stackId="day"
+            fill={chartColors.usage}
+            radius={[4, 4, 0, 0]}
+            onClick={(entry) => {
+              const date = typeof entry === "object" && entry && "date" in entry ? String(entry.date) : "";
+              if (date && activitiesByDate[date]?.length) onSelectDate?.(date);
+            }}
+          />
           <Bar dataKey="projectedKwhRemainder" stackId="day" fill="transparent" shape={<ProjectedBarShape />} />
           {completedDays.length ? (
             <ReferenceLine y={averageKwh} stroke={chartColors.average} strokeDasharray="4 4" strokeWidth={1.5} />
           ) : null}
+          {chartData
+            .filter((point) => activitiesByDate[point.date]?.length)
+            .map((point) => (
+              <ReferenceDot
+                cursor={onSelectDate ? "pointer" : undefined}
+                fill={chartColors.spend}
+                ifOverflow="extendDomain"
+                isFront
+                key={point.date}
+                onClick={() => onSelectDate?.(point.date)}
+                r={3.5}
+                stroke={chartColors.paper}
+                strokeWidth={2}
+                x={point.date}
+                y={Math.max(point.kwh, point.projectedKwh ?? 0) + chartMaximum * 0.035}
+              />
+            ))}
         </BarChart>
       </ResponsiveContainer>
     </ChartShell>

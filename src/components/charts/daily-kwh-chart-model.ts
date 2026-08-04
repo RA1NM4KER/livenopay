@@ -1,4 +1,12 @@
-import type { DailyPoint } from "@/lib/types";
+import type { DailyPoint, UsageActivity } from "@/lib/types";
+
+export function groupActivitiesByDate(activities: UsageActivity[]) {
+  return activities.reduce<Record<string, UsageActivity[]>>((grouped, activity) => {
+    const date = activity.startsAt.slice(0, 10);
+    (grouped[date] ??= []).push(activity);
+    return grouped;
+  }, {});
+}
 
 export function buildDailyKwhChartModel(data: DailyPoint[]) {
   const chartData = data.map((point) => ({

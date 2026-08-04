@@ -66,6 +66,10 @@ migrations add:
   authorization is enforced in code (`requireAdminSession`), not by RLS. Rows are created lazily
   on first authenticated request; the one seed admin is set by
   `20260726000000_newinmeter_user_roles.sql`.
+- `usage_activities` -- user-created household context with half-open whole-day
+  or 30-minute ranges, canonical reusable tags, optional notes, and connection-scoped
+  CRUD RLS. Activity reports join these ranges to interval rollups; they never write
+  into imported ledger or generated rollup tables.
 
 The original single-user schema (`energy_rows` with the CSV-shaped columns, `capture_runs`,
 rollup tables, the water-support columns) is unchanged in shape; multi-user support only adds
@@ -185,6 +189,10 @@ multi-user support:
 - top-ups appear in raw data and balance history context
 - top-ups are excluded from electricity spend
 - water charges have their own spend/usage tracking, separate from electricity
+- interval rollup timestamps are treated as the start of their displayed 30-minute
+  slot; activity calculations include `starts_at` and exclude `ends_at`
+- activity tags describe correlation and household context only; they do not attribute
+  total household consumption to an individual appliance
 
 ## Project Structure
 

@@ -182,7 +182,7 @@ export function DatePicker({
       </button>
       {isOpen ? (
         <div
-          className="fixed z-30 w-max overflow-auto rounded-lg border border-line bg-paper p-3 shadow-soft"
+          className="fixed z-[80] w-max overflow-auto rounded-lg border border-line bg-paper p-3 shadow-soft"
           role="dialog"
           style={{ left: position.left, top: position.top }}
         >

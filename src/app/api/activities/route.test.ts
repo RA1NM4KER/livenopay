@@ -1,0 +1,84 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  requireActivitiesSession: vi.fn(),
+  enforceRateLimit: vi.fn(),
+  loadActivities: vi.fn(),
+  loadActivityTags: vi.fn(),
+  createActivity: vi.fn()
+}));
+
+vi.mock("@/lib/auth/session", () => ({ requireActivitiesSession: mocks.requireActivitiesSession }));
+vi.mock("@/lib/rate-limit", () => ({
+  enforceRateLimit: mocks.enforceRateLimit,
+  getRateLimitIdentifier: (userId: string, scope: string) => `${userId}:${scope}`,
+  rateLimitHeaders: () => ({})
+}));
+vi.mock("@/lib/activity-data", () => ({
+  activityValidationErrors: (error: { validationErrors?: Record<string, string> }) => error.validationErrors,
+  createActivity: mocks.createActivity,
+  loadActivities: mocks.loadActivities,
+  loadActivityTags: mocks.loadActivityTags
+}));
+
+import { GET, POST } from "./route";
+
+const session = { userId: "user-a", accessToken: "token", connection: { id: "connection-a" } };
+
+describe("activities API", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireActivitiesSession.mockResolvedValue({ ok: true, session });
+    mocks.enforceRateLimit.mockResolvedValue({ allowed: true, minute: {}, day: {} });
+    mocks.loadActivities.mockResolvedValue([]);
+  });
+
+  it("rejects unauthenticated access", async () => {
+    mocks.requireActivitiesSession.mockResolvedValue({ ok: false, status: 401 });
+    const response = await GET(new Request("http://localhost/api/activities"));
+    expect(response.status).toBe(401);
+  });
+
+  it("normalizes report filters before loading connection-scoped activities", async () => {
+    await GET(new Request("http://localhost/api/activities?from=2026-08-01&to=2026-08-04&tag=Geyser&tag=geyser"));
+    expect(mocks.loadActivities).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        from: "2026-08-01",
+        to: "2026-08-04",
+        tags: ["geyser"]
+      })
+    );
+  });
+
+  it("resolves connection ownership server-side and ignores a browser connection id", async () => {
+    mocks.createActivity.mockResolvedValue({ id: "activity-a" });
+    const response = await POST(
+      new Request("http://localhost/api/activities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connection_id: "connection-b", date: "2026-08-04", allDay: true, tags: ["Guests"] })
+      })
+    );
+    expect(response.status).toBe(201);
+    expect(mocks.createActivity).toHaveBeenCalledWith(
+      "token",
+      "connection-a",
+      expect.objectContaining({ tags: ["Guests"] })
+    );
+  });
+
+  it("returns field validation failures as 400", async () => {
+    mocks.createActivity.mockRejectedValue(
+      Object.assign(new Error("Invalid"), { validationErrors: { tags: "Add at least one tag." } })
+    );
+    const response = await POST(
+      new Request("http://localhost/api/activities", {
+        method: "POST",
+        body: JSON.stringify({ date: "2026-08-04", allDay: true, tags: [] })
+      })
+    );
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ errors: { tags: "Add at least one tag." } });
+  });
+});

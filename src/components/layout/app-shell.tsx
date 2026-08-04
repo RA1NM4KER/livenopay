@@ -45,7 +45,7 @@ function KofiLink() {
   );
 }
 
-export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps) {
+export function AppShell({ children, userEmail, isAdmin = false, isActivitiesEnabled = false }: AppShellProps) {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const pathname = usePathname();
   const lockViewport = pathname === "/data" || pathname === "/admin";
@@ -59,7 +59,7 @@ export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps
           </Link>
         </div>
         <div className="min-h-0 flex-1 px-3">
-          <SidebarNav isAdmin={isAdmin} />
+          <SidebarNav isAdmin={isAdmin} isActivitiesEnabled={isActivitiesEnabled} />
         </div>
         <div className="shrink-0 px-3 pb-3">
           <InstallLink />
@@ -121,7 +121,12 @@ export function AppShell({ children, userEmail, isAdmin = false }: AppShellProps
         onClose={() => setIsNavOpen(false)}
         title="Menu"
       >
-        <SidebarNav isAdmin={isAdmin} onNavigate={() => setIsNavOpen(false)} size="lg" />
+        <SidebarNav
+          isAdmin={isAdmin}
+          isActivitiesEnabled={isActivitiesEnabled}
+          onNavigate={() => setIsNavOpen(false)}
+          size="lg"
+        />
         <div className="mt-auto flex flex-col gap-3 pt-6">
           <InstallLink />
           <KofiLink />

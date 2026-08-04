@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildDailyKwhChartModel } from "./daily-kwh-chart-model";
-import type { DailyPoint } from "@/lib/types";
+import { buildDailyKwhChartModel, groupActivitiesByDate } from "./daily-kwh-chart-model";
+import type { DailyPoint, UsageActivity } from "@/lib/types";
 
 function point(overrides: Partial<DailyPoint>): DailyPoint {
   return {
@@ -44,5 +44,20 @@ describe("buildDailyKwhChartModel", () => {
 
     expect(completedDays).toHaveLength(2);
     expect(averageKwh).toBe(15);
+  });
+});
+
+describe("daily usage activity markers", () => {
+  it("groups tagged activities on the date whose usage bar receives a marker", () => {
+    const activity = {
+      id: "a",
+      startsAt: "2026-08-04T18:00:00",
+      endsAt: "2026-08-04T20:30:00",
+      allDay: false,
+      tags: ["geyser"],
+      createdAt: "",
+      updatedAt: ""
+    } satisfies UsageActivity;
+    expect(groupActivitiesByDate([activity])).toEqual({ "2026-08-04": [activity] });
   });
 });

@@ -7,6 +7,7 @@ export type DashboardShellProps = {
   hourlyRows: HourlyRollupRow[];
   summary: DashboardSummary;
   isAiAssistantEnabled?: boolean;
+  isActivitiesEnabled?: boolean;
 };
 
 export type InsightsProps = {
@@ -30,6 +31,7 @@ export type FilterBarProps = {
   extraControls?: ReactNode;
   rightControls?: ReactNode;
   rightControlsExpanded?: boolean;
+  splitMobileRow?: boolean;
   fullBleed?: boolean;
   sticky?: boolean;
 };

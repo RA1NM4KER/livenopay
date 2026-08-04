@@ -123,7 +123,7 @@ export function DropdownSelect({
       </button>
       {isOpen ? (
         <div
-          className="fixed z-40 rounded-md border border-line bg-paper p-1 shadow-soft"
+          className="fixed z-[80] max-h-[min(20rem,calc(100vh-2rem))] overflow-y-auto rounded-md border border-line bg-paper p-1 shadow-soft"
           role="listbox"
           aria-label={ariaLabel}
           style={{ left: position.left, width: position.width, top: position.top, bottom: position.bottom }}

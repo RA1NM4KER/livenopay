@@ -9,6 +9,7 @@ import { DataExportAction } from "@/components/data/data-export-action";
 import { DataSyncAction } from "@/components/data/data-sync-action";
 import { DropdownSelect, type DropdownOption } from "@/components/ui/dropdown-select";
 import { Card } from "@/components/ui/card";
+import { ScrollHint } from "@/components/ui/scroll-hint";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ChargeTypeFilter } from "@/lib/data-table-query-params";
 import { dataTableColumnAlign, dataTableColumnLabel } from "./columns";
@@ -108,6 +109,7 @@ export function DataTable() {
   const [searchInput, setSearchInput] = useState(searchQuery);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
 
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -377,52 +379,55 @@ export function DataTable() {
       />
 
       <Card className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
-            <thead className="sticky top-0 z-10 border-b border-line bg-accentSoft text-xs uppercase tracking-[0.16em] text-brandTeal dark:text-accent shadow-[0_1px_0_rgb(var(--color-line))]">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    const id = header.column.id as SortKey;
-                    const alignClass = dataTableColumnAlign[id] ?? "text-left";
-                    const isActive = sortKey === id;
-
-                    return (
-                      <th className={`px-4 py-3 ${alignClass}`} key={header.id}>
-                        <button
-                          className="inline-flex items-center font-medium uppercase tracking-[0.16em]"
-                          onClick={() => onSortChange(id)}
-                          type="button"
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {nextSortLabel(sortDirection, isActive)}
-                        </button>
-                      </th>
-                    );
-                  })}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="divide-y divide-line">
-              {showTableSkeleton ? (
-                <TableSkeletonRows columnCount={columns.length} rowCount={skeletonRowCount} />
-              ) : (
-                table.getRowModel().rows.map((row) => (
-                  <tr className="transition hover:bg-canvas/70" key={row.id}>
-                    {row.getVisibleCells().map((cell) => {
-                      const alignClass = dataTableColumnAlign[cell.column.id] ?? "text-left";
+        <div className="relative min-h-0 flex-1">
+          <div className="h-full overflow-auto" ref={tableScrollRef}>
+            <table className="w-full min-w-[860px] border-separate border-spacing-0 text-left text-sm">
+              <thead className="sticky top-0 z-10 border-b border-line bg-accentSoft text-xs uppercase tracking-[0.16em] text-brandTeal dark:text-accent shadow-[0_1px_0_rgb(var(--color-line))]">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const id = header.column.id as SortKey;
+                      const alignClass = dataTableColumnAlign[id] ?? "text-left";
+                      const isActive = sortKey === id;
 
                       return (
-                        <td className={`px-4 py-3 ${alignClass}`} key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
+                        <th className={`px-4 py-3 ${alignClass}`} key={header.id}>
+                          <button
+                            className="inline-flex items-center font-medium uppercase tracking-[0.16em]"
+                            onClick={() => onSortChange(id)}
+                            type="button"
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {nextSortLabel(sortDirection, isActive)}
+                          </button>
+                        </th>
                       );
                     })}
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-line">
+                {showTableSkeleton ? (
+                  <TableSkeletonRows columnCount={columns.length} rowCount={skeletonRowCount} />
+                ) : (
+                  table.getRowModel().rows.map((row) => (
+                    <tr className="transition hover:bg-canvas/70" key={row.id}>
+                      {row.getVisibleCells().map((cell) => {
+                        const alignClass = dataTableColumnAlign[cell.column.id] ?? "text-left";
+
+                        return (
+                          <td className={`px-4 py-3 ${alignClass}`} key={cell.id}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <ScrollHint containerRef={tableScrollRef} />
         </div>
 
         <div className="shrink-0 flex flex-col gap-3 border-t border-line px-3 py-3 sm:flex-row sm:items-center sm:justify-between">

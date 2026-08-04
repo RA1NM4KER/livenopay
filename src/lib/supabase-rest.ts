@@ -46,12 +46,18 @@ export async function authenticatedSupabaseFetch<T>(path: string, accessToken: s
   return (await response.json()) as Promise<T>;
 }
 
-export async function authenticatedSupabaseFetchAllPages<T>(path: string, accessToken: string): Promise<T[]> {
+export async function authenticatedSupabaseFetchAllPages<T>(
+  path: string,
+  accessToken: string,
+  init?: RequestInit
+): Promise<T[]> {
   const rows: T[] = [];
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const page = await authenticatedSupabaseFetch<T[]>(path, accessToken, {
+      ...init,
       headers: {
+        ...(init?.headers ?? {}),
         Range: `${offset}-${offset + PAGE_SIZE - 1}`
       }
     });

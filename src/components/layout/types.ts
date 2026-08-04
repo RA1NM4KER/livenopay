@@ -4,6 +4,7 @@ export type AppShellProps = {
   children: ReactNode;
   userEmail?: string | null;
   isAdmin?: boolean;
+  isActivitiesEnabled?: boolean;
 };
 
 export type ThemeChoice = "system" | "light" | "dark";

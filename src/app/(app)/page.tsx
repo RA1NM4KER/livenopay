@@ -33,6 +33,7 @@ export default async function Home() {
       hourlyRows={hourlyRows}
       summary={summary}
       isAiAssistantEnabled={permissions.aiAssistantEnabled}
+      isActivitiesEnabled={permissions.activitiesEnabled}
     />
   );
 }

@@ -62,6 +62,30 @@ export async function requireConnectedSession(): Promise<RequireConnectedSession
   return { ok: true, session: { ...session, connection } };
 }
 
+export type RequireActivitiesSessionResult =
+  | { ok: true; session: AuthenticatedConnectionSession }
+  | { ok: false; status: 401 | 403 | 409 };
+
+// Shared guard for every activities route: resolves the connected session
+// (same as requireConnectedSession), then additionally requires the
+// activities_enabled flag -- a per-user opt-in while the feature is being
+// tested with one user, not yet a general release.
+export async function requireActivitiesSession(): Promise<RequireActivitiesSessionResult> {
+  const connected = await requireConnectedSession();
+
+  if (!connected.ok) {
+    return connected;
+  }
+
+  const permissions = await getOrCreateUserPermissions(connected.session.userId);
+
+  if (!permissions.activitiesEnabled) {
+    return { ok: false, status: 403 };
+  }
+
+  return connected;
+}
+
 export type AuthenticatedPermissionSession = AuthenticatedSession & { permissions: UserPermissions };
 
 export type RequireAdminSessionResult =

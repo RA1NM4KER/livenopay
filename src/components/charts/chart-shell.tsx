@@ -11,7 +11,7 @@ import {
   type ReactNode,
   type TouchEvent
 } from "react";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FullscreenDialog } from "@/components/ui/fullscreen-dialog";
 import type { ChartShellProps } from "./types";
 
@@ -163,21 +163,25 @@ export function FullscreenChart({
 }
 
 function ChartShellInner({ title, eyebrow, action, footer, fullScreenChildren, children }: ChartShellProps) {
-  const controls = (
-    <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
-      {action}
-      <ExpandChartButton />
-    </div>
-  );
-
   return (
     <>
       <Card>
-        <CardHeader title={title} eyebrow={eyebrow} action={controls} />
+        <div className="border-b border-line px-4 py-4 sm:px-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">{eyebrow}</p>
+            <ExpandChartButton />
+          </div>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-ink">{title}</h2>
+            {action ? <div className="flex flex-wrap items-center justify-end gap-2">{action}</div> : null}
+          </div>
+        </div>
         <div className="h-64 px-1 py-4 sm:h-72 sm:px-4">{children}</div>
         {footer ? <div className="border-t border-line px-4 py-3 sm:px-5">{footer}</div> : null}
       </Card>
-      <FullscreenChart title={title}>{fullScreenChildren ?? children}</FullscreenChart>
+      <FullscreenChart title={title} action={action}>
+        {fullScreenChildren ?? children}
+      </FullscreenChart>
     </>
   );
 }
