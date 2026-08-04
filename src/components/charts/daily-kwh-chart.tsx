@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { chartDate, formatKwh } from "@/lib/format";
 import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
 import { ChartShell } from "./chart-shell";
@@ -12,6 +12,7 @@ export function DailyKwhChart({ data }: DailyChartProps) {
     ...point,
     projectedKwhRemainder: point.projectedKwh && point.projectedKwh > point.kwh ? point.projectedKwh - point.kwh : 0
   }));
+  const averageKwh = data.length ? data.reduce((sum, point) => sum + point.kwh, 0) / data.length : 0;
 
   return (
     <ChartShell title="Daily usage" eyebrow="kWh">
@@ -30,6 +31,9 @@ export function DailyKwhChart({ data }: DailyChartProps) {
           />
           <Bar dataKey="kwh" stackId="day" fill={chartColors.usage} radius={[4, 4, 0, 0]} />
           <Bar dataKey="projectedKwhRemainder" stackId="day" fill="transparent" shape={<ProjectedBarShape />} />
+          {data.length ? (
+            <ReferenceLine y={averageKwh} stroke={chartColors.average} strokeDasharray="4 4" strokeWidth={1.5} />
+          ) : null}
         </BarChart>
       </ResponsiveContainer>
     </ChartShell>

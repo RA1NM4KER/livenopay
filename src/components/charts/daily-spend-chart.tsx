@@ -20,6 +20,7 @@ export function DailySpendChart({ data }: DailyChartProps) {
   const latestDay = data[data.length - 1];
   const projectedDay = latestDay && !latestDay.isComplete && latestDay.projectedSpend ? latestDay : undefined;
   const previousDay = projectedDay ? data[data.length - 2] : undefined;
+  const averageSpend = data.length ? data.reduce((sum, point) => sum + point.spend, 0) / data.length : 0;
   const chartData = data.map((point) => ({
     ...point,
     actualSpend: projectedDay && point.date === projectedDay.date ? null : point.spend,
@@ -84,6 +85,9 @@ export function DailySpendChart({ data }: DailyChartProps) {
             activeDot={{ r: 5, fill: chartColors.spend, stroke: chartColors.paper, strokeWidth: 2 }}
           />
           <Line dataKey="projectedSpendValue" stroke="transparent" strokeWidth={8} dot={false} activeDot={false} />
+          {data.length ? (
+            <ReferenceLine y={averageSpend} stroke={chartColors.average} strokeDasharray="4 4" strokeWidth={1.5} />
+          ) : null}
           {projectedDay ? (
             <ReferenceLine
               ifOverflow="extendDomain"

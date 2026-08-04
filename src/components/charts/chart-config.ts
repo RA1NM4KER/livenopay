@@ -11,6 +11,7 @@ export const chartTooltipStyle = {
 export const chartColors = {
   accent: "rgb(var(--color-accent))",
   accentSoft: "rgb(var(--color-accent-soft))",
+  average: "rgb(var(--color-muted))",
   ink: "rgb(var(--color-ink))",
   line: "rgb(var(--color-line))",
   paper: "rgb(var(--color-paper))",
