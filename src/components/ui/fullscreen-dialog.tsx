@@ -66,7 +66,7 @@ export function FullscreenDialog({
   }
 
   return (
-    <div aria-modal="true" className="fixed inset-0 z-50 flex flex-col bg-canvas/80 backdrop-blur-xl" role="dialog">
+    <div aria-modal="true" className="fullscreen-glass fixed z-50 flex flex-col" role="dialog">
       <div className="border-b border-line bg-paper/95 px-4 py-2.5 sm:px-6">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
