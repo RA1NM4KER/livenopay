@@ -131,8 +131,20 @@ function FilterBarContent({
         <div className="flex flex-wrap items-center gap-2">
           {leftControls}
           <RangeDropdown quickRange={quickRange} onQuickRange={onQuickRange} loading={loading} />
-          <IsoDateInput label="From" value={from} onChange={(value) => onDateChange(value, to)} loading={loading} />
-          <IsoDateInput label="To" value={to} onChange={(value) => onDateChange(from, value)} loading={loading} />
+          <IsoDateInput
+            label="From"
+            value={from}
+            onChange={(value) => onDateChange(value, to)}
+            buttonClassName="min-w-[8.25rem]"
+            loading={loading}
+          />
+          <IsoDateInput
+            label="To"
+            value={to}
+            onChange={(value) => onDateChange(from, value)}
+            buttonClassName="min-w-[8.25rem]"
+            loading={loading}
+          />
           {extraControls}
         </div>
         {rightControls ? (
