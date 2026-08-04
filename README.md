@@ -61,11 +61,11 @@ migrations add:
   `livemopay_connections` row is deleted, which is what powers self-service account deletion.
 - Row Level Security on every one of those tables, scoped to the caller's own connection via a
   `SECURITY DEFINER` ownership function -- no anonymous read access to personal data.
-- `user_roles` -- one row per user: `role` (`'admin' | 'user'`) and `ai_assistant_enabled`.
-  Read/written exclusively via the service-role REST helpers (same as `livemopay_connections`);
-  authorization is enforced in code (`requireAdminSession`), not by RLS. Rows are created lazily
-  on first authenticated request; the one seed admin is set by
-  `20260726000000_newinmeter_user_roles.sql`.
+- `user_roles` -- one row per user: `role` (`'admin' | 'user'`), `ai_assistant_enabled`, and
+  `activities_enabled`. Read/written exclusively via the service-role REST helpers (same as
+  `livemopay_connections`); authorization is enforced in code (`requireAdminSession` /
+  `requireActivitiesSession`), not by RLS. Rows are created lazily on first authenticated
+  request; the one seed admin is set by `20260726000000_newinmeter_user_roles.sql`.
 - `usage_activities` -- user-created household context with half-open whole-day
   or 30-minute ranges, canonical reusable tags, optional notes, and connection-scoped
   CRUD RLS. Activity reports join these ranges to interval rollups; they never write
@@ -110,7 +110,7 @@ dates, and never runs arbitrary SQL.
 ## Roles and Admin
 
 Every signed-in user gets a `user_roles` row on first authenticated request (role `'user'`,
-`ai_assistant_enabled: true` by default). One seed admin is set in
+`ai_assistant_enabled: true`, `activities_enabled: false` by default). One seed admin is set in
 `supabase/migrations/20260726000000_newinmeter_user_roles.sql`.
 
 Admins get an "Admin" nav item (hidden entirely from non-admins; `/admin` 404s for them) with a
@@ -119,10 +119,17 @@ table of every user, where they can:
 - Promote/demote between `admin` and `user` (an admin can't demote themselves, checked both in
   the UI and the API, so you can't lock yourself out)
 - Toggle a user's access to the AI assistant
+- Toggle a user's access to Activities
 
 `requireAdminSession` (`src/lib/auth/session.ts`) is the shared guard -- every admin route/page
 resolves the caller and checks their role from that one place, never trusting a role passed in
 from the client.
+
+Activities is opt-in (`activities_enabled` defaults to `false`) while the feature is being tested
+with one user before a wider rollout. `requireActivitiesSession` wraps `requireConnectedSession`
+with that permission check and guards every activity API route
+(`/api/activities`, `/api/activity-report`, `/api/activity-export`); the UI (nav link, `/activities`
+page, dashboard Day Detail) hides the same way `isAiAssistantEnabled` hides the assistant.
 
 ## Rate limiting
 
