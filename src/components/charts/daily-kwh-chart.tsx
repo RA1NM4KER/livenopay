@@ -2,17 +2,14 @@
 
 import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { chartDate, formatKwh } from "@/lib/format";
-import { chartColors, chartMargin, chartTooltipStyle } from "./chart-config";
+import { chartColors, chartMargin } from "./chart-config";
 import { ChartShell } from "./chart-shell";
+import { buildDailyKwhChartModel } from "./daily-kwh-chart-model";
 import { ProjectedBarShape } from "./projected-bar-shape";
 import type { DailyChartProps } from "./types";
 
 export function DailyKwhChart({ data }: DailyChartProps) {
-  const chartData = data.map((point) => ({
-    ...point,
-    projectedKwhRemainder: point.projectedKwh && point.projectedKwh > point.kwh ? point.projectedKwh - point.kwh : 0
-  }));
-  const averageKwh = data.length ? data.reduce((sum, point) => sum + point.kwh, 0) / data.length : 0;
+  const { chartData, completedDays, averageKwh } = buildDailyKwhChartModel(data);
 
   return (
     <ChartShell title="Daily usage" eyebrow="kWh">
@@ -22,16 +19,34 @@ export function DailyKwhChart({ data }: DailyChartProps) {
           <XAxis dataKey="date" tickFormatter={chartDate} tickLine={false} axisLine={false} />
           <YAxis tickFormatter={(value) => `${value}`} tickLine={false} axisLine={false} width={42} />
           <Tooltip
-            contentStyle={chartTooltipStyle}
-            formatter={(value, name) => [
-              formatKwh(Number(value)),
-              name === "projectedKwhRemainder" ? "Projected remaining" : "Usage"
-            ]}
-            labelFormatter={(label) => chartDate(String(label))}
+            content={({ active, label }) => {
+              if (!active || !label) {
+                return null;
+              }
+
+              const point = chartData.find((item) => item.date === String(label));
+              if (!point) {
+                return null;
+              }
+
+              return (
+                <div className="rounded-[8px] border border-line bg-paper px-4 py-3 text-sm shadow-soft">
+                  <div className="mb-2 font-medium text-ink">{chartDate(point.date)}</div>
+                  {typeof point.projectedKwh === "number" ? (
+                    <div className="space-y-1 text-muted">
+                      <div>Current usage: {formatKwh(point.kwh)}</div>
+                      <div>Projected usage: {formatKwh(point.projectedKwh)}</div>
+                    </div>
+                  ) : (
+                    <div className="text-muted">Usage: {formatKwh(point.kwh)}</div>
+                  )}
+                </div>
+              );
+            }}
           />
           <Bar dataKey="kwh" stackId="day" fill={chartColors.usage} radius={[4, 4, 0, 0]} />
           <Bar dataKey="projectedKwhRemainder" stackId="day" fill="transparent" shape={<ProjectedBarShape />} />
-          {data.length ? (
+          {completedDays.length ? (
             <ReferenceLine y={averageKwh} stroke={chartColors.average} strokeDasharray="4 4" strokeWidth={1.5} />
           ) : null}
         </BarChart>

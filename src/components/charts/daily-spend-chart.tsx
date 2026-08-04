@@ -15,21 +15,12 @@ import {
 import { chartDate, formatCurrency } from "@/lib/format";
 import { chartColors, chartMargin } from "./chart-config";
 import { ChartShell } from "./chart-shell";
+import { buildDailySpendChartModel } from "./daily-spend-chart-model";
 import type { DailyChartProps } from "./types";
 
 export function DailySpendChart({ data }: DailyChartProps) {
-  const latestDay = data[data.length - 1];
-  const projectedDay = latestDay && !latestDay.isComplete && latestDay.projectedSpend ? latestDay : undefined;
-  const completedDays = data.filter((point) => point.isComplete);
-  const averageSpend = completedDays.length
-    ? completedDays.reduce((sum, point) => sum + point.spend, 0) / completedDays.length
-    : 0;
-  const chartData = data.map((point) => ({
-    ...point,
-    actualSpend: point.spend,
-    currentSpend: projectedDay && point.date === projectedDay.date ? point.spend : null,
-    projectedSpendValue: projectedDay && point.date === projectedDay.date ? projectedDay.projectedSpend : null
-  }));
+  const { projectedDay, completedDays, averageSpend, chartData, currentDaySegment } =
+    buildDailySpendChartModel(data);
 
   return (
     <ChartShell
@@ -91,17 +82,13 @@ export function DailySpendChart({ data }: DailyChartProps) {
           {completedDays.length ? (
             <ReferenceLine y={averageSpend} stroke={chartColors.average} strokeDasharray="4 4" strokeWidth={1.5} />
           ) : null}
-          {projectedDay ? (
+          {currentDaySegment ? (
             <ReferenceLine
-              ifOverflow="extendDomain"
               isFront
-              segment={[
-                { x: projectedDay.date, y: projectedDay.spend },
-                { x: projectedDay.date, y: projectedDay.projectedSpend }
-              ]}
-              stroke={chartColors.projection}
-              strokeDasharray="3 4"
-              strokeWidth={2.4}
+              segment={currentDaySegment}
+              stroke={chartColors.spend}
+              strokeDasharray="4 4"
+              strokeWidth={2}
             />
           ) : null}
           {projectedDay ? (
