@@ -61,12 +61,16 @@ export const getDataStatusTool: AssistantTool = {
       possibleGapDates: possibleGapDays.slice(0, limit).map((row) => row.periodDate),
       gapDetectionRule:
         "energyIntervalsBelowExpectedAndNotLatestDate: flags a day as a possible gap (not a proven one) when it has fewer than 48 half-hour energy intervals and is not the most recent captured date.",
+      // Never forward the raw stored error string -- it can carry internal
+      // host/network/DB/auth detail from the sync worker. The model only
+      // needs to know whether the latest attempt failed, not why.
       latestCaptureRun: latestCaptureRun
         ? {
             status: latestCaptureRun.status,
             startedAt: latestCaptureRun.startedAt,
             finishedAt: latestCaptureRun.finishedAt,
-            error: latestCaptureRun.error
+            errorPresent: Boolean(latestCaptureRun.error),
+            safeErrorMessage: latestCaptureRun.status === "failed" ? "The latest sync attempt failed." : null
           }
         : null
     };

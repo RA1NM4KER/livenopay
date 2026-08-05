@@ -22,7 +22,13 @@ type Result = {
   possibleGapDateCount: number;
   possibleGapDates: string[];
   gapDetectionRule: string;
-  latestCaptureRun: { status: string; startedAt: string; finishedAt: string | null; error: string | null } | null;
+  latestCaptureRun: {
+    status: string;
+    startedAt: string;
+    finishedAt: string | null;
+    errorPresent: boolean;
+    safeErrorMessage: string | null;
+  } | null;
 };
 
 describe("getDataStatusTool", () => {
@@ -150,7 +156,7 @@ describe("getDataStatusTool", () => {
     expect(result.rowsSynced).toBe(480);
   });
 
-  it("surfaces the latest capture run, including a failed run's error", async () => {
+  it("surfaces the latest capture run's status without the raw error string", async () => {
     loadLatestCaptureRunMock.mockResolvedValueOnce({
       status: "failed",
       startedAt: "2026-07-01T02:00:00Z",
@@ -165,8 +171,45 @@ describe("getDataStatusTool", () => {
       status: "failed",
       startedAt: "2026-07-01T02:00:00Z",
       finishedAt: "2026-07-01T02:05:00Z",
-      error: "Upstream timeout"
+      errorPresent: true,
+      safeErrorMessage: "The latest sync attempt failed."
     });
+    expect(result.latestCaptureRun).not.toHaveProperty("error");
+  });
+
+  it("never forwards a sensitive raw error string, regardless of what the sync worker stored", async () => {
+    const sensitiveError = "postgres connection failed at internal-host.example with token abc123";
+    loadLatestCaptureRunMock.mockResolvedValueOnce({
+      status: "failed",
+      startedAt: "2026-07-01T02:00:00Z",
+      finishedAt: "2026-07-01T02:05:00Z",
+      error: sensitiveError
+    });
+    const context = buildTestContext([], [], { from: "", to: "" });
+
+    const result = (await getDataStatusTool.handler({}, async () => context)) as Result;
+    const serialized = JSON.stringify(result);
+
+    expect(serialized).not.toContain(sensitiveError);
+    expect(serialized).not.toContain("internal-host.example");
+    expect(serialized).not.toContain("abc123");
+    expect(result.latestCaptureRun?.errorPresent).toBe(true);
+    expect(result.latestCaptureRun?.safeErrorMessage).toBe("The latest sync attempt failed.");
+  });
+
+  it("reports errorPresent false and no safe message for a successful run with no stored error", async () => {
+    loadLatestCaptureRunMock.mockResolvedValueOnce({
+      status: "success",
+      startedAt: "2026-07-01T02:00:00Z",
+      finishedAt: "2026-07-01T02:05:00Z",
+      error: null
+    });
+    const context = buildTestContext([], [], { from: "", to: "" });
+
+    const result = (await getDataStatusTool.handler({}, async () => context)) as Result;
+
+    expect(result.latestCaptureRun?.errorPresent).toBe(false);
+    expect(result.latestCaptureRun?.safeErrorMessage).toBeNull();
   });
 
   it("clamps limit between 1 and 30", async () => {

@@ -23,9 +23,11 @@ function inclusiveDayCount(from: string, to: string) {
   return Math.round((toMs - fromMs) / dayMs) + 1;
 }
 
+// Deliberately omits row.id -- the assistant is read-only and never needs
+// the activity UUID to explain usage; the id stays internal to the
+// Activities CRUD API and UI, not the assistant tool payload.
 function mapOccurrence(row: ActivityReportRow, includeNotes: boolean) {
   return {
-    id: row.id,
     date: row.date,
     startsAt: row.startsAt,
     endsAt: row.endsAt,

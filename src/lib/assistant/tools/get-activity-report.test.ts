@@ -79,14 +79,24 @@ describe("getActivityReportTool", () => {
     loadActivityReportMock.mockResolvedValueOnce({ rows: [activityRow()], summary: summaryFor([activityRow()]) });
 
     const result = (await handle({})) as {
-      activities: Array<{ id: string; date: string; tags: string[]; electricityKwh: number }>;
+      activities: Array<{ date: string; tags: string[]; electricityKwh: number }>;
     };
 
     expect(result.activities).toHaveLength(1);
-    expect(result.activities[0].id).toBe("activity-1");
     expect(result.activities[0].date).toBe("2026-08-05");
     expect(result.activities[0].tags).toEqual(["heater"]);
     expect(result.activities[0].electricityKwh).toBe(2);
+  });
+
+  it("never exposes the activity database id or a connection id to the assistant", async () => {
+    loadActivityReportMock.mockResolvedValueOnce({ rows: [activityRow()], summary: summaryFor([activityRow()]) });
+
+    const result = (await handle({})) as { activities: Array<Record<string, unknown>> };
+
+    expect(result.activities[0]).not.toHaveProperty("id");
+    expect(result.activities[0]).not.toHaveProperty("connectionId");
+    expect(result.activities[0]).not.toHaveProperty("connection_id");
+    expect(JSON.stringify(result.activities[0])).not.toContain("activity-1");
   });
 
   it("normalizes and forwards tag filters to the report loader", async () => {
