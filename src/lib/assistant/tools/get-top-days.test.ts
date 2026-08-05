@@ -44,6 +44,49 @@ describe("getTopDaysTool", () => {
     expect(result.metric).toBe("spend");
   });
 
+  it("ranks by waterKl, excluding days with zero water usage", async () => {
+    const waterRows = [
+      dailyRow({ periodDate: "2026-07-01", waterKl: 0, waterSpend: 0 }),
+      dailyRow({ periodDate: "2026-07-02", waterKl: 3, waterSpend: 30 }),
+      dailyRow({ periodDate: "2026-07-03", waterKl: 0, waterSpend: 0 }),
+      dailyRow({ periodDate: "2026-07-04", waterKl: 1, waterSpend: 10 })
+    ];
+    const context = buildTestContext(waterRows);
+    const result = (await getTopDaysTool.handler({ metric: "waterKl" }, async () => context)) as {
+      rows: Array<{ date: string; waterKl: number }>;
+    };
+
+    expect(result.rows.map((row) => row.date)).toEqual(["2026-07-02", "2026-07-04"]);
+    expect(result.rows.every((row) => row.waterKl > 0)).toBe(true);
+  });
+
+  it("ranks by waterSpend and returns correctly named fields, not a kwh alias", async () => {
+    const waterRows = [
+      dailyRow({ periodDate: "2026-07-01", waterKl: 1, waterSpend: 5 }),
+      dailyRow({ periodDate: "2026-07-02", waterKl: 2, waterSpend: 15 })
+    ];
+    const context = buildTestContext(waterRows);
+    const result = (await getTopDaysTool.handler({ metric: "waterSpend" }, async () => context)) as {
+      metric: string;
+      rows: Array<{ date: string; waterSpend: number; waterKl: number; metricValue: number }>;
+    };
+
+    expect(result.metric).toBe("waterSpend");
+    expect(result.rows[0].date).toBe("2026-07-02");
+    expect(result.rows[0].waterSpend).toBe(15);
+    expect(result.rows[0].waterKl).toBe(2);
+    expect(result.rows[0].metricValue).toBe(15);
+  });
+
+  it("returns no rows when ranking by a water metric and no day has water activity", async () => {
+    const context = buildTestContext(rows); // none of these rows have water charges
+    const result = (await getTopDaysTool.handler({ metric: "waterKl" }, async () => context)) as {
+      rows: unknown[];
+    };
+
+    expect(result.rows).toHaveLength(0);
+  });
+
   it("respects the limit argument, clamped between 1 and 10", async () => {
     const context = buildTestContext(rows);
     const limited = (await getTopDaysTool.handler({ limit: 2 }, async () => context)) as { rows: unknown[] };

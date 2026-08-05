@@ -10,6 +10,12 @@ export type AssistantScope = {
   to?: string;
 };
 
+// Deliberately narrower than the full UserPermissions row -- the assistant
+// toolbox only needs to know which optional capabilities to register.
+export type AssistantPermissions = {
+  activitiesEnabled: boolean;
+};
+
 export type AssistantToolHandler = (
   args: Record<string, unknown>,
   getContext: () => Promise<DashboardContext>

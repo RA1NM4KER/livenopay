@@ -1,7 +1,11 @@
-import { formatCurrency, formatKl, formatKwh } from "@/lib/format";
+import { formatCurrency, formatKl, formatKwh, formatTariff } from "@/lib/format";
 import type { DailyRollupRow } from "@/lib/types";
 import type { AssistantTool } from "../types";
 import { EmptySchema } from "./schemas";
+
+function safeDivide(numerator: number, denominator: number) {
+  return denominator > 0 ? Number((numerator / denominator).toFixed(2)) : 0;
+}
 
 function monthKey(date: string) {
   return date.slice(0, 7);
@@ -91,7 +95,11 @@ function buildMonthlyBreakdown(rows: DailyRollupRow[]) {
       averageSpendPerDay: Number((item.spend / Math.max(1, item.days)).toFixed(2)),
       averageSpendPerDayDisplay: formatCurrency(item.spend / Math.max(1, item.days)),
       averageKwhPerDay: Number((item.kwh / Math.max(1, item.days)).toFixed(2)),
-      averageKwhPerDayDisplay: formatKwh(item.kwh / Math.max(1, item.days))
+      averageKwhPerDayDisplay: formatKwh(item.kwh / Math.max(1, item.days)),
+      energyCostPerKwh: safeDivide(item.energySpend, item.kwh),
+      energyCostPerKwhDisplay: formatTariff(safeDivide(item.energySpend, item.kwh)),
+      allInCostPerKwh: safeDivide(item.spend, item.kwh),
+      allInCostPerKwhDisplay: formatTariff(safeDivide(item.spend, item.kwh))
     }));
 }
 
@@ -101,7 +109,7 @@ export const compareCalendarMonthsTool: AssistantTool = {
     function: {
       name: "compare_calendar_months",
       description:
-        "Compare the latest calendar month in scope against the previous calendar month in scope, and return month-by-month breakdowns.",
+        "Compare the latest calendar month in scope against the previous calendar month in scope (e.g. 'this month vs last month'), including cost-per-kWh rates. Use compare_previous_period instead for an immediately preceding range of equal length that is not calendar-month aligned (e.g. 'the last 7 days vs the 7 days before that').",
       parameters: EmptySchema
     }
   },
@@ -135,7 +143,9 @@ export const compareCalendarMonthsTool: AssistantTool = {
               averageSpendPerDay: Number((current.averageSpendPerDay - previous.averageSpendPerDay).toFixed(2)),
               averageKwhPerDay: Number((current.averageKwhPerDay - previous.averageKwhPerDay).toFixed(2)),
               topups: Number((current.topups - previous.topups).toFixed(2)),
-              latestBalance: Number((current.latestBalance - previous.latestBalance).toFixed(2))
+              latestBalance: Number((current.latestBalance - previous.latestBalance).toFixed(2)),
+              energyCostPerKwh: Number((current.energyCostPerKwh - previous.energyCostPerKwh).toFixed(2)),
+              allInCostPerKwh: Number((current.allInCostPerKwh - previous.allInCostPerKwh).toFixed(2))
             }
           : null
     };

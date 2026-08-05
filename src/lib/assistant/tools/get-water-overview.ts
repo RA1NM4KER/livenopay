@@ -33,15 +33,15 @@ export const getWaterOverviewTool: AssistantTool = {
       firstWaterCharge: firstWaterDayAllTime
         ? {
             date: firstWaterDayAllTime.periodDate,
-            spend: firstWaterDayAllTime.waterSpend,
-            kwh: firstWaterDayAllTime.waterKl
+            waterSpend: firstWaterDayAllTime.waterSpend,
+            waterKl: firstWaterDayAllTime.waterKl
           }
         : null,
       firstWaterChargeInScope: firstWaterDayInScope
         ? {
             date: firstWaterDayInScope.date,
-            spend: firstWaterDayInScope.waterSpend,
-            kwh: firstWaterDayInScope.waterKl
+            waterSpend: firstWaterDayInScope.waterSpend,
+            waterKl: firstWaterDayInScope.waterKl
           }
         : null,
       waterChargeDays,
@@ -52,8 +52,8 @@ export const getWaterOverviewTool: AssistantTool = {
       highestWaterDay: context.analytics.metrics.highestWaterDay
         ? {
             date: context.analytics.metrics.highestWaterDay.date,
-            spend: context.analytics.metrics.highestWaterDay.waterSpend,
-            kwh: context.analytics.metrics.highestWaterDay.waterKl
+            waterSpend: context.analytics.metrics.highestWaterDay.waterSpend,
+            waterKl: context.analytics.metrics.highestWaterDay.waterKl
           }
         : null,
       formatted: {

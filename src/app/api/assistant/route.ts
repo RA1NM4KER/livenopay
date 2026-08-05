@@ -57,7 +57,8 @@ export async function POST(request: Request) {
         from: body.from,
         to: body.to
       },
-      (body.history ?? []) as AssistantConversationMessage[]
+      (body.history ?? []) as AssistantConversationMessage[],
+      { activitiesEnabled: permissions.activitiesEnabled }
     );
 
     return NextResponse.json(

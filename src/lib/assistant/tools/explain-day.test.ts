@@ -61,7 +61,9 @@ describe("explainDayTool", () => {
   it("caps each ranked list at 6 intervals", async () => {
     const context = buildTestContext([dailyRow({ periodDate: "2026-07-01" })]);
     loadDayIntervalRollupsMock.mockResolvedValueOnce(
-      Array.from({ length: 10 }, (_, index) => interval({ periodTime: `${String(index).padStart(2, "0")}:00`, spend: index }))
+      Array.from({ length: 10 }, (_, index) =>
+        interval({ periodTime: `${String(index).padStart(2, "0")}:00`, spend: index })
+      )
     );
 
     const result = (await explainDayTool.handler({ date: "2026-07-01" }, async () => context)) as {

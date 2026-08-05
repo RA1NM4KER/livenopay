@@ -34,6 +34,8 @@ function topupRow(overrides: Partial<EnergyRow>): EnergyRow {
   };
 }
 
+const dayMs = 86_400_000;
+
 describe("getRecentTopupsTool", () => {
   it("requests only topup rows, sorted by captured desc, for the active scope", async () => {
     loadExportRowsMock.mockResolvedValueOnce([]);
@@ -97,5 +99,78 @@ describe("getRecentTopupsTool", () => {
 
     expect(result.count).toBe(15);
     expect(result.topups).toHaveLength(3);
+  });
+
+  it("returns zeroed aggregates and null timestamps when there are no top-ups", async () => {
+    loadExportRowsMock.mockResolvedValueOnce([]);
+    const context = buildTestContext([]);
+
+    const result = (await getRecentTopupsTool.handler({}, async () => context)) as {
+      count: number;
+      totalAmount: number;
+      averageAmount: number;
+      earliestTopupAt: string | null;
+      latestTopupAt: string | null;
+      averageDaysBetweenTopups: number | null;
+    };
+
+    expect(result.count).toBe(0);
+    expect(result.totalAmount).toBe(0);
+    expect(result.averageAmount).toBe(0);
+    expect(result.earliestTopupAt).toBeNull();
+    expect(result.latestTopupAt).toBeNull();
+    expect(result.averageDaysBetweenTopups).toBeNull();
+  });
+
+  it("returns null averageDaysBetweenTopups with exactly one top-up", async () => {
+    loadExportRowsMock.mockResolvedValueOnce([
+      topupRow({ cost: 200, captureTimestamp: 0, captureDateTime: "2026-07-01 10:00" })
+    ]);
+    const context = buildTestContext([]);
+
+    const result = (await getRecentTopupsTool.handler({}, async () => context)) as {
+      count: number;
+      totalAmount: number;
+      averageAmount: number;
+      earliestTopupAt: string | null;
+      latestTopupAt: string | null;
+      averageDaysBetweenTopups: number | null;
+    };
+
+    expect(result.count).toBe(1);
+    expect(result.totalAmount).toBe(200);
+    expect(result.averageAmount).toBe(200);
+    expect(result.earliestTopupAt).toBe("2026-07-01 10:00");
+    expect(result.latestTopupAt).toBe("2026-07-01 10:00");
+    expect(result.averageDaysBetweenTopups).toBeNull();
+  });
+
+  it("computes totalAmount, averageAmount, and averageDaysBetweenTopups across all matched rows, not just the displayed slice", async () => {
+    loadExportRowsMock.mockResolvedValueOnce([
+      // Returned already sorted captured desc, matching real query order.
+      topupRow({ cost: 300, captureTimestamp: 20 * dayMs, captureDateTime: "2026-07-21 09:00" }),
+      topupRow({ cost: 100, captureTimestamp: 10 * dayMs, captureDateTime: "2026-07-11 09:00" }),
+      topupRow({ cost: 200, captureTimestamp: 0, captureDateTime: "2026-07-01 09:00" })
+    ]);
+    const context = buildTestContext([]);
+
+    const result = (await getRecentTopupsTool.handler({ limit: 1 }, async () => context)) as {
+      count: number;
+      totalAmount: number;
+      averageAmount: number;
+      earliestTopupAt: string | null;
+      latestTopupAt: string | null;
+      averageDaysBetweenTopups: number | null;
+      topups: unknown[];
+    };
+
+    expect(result.topups).toHaveLength(1); // display limit still respected
+    expect(result.count).toBe(3); // aggregates use the full matched set
+    expect(result.totalAmount).toBe(600);
+    expect(result.averageAmount).toBe(200);
+    expect(result.earliestTopupAt).toBe("2026-07-01 09:00");
+    expect(result.latestTopupAt).toBe("2026-07-21 09:00");
+    // Span is 20 days across 2 intervals -> 10 days average.
+    expect(result.averageDaysBetweenTopups).toBe(10);
   });
 });
