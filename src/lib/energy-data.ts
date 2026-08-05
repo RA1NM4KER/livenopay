@@ -1,5 +1,9 @@
 import { toEnergyRow, type EnergyRecordInput } from "./csv";
-import { authenticatedSupabaseFetch, authenticatedSupabaseFetchAllPages, authenticatedSupabaseResponse } from "./supabase-rest";
+import {
+  authenticatedSupabaseFetch,
+  authenticatedSupabaseFetchAllPages,
+  authenticatedSupabaseResponse
+} from "./supabase-rest";
 import type { EnergyRow, SyncMetadata } from "./types";
 import type { SortDirection, SortKey } from "@/components/data/types";
 
@@ -178,6 +182,44 @@ async function loadSyncMetadata(accessToken: string): Promise<SyncMetadata> {
     lastSyncedAt: latest?.finished_at ?? undefined,
     rowsInCsv: latest?.rows_in_csv ?? undefined,
     rowsSynced: latest?.rows_synced ?? undefined
+  };
+}
+
+export type CaptureRunStatus = "running" | "success" | "failed";
+
+export type LatestCaptureRun = {
+  status: CaptureRunStatus;
+  startedAt: string;
+  finishedAt: string | null;
+  error: string | null;
+};
+
+type LatestCaptureRunRow = {
+  status: CaptureRunStatus;
+  started_at: string;
+  finished_at: string | null;
+  error: string | null;
+};
+
+// Unlike loadSyncMetadata (which only looks at successful runs, for the
+// dashboard's "last synced" display), this returns the most recent attempt
+// regardless of outcome so a currently-running or failed sync is visible.
+export async function loadLatestCaptureRun(accessToken: string): Promise<LatestCaptureRun | null> {
+  const runs = await authenticatedSupabaseFetch<LatestCaptureRunRow[]>(
+    "/capture_runs?select=status,started_at,finished_at,error&order=started_at.desc&limit=1",
+    accessToken
+  );
+  const latest = runs[0];
+
+  if (!latest) {
+    return null;
+  }
+
+  return {
+    status: latest.status,
+    startedAt: latest.started_at,
+    finishedAt: latest.finished_at,
+    error: latest.error
   };
 }
 

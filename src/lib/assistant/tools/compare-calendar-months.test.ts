@@ -29,6 +29,41 @@ describe("compareCalendarMonthsTool", () => {
     expect(result.deltas?.latestBalance).toBe(-110); // 160 - 270 (last row's balance per month)
   });
 
+  it("includes energyCostPerKwh and allInCostPerKwh per month, and their deltas", async () => {
+    const rows = [
+      dailyRow({ periodDate: "2026-06-15", totalSpend: 40, energySpend: 30, energyKwh: 10 }),
+      dailyRow({ periodDate: "2026-07-01", totalSpend: 60, energySpend: 50, energyKwh: 20 })
+    ];
+    const context = buildTestContext(rows);
+
+    const result = (await compareCalendarMonthsTool.handler({}, async () => context)) as {
+      current: { energyCostPerKwh: number; allInCostPerKwh: number } | null;
+      previous: { energyCostPerKwh: number; allInCostPerKwh: number } | null;
+      deltas: { energyCostPerKwh: number; allInCostPerKwh: number } | null;
+    };
+
+    // June: energySpend 30 / kwh 10 = 3; totalSpend 40 / kwh 10 = 4
+    expect(result.previous?.energyCostPerKwh).toBe(3);
+    expect(result.previous?.allInCostPerKwh).toBe(4);
+    // July: energySpend 50 / kwh 20 = 2.5; totalSpend 60 / kwh 20 = 3
+    expect(result.current?.energyCostPerKwh).toBe(2.5);
+    expect(result.current?.allInCostPerKwh).toBe(3);
+    expect(result.deltas?.energyCostPerKwh).toBe(-0.5); // 2.5 - 3
+    expect(result.deltas?.allInCostPerKwh).toBe(-1); // 3 - 4
+  });
+
+  it("returns zero cost-per-kwh instead of dividing by zero when a month has no kwh usage", async () => {
+    const rows = [dailyRow({ periodDate: "2026-07-01", totalSpend: 5, energySpend: 5, energyKwh: 0 })];
+    const context = buildTestContext(rows);
+
+    const result = (await compareCalendarMonthsTool.handler({}, async () => context)) as {
+      current: { energyCostPerKwh: number; allInCostPerKwh: number } | null;
+    };
+
+    expect(result.current?.energyCostPerKwh).toBe(0);
+    expect(result.current?.allInCostPerKwh).toBe(0);
+  });
+
   it("returns null current/previous/deltas when there's only one month of data", async () => {
     const rows = [dailyRow({ periodDate: "2026-07-01", totalSpend: 10 })];
     const context = buildTestContext(rows);

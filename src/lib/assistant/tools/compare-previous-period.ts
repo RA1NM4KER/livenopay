@@ -8,7 +8,8 @@ export const comparePreviousPeriodTool: AssistantTool = {
     type: "function",
     function: {
       name: "compare_previous_period",
-      description: "Compare the active dashboard date range against the immediately preceding range of equal length.",
+      description:
+        "Compare the active dashboard date range against the immediately preceding range of equal length (a rolling window, not calendar-month aligned). Use compare_calendar_months instead for questions phrased as 'this month vs last month'.",
       parameters: EmptySchema
     }
   },

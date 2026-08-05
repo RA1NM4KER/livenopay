@@ -24,11 +24,14 @@ describe("getWaterOverviewTool", () => {
     const context = buildTestContext(rows, [], { from: "2026-07-01", to: "2026-07-01" });
 
     const result = (await getWaterOverviewTool.handler({}, async () => context)) as {
-      firstWaterCharge: { date: string } | null;
+      firstWaterCharge: { date: string; waterSpend: number; waterKl: number } | null;
       firstWaterChargeInScope: { date: string } | null;
     };
 
     expect(result.firstWaterCharge?.date).toBe("2026-06-01");
+    expect(result.firstWaterCharge?.waterSpend).toBe(5);
+    expect(result.firstWaterCharge?.waterKl).toBe(1);
+    expect(result.firstWaterCharge).not.toHaveProperty("kwh");
     // In-scope only sees 2026-07-01, which has no water activity.
     expect(result.firstWaterChargeInScope).toBeNull();
   });
@@ -60,10 +63,13 @@ describe("getWaterOverviewTool", () => {
     const context = buildTestContext(rows);
 
     const result = (await getWaterOverviewTool.handler({}, async () => context)) as {
-      highestWaterDay: { date: string; spend: number } | null;
+      highestWaterDay: { date: string; waterSpend: number; waterKl: number } | null;
     };
 
     expect(result.highestWaterDay?.date).toBe("2026-07-02");
-    expect(result.highestWaterDay?.spend).toBe(9);
+    expect(result.highestWaterDay?.waterSpend).toBe(9);
+    expect(result.highestWaterDay?.waterKl).toBe(1.5);
+    expect(result.highestWaterDay).not.toHaveProperty("kwh");
+    expect(result.highestWaterDay).not.toHaveProperty("spend");
   });
 });

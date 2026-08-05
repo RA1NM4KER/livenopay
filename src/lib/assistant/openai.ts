@@ -1,5 +1,5 @@
 import { buildAssistantSystemPrompt } from "./system-prompt";
-import type { AssistantConversationMessage, AssistantScope } from "./types";
+import type { AssistantConversationMessage, AssistantPermissions, AssistantScope } from "./types";
 import { createAssistantToolbox } from "./tools/index";
 import { getOpenAiApiKey, getOpenAiModel } from "@/lib/env";
 
@@ -70,17 +70,89 @@ async function callChatCompletions(messages: ChatMessage[], tools: ReturnType<ty
   return (await response.json()) as ChatCompletionResponse;
 }
 
+type ParsedToolArgs = { ok: true; args: Record<string, unknown> } | { ok: false };
+
+// Model-generated function-call arguments are untrusted input: they may be
+// malformed JSON, or valid JSON that isn't a plain object (e.g. an array or
+// a bare string). Either case must degrade to a structured error the model
+// can see and recover from, never an unhandled throw that 500s the request.
+function parseToolArguments(rawArguments: string): ParsedToolArgs {
+  if (!rawArguments) {
+    return { ok: true, args: {} };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawArguments);
+  } catch {
+    return { ok: false };
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ok: false };
+  }
+
+  return { ok: true, args: parsed as Record<string, unknown> };
+}
+
+type ToolCallOutcome = {
+  toolCallId: string;
+  toolName: string;
+  payload: unknown;
+  used: boolean;
+};
+
+// Tool calls returned together in one assistant message are independent:
+// each handler only reads from the single memoized DashboardContext promise
+// (see tools/index.ts's getContext()), none mutate shared state, and none
+// depend on another call's result. Promise.all is therefore safe here and
+// avoids serializing N round trips to Supabase/OpenAI's own backends purely
+// because the model happened to ask for several things at once. Result
+// order from Promise.all matches the input array order regardless of which
+// call resolves first, so each outcome is still pushed against the correct
+// tool_call_id.
+async function runToolCall(
+  toolbox: ReturnType<typeof createAssistantToolbox>,
+  toolCall: { id: string; function: { name: string; arguments: string } }
+): Promise<ToolCallOutcome> {
+  const toolName = toolCall.function.name;
+  const parsed = parseToolArguments(toolCall.function.arguments);
+
+  if (!parsed.ok) {
+    return {
+      toolCallId: toolCall.id,
+      toolName,
+      payload: { error: "invalid_tool_arguments", tool: toolName },
+      used: false
+    };
+  }
+
+  try {
+    const payload = await toolbox.execute(toolName, parsed.args);
+    return { toolCallId: toolCall.id, toolName, payload, used: true };
+  } catch (error) {
+    const isUnknownTool = error instanceof Error && error.message.startsWith("Unknown assistant tool");
+    return {
+      toolCallId: toolCall.id,
+      toolName,
+      payload: { error: isUnknownTool ? "unknown_tool" : "tool_execution_failed", tool: toolName },
+      used: false
+    };
+  }
+}
+
 export async function answerAssistantQuestion(
   accessToken: string,
   question: string,
   scope: AssistantScope,
-  history: AssistantConversationMessage[] = []
+  history: AssistantConversationMessage[] = [],
+  permissions: AssistantPermissions = { activitiesEnabled: false }
 ) {
-  const toolbox = createAssistantToolbox(accessToken, scope);
+  const toolbox = createAssistantToolbox(accessToken, scope, permissions);
   const messages: ChatMessage[] = [
     {
       role: "system",
-      content: buildAssistantSystemPrompt(scope)
+      content: buildAssistantSystemPrompt(scope, permissions)
     },
     ...history.map((message) => ({
       role: message.role,
@@ -108,14 +180,16 @@ export async function answerAssistantQuestion(
         tool_calls: message.tool_calls
       });
 
-      for (const toolCall of message.tool_calls) {
-        const parsedArgs = toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {};
-        const result = await toolbox.execute(toolCall.function.name, parsedArgs);
-        toolsUsed.add(toolCall.function.name);
+      const outcomes = await Promise.all(message.tool_calls.map((toolCall) => runToolCall(toolbox, toolCall)));
+
+      for (const outcome of outcomes) {
+        if (outcome.used) {
+          toolsUsed.add(outcome.toolName);
+        }
         messages.push({
           role: "tool",
-          tool_call_id: toolCall.id,
-          content: JSON.stringify(result)
+          tool_call_id: outcome.toolCallId,
+          content: JSON.stringify(outcome.payload)
         });
       }
 
