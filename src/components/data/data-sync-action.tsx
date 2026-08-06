@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { SyncButton } from "@/components/ui/sync-button";
+import { isSyncStale } from "@/lib/sync-status";
 
 type DataSyncActionProps = {
   iconOnly?: boolean;
@@ -11,25 +13,36 @@ type DataSyncActionProps = {
   loading?: boolean;
 };
 
-// Threshold picked from observed real-world sync gaps (median ~2-3h, one
-// clean 6h+ gap before new rows showed up) -- a soft nudge, not a claim that
-// new data is actually ready. See conversation/commit history for the data
-// dive this came from if the number ever needs revisiting.
-const STALE_AFTER_HOURS = 6;
-
-function isStale(lastSyncedAt?: string | null): boolean {
-  if (!lastSyncedAt) {
-    return true;
-  }
-
-  const hoursSinceSync = (Date.now() - new Date(lastSyncedAt).getTime()) / 3_600_000;
-  return hoursSinceSync > STALE_AFTER_HOURS;
-}
-
 export function DataSyncAction({ iconOnly = false, lastSyncedAt, loading = false }: DataSyncActionProps) {
   const handleSyncSuccess = async () => {
     window.location.reload();
   };
+
+  // Mirrors the in-app nudge dot onto the installed PWA's home-screen icon,
+  // using the exact same lastSyncedAt already fetched for this page -- no
+  // separate endpoint, so it can't disagree with the visible dot. Rendering
+  // on two pages means two calls in the same session; setAppBadge/
+  // clearAppBadge are idempotent, so that's harmless. Polled on an interval,
+  // not just on lastSyncedAt change, since staleness is time-relative and
+  // can flip from false to true with the tab sitting open and no new data.
+  useEffect(() => {
+    if (loading || typeof navigator === "undefined" || !("setAppBadge" in navigator)) {
+      return;
+    }
+
+    const updateBadge = () => {
+      if (isSyncStale(lastSyncedAt)) {
+        navigator.setAppBadge().catch(() => undefined);
+      } else {
+        navigator.clearAppBadge().catch(() => undefined);
+      }
+    };
+
+    updateBadge();
+    const intervalId = setInterval(updateBadge, 15 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [lastSyncedAt, loading]);
 
   // Always rendered as the filter bar's leftControls, so it always sits on
   // the bar's dark teal background -- no other caller in this codebase.
@@ -38,7 +51,7 @@ export function DataSyncAction({ iconOnly = false, lastSyncedAt, loading = false
       iconOnly={iconOnly}
       onSuccess={handleSyncSuccess}
       tone="dark"
-      showNudge={!loading && isStale(lastSyncedAt)}
+      showNudge={!loading && isSyncStale(lastSyncedAt)}
     />
   );
 }
