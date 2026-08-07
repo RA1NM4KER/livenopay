@@ -126,6 +126,10 @@ export async function loadLiveOverview(userId: string, window: LiveWindow): Prom
     bucketMs
   );
 
+  // Only show a minute-over-minute change for a fresh estimate (a stale reading
+  // has no meaningful "now" to compare against).
+  const rawChange = estimateState === "fresh" ? changeWattsLastMinute(series, estimatedWatts, nowMs) : null;
+
   return {
     device: deviceInfo,
     window,
@@ -134,13 +138,7 @@ export async function loadLiveOverview(userId: string, window: LiveWindow): Prom
       estimateState,
       lastPulseAt,
       lastDeltaMs,
-      changeWattsLastMinute:
-        estimateState === "fresh"
-          ? (() => {
-              const change = changeWattsLastMinute(series, estimatedWatts, nowMs);
-              return change === null ? null : Math.round(change);
-            })()
-          : null
+      changeWattsLastMinute: rawChange === null ? null : Math.round(rawChange)
     },
     energy: {
       last5MinutesKwh: energyKwh(count5m, deviceInfo.pulsesPerKwh),
