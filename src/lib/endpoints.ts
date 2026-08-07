@@ -9,8 +9,13 @@ export const apiEndpoints = {
   dayIntervals: `${apiBase}/day-intervals`,
   energyRows: `${apiBase}/energy-rows`,
   export: `${apiBase}/export`,
+  liveOverview: `${apiBase}/live/overview`,
   sync: `${apiBase}/sync`
 } as const;
+
+export function buildLiveOverviewUrl(window: string) {
+  return `${apiEndpoints.liveOverview}?window=${encodeURIComponent(window)}`;
+}
 
 export function buildDayIntervalsUrl(periodDate: string) {
   return `${apiEndpoints.dayIntervals}?periodDate=${encodeURIComponent(periodDate)}`;

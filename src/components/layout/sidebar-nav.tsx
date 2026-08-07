@@ -3,24 +3,16 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, LayoutDashboard, Settings as SettingsIcon, ShieldCheck, Table2 } from "lucide-react";
 import { parseDateRangeQuery, filterQueryParamKeys } from "@/lib/filter-query-params";
 import { queryHref } from "@/lib/url-query";
-
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard, preserveDateRange: true },
-  { href: "/data", label: "Data", icon: Table2, preserveDateRange: true },
-  { href: "/activities", label: "Activities", icon: Activity, preserveDateRange: true, isNew: true },
-  { href: "/settings", label: "Settings", icon: SettingsIcon, preserveDateRange: false }
-] as const;
+import { buildNavItems } from "./nav-items";
 
 const ACTIVITIES_SEEN_KEY = "activities-nav-seen";
-
-const adminNavItem = { href: "/admin", label: "Admin", icon: ShieldCheck, preserveDateRange: false } as const;
 
 type SidebarNavProps = {
   isAdmin?: boolean;
   isActivitiesEnabled?: boolean;
+  isLiveMeterEnabled?: boolean;
   onNavigate?: () => void;
   size?: "default" | "lg";
 };
@@ -28,16 +20,20 @@ type SidebarNavProps = {
 // Shared between the desktop sidebar rail and the mobile menu drawer so the
 // two never drift out of sync. `size="lg"` is for the mobile drawer, where
 // touch targets need to be bigger than the compact desktop rail.
-export function SidebarNav({ isAdmin = false, isActivitiesEnabled = false, onNavigate, size = "default" }: SidebarNavProps) {
+export function SidebarNav({
+  isAdmin = false,
+  isActivitiesEnabled = false,
+  isLiveMeterEnabled = false,
+  onNavigate,
+  size = "default"
+}: SidebarNavProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { from, to } = parseDateRangeQuery(new URLSearchParams(searchParams.toString()));
   const dateParams = new URLSearchParams();
-  // Activities is a per-user opt-in while it's being tested with one person
-  // -- everyone else simply doesn't see the entry point.
-  const items = (isAdmin ? [...navItems, adminNavItem] : navItems).filter(
-    (item) => item.href !== "/activities" || isActivitiesEnabled
-  );
+  // Gated features (Live, Activities) are opt-in per user -- anyone without
+  // the permission simply doesn't see the entry point at all.
+  const items = buildNavItems({ isAdmin, isActivitiesEnabled, isLiveMeterEnabled });
   const isLarge = size === "lg";
   // Defaults to hidden, not shown -- the server has no localStorage to
   // check, so defaulting to "shown" would flash the badge on every refresh

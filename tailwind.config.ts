@@ -31,6 +31,24 @@ const config: Config = {
       boxShadow: {
         soft: "var(--shadow-soft)"
       },
+      keyframes: {
+        // Subtle rise used when the live hero number updates -- a calm settle,
+        // not a flash. Only applied under motion-safe.
+        liveRise: {
+          "0%": { opacity: "0.35", transform: "translateY(3px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" }
+        },
+        // A single expanding ring on a fresh pulse.
+        livePing: {
+          "0%": { transform: "scale(1)", opacity: "0.6" },
+          "75%": { transform: "scale(2.4)", opacity: "0" },
+          "100%": { transform: "scale(2.4)", opacity: "0" }
+        }
+      },
+      animation: {
+        liveRise: "liveRise 420ms cubic-bezier(0.22, 1, 0.36, 1)",
+        livePing: "livePing 1000ms cubic-bezier(0, 0, 0.2, 1)"
+      },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"]
       }

@@ -20,6 +20,13 @@ const RATE_LIMIT_POLICIES = {
   meter: {
     minuteLimit: 60,
     dayLimit: 30000
+  },
+  // The Live page polls the overview endpoint ~every 5s while open
+  // (~12 req/min, ~17,280 req/day), so it needs the same headroom as ingestion
+  // rather than the 1,000/day default. Keyed by the authenticated user id.
+  live: {
+    minuteLimit: 30,
+    dayLimit: 30000
   }
 } as const;
 

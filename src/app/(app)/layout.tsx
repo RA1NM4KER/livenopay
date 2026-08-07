@@ -19,6 +19,7 @@ export default async function AppGroupLayout({ children }: { children: ReactNode
         userEmail={session.email}
         isAdmin={permissions.role === "admin"}
         isActivitiesEnabled={permissions.activitiesEnabled}
+        isLiveMeterEnabled={permissions.liveMeterEnabled}
       >
         {children}
       </AppShell>

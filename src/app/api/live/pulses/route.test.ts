@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   isLiveMeterEnabledForDevice: vi.fn(),
   recordPulses: vi.fn(),
   touchDeviceLastSeen: vi.fn(),
-  enforceRateLimit: vi.fn()
+  enforceRateLimit: vi.fn(),
+  broadcastPulsesChanged: vi.fn()
 }));
 
 vi.mock("@/lib/meter-devices", () => ({
@@ -19,6 +20,7 @@ vi.mock("@/lib/rate-limit", () => ({
   getRateLimitIdentifier: (id: string, scope: string) => `${id}:${scope}`,
   rateLimitHeaders: () => ({})
 }));
+vi.mock("@/lib/live-broadcast", () => ({ broadcastPulsesChanged: mocks.broadcastPulsesChanged }));
 
 import { POST } from "./route";
 
@@ -52,6 +54,30 @@ describe("POST /api/live/pulses", () => {
     mocks.enforceRateLimit.mockResolvedValue({ allowed: true, minute: {}, day: {} });
     mocks.recordPulses.mockResolvedValue({ accepted: 1, duplicates: 0 });
     mocks.touchDeviceLastSeen.mockResolvedValue(undefined);
+    mocks.broadcastPulsesChanged.mockResolvedValue(undefined);
+  });
+
+  describe("realtime broadcast", () => {
+    it("sends exactly one broadcast for an accepted batch (never one per pulse)", async () => {
+      mocks.recordPulses.mockResolvedValue({ accepted: 5, duplicates: 0 });
+      await post({ bootId, pulses: [validPulse, { ...validPulse, seq: 149 }] });
+      expect(mocks.broadcastPulsesChanged).toHaveBeenCalledTimes(1);
+      expect(mocks.broadcastPulsesChanged).toHaveBeenCalledWith("user-a", 5);
+    });
+
+    it("does not broadcast when nothing new was accepted (duplicate-only retry)", async () => {
+      mocks.recordPulses.mockResolvedValue({ accepted: 0, duplicates: 2 });
+      const response = await post({ bootId, pulses: [validPulse] });
+      expect(response.status).toBe(200);
+      expect(mocks.broadcastPulsesChanged).not.toHaveBeenCalled();
+    });
+
+    it("still returns success (200) if the broadcast rejects -- persistence is durable", async () => {
+      mocks.broadcastPulsesChanged.mockRejectedValue(new Error("realtime down"));
+      const response = await post({ bootId, pulses: [validPulse] });
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ accepted: 1, duplicates: 0 });
+    });
   });
 
   describe("authentication", () => {

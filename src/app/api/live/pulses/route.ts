@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { broadcastPulsesChanged } from "@/lib/live-broadcast";
 import {
   authenticateDeviceKey,
   isLiveMeterEnabledForDevice,
@@ -76,6 +77,16 @@ export async function POST(request: Request) {
     const result = await recordPulses(device.id, body.bootId, body.pulses);
     // Only stamp liveness after the pulses are safely stored.
     await touchDeviceLastSeen(device.id);
+
+    // Best-effort Realtime nudge, only when this batch actually inserted new
+    // rows (a duplicate-only retry changes nothing, so it stays silent). One
+    // notification per accepted batch -- never one per pulse. broadcast never
+    // throws, so a Realtime failure can't affect the already-durable response.
+    if (result.accepted > 0) {
+      // broadcast already swallows its own errors; the extra .catch guarantees
+      // durability can never regress even if that changes.
+      await broadcastPulsesChanged(device.ownerUserId, result.accepted).catch(() => {});
+    }
 
     return NextResponse.json(
       { accepted: result.accepted, duplicates: result.duplicates },
