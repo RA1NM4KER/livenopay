@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Database } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { IconTile, SettingsGroup } from "@/components/ui/settings";
 
 type ConnectionCardProps = {
   status: "connected" | "pending_selection" | "disconnected" | "error" | "not_connected";
@@ -14,69 +16,88 @@ type ConnectionCardProps = {
 export function ConnectionCard({ status, livemopayEmail, accountLabel, lastSyncedAt }: ConnectionCardProps) {
   const router = useRouter();
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   async function handleDisconnect() {
-    if (!window.confirm("Disconnect your LiveMopay account? Your imported history stays available.")) {
-      return;
-    }
-
     setIsDisconnecting(true);
-
     try {
       await fetch("/api/livemopay/disconnect", { method: "POST" });
       router.refresh();
     } finally {
       setIsDisconnecting(false);
+      setConfirming(false);
     }
   }
 
+  const connected = status === "connected";
+
   return (
-    <Card>
-      <CardHeader title="LiveMopay connection" eyebrow="Data source" />
-      <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-        {status === "connected" ? (
+    <SettingsGroup label="Data source">
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center gap-4">
+          <IconTile tone={connected ? "accent" : "default"}>
+            <Database size={18} strokeWidth={2} />
+          </IconTile>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.9375rem] font-semibold text-ink">
+              {connected ? accountLabel ?? "LiveMopay account" : "No account connected"}
+            </p>
+            <p className="mt-0.5 inline-flex items-center gap-1.5 text-[0.8125rem] text-muted">
+              {connected ? (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+                  Connected to LiveMopay
+                </>
+              ) : status === "not_connected" ? (
+                "Connect an account to start importing usage."
+              ) : (
+                "Disconnected. Your existing history stays available."
+              )}
+            </p>
+          </div>
+        </div>
+
+        {connected ? (
           <>
-            <div className="flex items-center gap-2 text-sm text-ink">
-              <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
-              Connected{accountLabel ? ` to ${accountLabel}` : ""}
-            </div>
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="mt-5 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted">LiveMopay email</dt>
-                <dd className="mt-0.5 text-ink">{livemopayEmail ?? "Unknown"}</dd>
+                <dd className="mt-1 truncate text-ink">{livemopayEmail ?? "Unknown"}</dd>
               </div>
               <div>
                 <dt className="text-muted">Last synced</dt>
-                <dd className="mt-0.5 text-ink">
+                <dd className="mt-1 text-ink">
                   {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : "Not synced yet"}
                 </dd>
               </div>
             </dl>
-            <button
-              type="button"
-              onClick={() => void handleDisconnect()}
-              disabled={isDisconnecting}
-              className="inline-flex h-9 w-fit items-center rounded-md border border-line bg-paper px-3 text-sm text-muted transition hover:border-red-300 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isDisconnecting ? "Disconnecting..." : "Disconnect"}
-            </button>
+
+            <div className="mt-5 border-t border-line pt-4">
+              {confirming ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-sm text-muted">Disconnect this account? Your history stays.</span>
+                  <Button variant="danger" onClick={() => void handleDisconnect()} disabled={isDisconnecting}>
+                    {isDisconnecting ? "Disconnecting…" : "Confirm disconnect"}
+                  </Button>
+                  <Button onClick={() => setConfirming(false)} disabled={isDisconnecting}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="dangerGhost" onClick={() => setConfirming(true)}>
+                  Disconnect
+                </Button>
+              )}
+            </div>
           </>
         ) : (
-          <>
-            <p className="text-sm text-muted">
-              {status === "not_connected"
-                ? "No LiveMopay account connected yet."
-                : "Your LiveMopay account is disconnected. Your existing history stays available."}
-            </p>
-            <a
-              href="/connect"
-              className="inline-flex h-9 w-fit items-center rounded-md bg-ink px-4 text-sm font-medium text-paper transition hover:opacity-90"
-            >
+          <div className="mt-5">
+            <Button href="/connect" variant="primary">
               Connect LiveMopay
-            </a>
-          </>
+            </Button>
+          </div>
         )}
       </div>
-    </Card>
+    </SettingsGroup>
   );
 }

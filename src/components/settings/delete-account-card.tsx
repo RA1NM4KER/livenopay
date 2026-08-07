@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { IconTile, SettingsGroup, SettingsRow } from "@/components/ui/settings";
 
 const confirmPhrase = "DELETE";
 
@@ -32,41 +34,38 @@ export function DeleteAccountCard() {
   const canDelete = confirmText === confirmPhrase && !isDeleting;
 
   return (
-    <Card>
-      <CardHeader title="Delete account" eyebrow="Danger zone" />
-      <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-        <p className="text-sm text-muted">
-          Permanently deletes your NewinMeter account: your connection to LiveMopay, every synced usage row, and your
-          sign-in. This can&apos;t be undone.
-        </p>
+    <SettingsGroup label="Danger zone" tone="danger">
+      <SettingsRow
+        leading={
+          <IconTile tone="danger">
+            <Trash2 size={18} strokeWidth={2} />
+          </IconTile>
+        }
+        title="Delete account"
+        description="Permanently removes your connection, every synced row, and your sign-in. Can't be undone."
+      />
 
+      <div className="border-t border-line px-4 py-4 sm:px-5">
         <label className="flex flex-col gap-1.5 text-sm">
           <span className="text-muted">
-            Type <span className="font-medium text-ink">{confirmPhrase}</span> to confirm
+            Type <span className="font-semibold text-ink">{confirmPhrase}</span> to confirm
           </span>
           <input
-            className="h-9 w-full max-w-xs rounded-md border border-line bg-paper px-3 text-sm text-ink outline-none focus:border-red-400"
+            className="h-9 w-full max-w-xs rounded-md border border-line bg-canvas px-3 text-sm text-ink outline-none transition focus:border-red-400"
             onChange={(event) => setConfirmText(event.target.value)}
             value={confirmText}
             type="text"
           />
         </label>
 
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
 
-        <button
-          className={`inline-flex h-9 w-fit items-center rounded-md px-3 text-sm font-medium transition ${
-            canDelete
-              ? "bg-red-600 text-white hover:bg-red-700"
-              : "cursor-not-allowed bg-canvas text-muted/60 border border-line"
-          }`}
-          disabled={!canDelete}
-          onClick={() => void handleDelete()}
-          type="button"
-        >
-          {isDeleting ? "Deleting..." : "Delete my account"}
-        </button>
+        <div className="mt-4">
+          <Button variant="danger" disabled={!canDelete} onClick={() => void handleDelete()}>
+            {isDeleting ? "Deleting…" : "Delete my account"}
+          </Button>
+        </div>
       </div>
-    </Card>
+    </SettingsGroup>
   );
 }

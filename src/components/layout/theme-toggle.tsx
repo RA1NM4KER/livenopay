@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Moon, Monitor, Sun } from "lucide-react";
-import { DropdownSelect } from "@/components/ui/dropdown-select";
 import type { ThemeChoice } from "./types";
 
 const storageKey = "electricity-ledger-theme";
@@ -15,10 +14,10 @@ function applyTheme(choice: ThemeChoice) {
   document.documentElement.dataset.theme = choice;
 }
 
-const themeOptions = [
-  { value: "light", label: "Light", icon: <Sun size={16} strokeWidth={2} /> },
-  { value: "system", label: "System", icon: <Monitor size={16} strokeWidth={2} /> },
-  { value: "dark", label: "Dark", icon: <Moon size={16} strokeWidth={2} /> }
+const themeOptions: Array<{ value: ThemeChoice; label: string; icon: JSX.Element }> = [
+  { value: "light", label: "Light", icon: <Sun size={14} strokeWidth={2} /> },
+  { value: "system", label: "System", icon: <Monitor size={14} strokeWidth={2} /> },
+  { value: "dark", label: "Dark", icon: <Moon size={14} strokeWidth={2} /> }
 ];
 
 export function ThemeToggle() {
@@ -42,22 +41,31 @@ export function ThemeToggle() {
     return () => media.removeEventListener("change", handleChange);
   }, [theme]);
 
-  function updateTheme(value: string) {
-    const next = value as ThemeChoice;
+  function updateTheme(next: ThemeChoice) {
     setTheme(next);
     window.localStorage.setItem(storageKey, next);
     applyTheme(next);
   }
 
   return (
-    <DropdownSelect
-      ariaLabel="Theme"
-      value={theme}
-      options={themeOptions}
-      onChange={updateTheme}
-      className="px-2 sm:w-28 sm:px-3"
-      menuPlacement="bottom"
-      hideLabelOnMobile
-    />
+    <div role="group" aria-label="Theme" className="inline-flex gap-0.5 rounded-lg border border-line bg-canvas p-0.5">
+      {themeOptions.map((option) => {
+        const active = theme === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => updateTheme(option.value)}
+            className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[0.8125rem] font-medium transition ${
+              active ? "bg-paper text-ink shadow-sm" : "text-muted hover:text-ink"
+            }`}
+          >
+            {option.icon}
+            <span className="hidden sm:inline">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
