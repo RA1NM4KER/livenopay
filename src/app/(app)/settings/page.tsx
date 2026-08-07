@@ -24,49 +24,55 @@ export default async function SettingsPage() {
   const initial = (session.email ?? "?").trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <div className="flex w-full max-w-2xl flex-col gap-8 py-6 sm:py-8">
+    <div className="flex w-full max-w-6xl flex-col gap-8 py-6 sm:py-8">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">Settings</h1>
         <p className="mt-1.5 text-sm text-muted">Manage your data source, appearance, and account.</p>
       </header>
 
-      <ConnectionCard
-        status={connection?.status ?? "not_connected"}
-        livemopayEmail={connection?.livemopayEmail ?? null}
-        accountLabel={connection?.accountLabel ?? null}
-        lastSyncedAt={connection?.lastSyncedAt ?? null}
-      />
+      <div className="grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-2 lg:items-start">
+        <div className="lg:col-span-2">
+          <ConnectionCard
+            status={connection?.status ?? "not_connected"}
+            livemopayEmail={connection?.livemopayEmail ?? null}
+            accountLabel={connection?.accountLabel ?? null}
+            lastSyncedAt={connection?.lastSyncedAt ?? null}
+          />
+        </div>
 
-      <SettingsGroup label="Preferences">
-        <SettingsRow
-          leading={
-            <IconTile>
-              <Sun size={18} strokeWidth={2} />
-            </IconTile>
-          }
-          title="Appearance"
-          description="How NewinMeter looks on this device."
-          control={<ThemeToggle />}
-        />
-        <BadgePermissionCard lastSyncedAt={connection?.lastSyncedAt ?? null} />
-      </SettingsGroup>
+        <SettingsGroup label="Preferences">
+          <SettingsRow
+            leading={
+              <IconTile>
+                <Sun size={18} strokeWidth={2} />
+              </IconTile>
+            }
+            title="Appearance"
+            description="How NewinMeter looks on this device."
+            control={<ThemeToggle />}
+          />
+          <BadgePermissionCard lastSyncedAt={connection?.lastSyncedAt ?? null} />
+        </SettingsGroup>
 
-      <SettingsGroup label="Account">
-        <SettingsRow
-          leading={<Avatar>{initial}</Avatar>}
-          title={session.email ?? "Signed in"}
-          description="Signed in on this device."
-          control={
-            <form action="/auth/sign-out" method="post">
-              <Button type="submit" variant="secondary">
-                Sign out
-              </Button>
-            </form>
-          }
-        />
-      </SettingsGroup>
+        <SettingsGroup label="Account">
+          <SettingsRow
+            leading={<Avatar>{initial}</Avatar>}
+            title={session.email ?? "Signed in"}
+            description="Signed in on this device."
+            control={
+              <form action="/auth/sign-out" method="post">
+                <Button type="submit" variant="secondary">
+                  Sign out
+                </Button>
+              </form>
+            }
+          />
+        </SettingsGroup>
 
-      <DeleteAccountCard />
+        <div className="lg:col-span-2">
+          <DeleteAccountCard />
+        </div>
+      </div>
     </div>
   );
 }
