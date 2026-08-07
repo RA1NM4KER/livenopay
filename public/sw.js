@@ -1,4 +1,4 @@
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL_CACHE = `ledger-shell-${VERSION}`;
 const PAGE_CACHE = `ledger-pages-${VERSION}`;
 const DATA_CACHE = `ledger-data-${VERSION}`;
@@ -66,6 +66,67 @@ self.addEventListener("fetch", (event) => {
   ) {
     event.respondWith(cacheFirstStatic(request));
   }
+});
+
+// Web Push handler. iOS requires every push to show a user-visible
+// notification (silent push is rejected), so we always call showNotification.
+// Alongside it we set the Home Screen badge from the worker -- this is what
+// makes the badge update while the app is closed, which the in-page
+// DataSyncAction can't do.
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = {};
+  }
+
+  const title = payload.title || "NewinMeter";
+  const body = payload.body || "Your usage data looks stale. Open the app to sync.";
+  const url = payload.url || "/";
+
+  event.waitUntil(
+    (async () => {
+      if ("setAppBadge" in self.navigator) {
+        await self.navigator.setAppBadge().catch(() => undefined);
+      }
+
+      await self.registration.showNotification(title, {
+        body,
+        icon: "/icon",
+        badge: "/icon",
+        // Collapse repeats onto one notification instead of stacking.
+        tag: "newinmeter-stale-data",
+        data: { url }
+      });
+    })()
+  );
+});
+
+// Focus an existing app window if one is open, otherwise open the target URL.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification.data && event.notification.data.url ? event.notification.data.url : "/";
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+
+      for (const client of allClients) {
+        if ("focus" in client) {
+          client.navigate(targetUrl).catch(() => undefined);
+          return client.focus();
+        }
+      }
+
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+
+      return undefined;
+    })()
+  );
 });
 
 async function networkFirstPage(request) {

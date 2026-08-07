@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Card, CardHeader } from "@/components/ui/card";
+import { BadgePermissionCard } from "@/components/settings/badge-permission-card";
 import { ConnectionCard } from "@/components/settings/connection-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { getAuthenticatedSession } from "@/lib/auth/session";
@@ -52,6 +53,8 @@ export default async function SettingsPage() {
           <ThemeToggle />
         </div>
       </Card>
+
+      <BadgePermissionCard />
 
       <DeleteAccountCard />
     </div>

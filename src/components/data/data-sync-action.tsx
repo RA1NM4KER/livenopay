@@ -30,12 +30,21 @@ export function DataSyncAction({ iconOnly = false, lastSyncedAt, loading = false
       return;
     }
 
+    // iOS ties badge *display* to notification permission: setAppBadge()
+    // resolves without error but nothing shows on the Home Screen icon until
+    // the user has granted permission (see the Enable badges control in
+    // Settings). No point calling it before then. On platforms without the
+    // Notification API (older desktop PWAs) we fall through and badge anyway.
+    const badgesAllowed = typeof Notification === "undefined" || Notification.permission === "granted";
+    if (!badgesAllowed) {
+      return;
+    }
+
     const updateBadge = () => {
-      if (isSyncStale(lastSyncedAt)) {
-        navigator.setAppBadge().catch(() => undefined);
-      } else {
-        navigator.clearAppBadge().catch(() => undefined);
-      }
+      const op = isSyncStale(lastSyncedAt) ? navigator.setAppBadge() : navigator.clearAppBadge();
+      op?.catch((error) => {
+        console.error("Failed to update app badge", error);
+      });
     };
 
     updateBadge();

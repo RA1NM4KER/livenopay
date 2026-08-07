@@ -55,6 +55,25 @@ export function getNewinmeterWebAppFlavor() {
   return optional("NEWINMETER_WEB_APP_FLAVOR", "livemopay");
 }
 
+export function getVapidPublicKey() {
+  return required("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "VAPID_PUBLIC_KEY");
+}
+
+export function getVapidPrivateKey() {
+  return required("VAPID_PRIVATE_KEY");
+}
+
+export function getVapidSubject() {
+  return optional("VAPID_SUBJECT", "mailto:support@newinmeter.app");
+}
+
+// Shared secret Vercel Cron sends as `Authorization: Bearer <CRON_SECRET>`.
+// The stale-check endpoint rejects any request without it, so the cron route
+// can't be triggered by the public internet.
+export function getCronSecret() {
+  return required("CRON_SECRET");
+}
+
 export function getOpenAiApiKey(): string | undefined {
   const value = process.env.OPENAI_API_KEY;
   return value && value.length ? value : undefined;

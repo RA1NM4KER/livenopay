@@ -249,8 +249,49 @@ export async function markConnectionSyncOutcome(connectionId: string, lastError:
     {
       last_synced_at: new Date().toISOString(),
       last_error: lastError,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      // A successful sync means the data is fresh again -- reset the stale-push
+      // dedupe flag here (the authoritative "went fresh" moment) so the next
+      // time it goes stale the cron is free to notify once more. A failed sync
+      // leaves the flag untouched: the data is still whatever it was.
+      ...(lastError === null ? { stale_notified_at: null } : {})
     },
+    "return=minimal"
+  );
+}
+
+// Lightweight projection for the stale-check cron: just what the dedupe
+// decision needs, for every currently-connected account. Deliberately omits
+// the token/account columns -- the cron never touches LiveMopay, only decides
+// whether to send a "your data looks stale" push.
+export type StaleCheckConnection = {
+  id: string;
+  userId: string;
+  lastSyncedAt: string | null;
+  staleNotifiedAt: string | null;
+};
+
+export async function listConnectionsForStaleCheck(): Promise<StaleCheckConnection[]> {
+  const rows = await adminSupabaseFetch<
+    Array<Pick<ConnectionRow, "id" | "user_id" | "last_synced_at"> & { stale_notified_at: string | null }>
+  >("/livemopay_connections?select=id,user_id,last_synced_at,stale_notified_at&status=eq.connected");
+
+  return rows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    lastSyncedAt: row.last_synced_at,
+    staleNotifiedAt: row.stale_notified_at
+  }));
+}
+
+// Records that a stale-data push has been sent for this connection's current
+// stale episode, so subsequent cron runs skip it until a successful sync
+// clears the flag (see markConnectionSyncOutcome).
+export async function markConnectionStaleNotified(connectionId: string): Promise<void> {
+  await adminSupabaseRequest(
+    "PATCH",
+    `/livemopay_connections?id=eq.${encodeURIComponent(connectionId)}`,
+    { stale_notified_at: new Date().toISOString() },
     "return=minimal"
   );
 }
