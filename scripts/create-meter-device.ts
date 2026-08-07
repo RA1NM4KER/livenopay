@@ -9,8 +9,14 @@
 //   npm run create:meter-device -- --email <user-email> --name "Home meter"
 //   npm run create:meter-device -- --email <user-email> --name "Home meter" --pulses-per-kwh 1000
 //
-// Runs with the repo's service-role setup via `tsx --env-file=.env.local`
-// (see the npm script), the same way scripts/backfill-legacy-owner.ts does.
+// Runs with the repo's service-role setup via the npm script, which uses
+// `tsx --conditions=react-server --env-file=.env.local`. The
+// `--conditions=react-server` flag is required: the server-only lib modules
+// this pulls in (meter-devices -> supabase-rest/user-roles) start with
+// `import "server-only"`, whose default export throws by design. Next.js
+// resolves that marker's `react-server` export condition (an empty no-op
+// module); direct Node/tsx execution does not, so the flag makes the marker
+// resolve the same harmless way here instead of throwing at import.
 
 import { createMeterDevice, getActiveConnectionForUser } from "../src/lib/meter-devices";
 import { createSupabaseAdminClient } from "../src/lib/supabase/admin-client";
