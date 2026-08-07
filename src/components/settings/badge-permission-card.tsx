@@ -2,6 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardHeader } from "@/components/ui/card";
+import { isSyncStale } from "@/lib/sync-status";
+
+type BadgePermissionCardProps = {
+  // The current connection's last sync time, so toggling badges on can reflect
+  // an already-stale state immediately instead of waiting for the next
+  // dashboard visit or push.
+  lastSyncedAt?: string | null;
+};
 
 type BadgeSupport = "unknown" | "unsupported" | "default" | "granted" | "denied";
 
@@ -52,9 +60,26 @@ async function subscribeToPush(): Promise<boolean> {
 // notification permission, and that prompt must come from a real user gesture
 // -- calling Notification.requestPermission() from an effect is ignored -- so
 // it lives behind this button rather than firing automatically.
-export function BadgePermissionCard() {
+export function BadgePermissionCard({ lastSyncedAt }: BadgePermissionCardProps) {
   const [state, setState] = useState<BadgeSupport>("unknown");
   const [busy, setBusy] = useState(false);
+
+  // Reflect current staleness onto the icon right away once badges are allowed,
+  // matching what DataSyncAction would set on the next dashboard visit.
+  const applyBadgeNow = useCallback(async () => {
+    if (typeof navigator === "undefined" || !("setAppBadge" in navigator)) {
+      return;
+    }
+    try {
+      if (isSyncStale(lastSyncedAt)) {
+        await navigator.setAppBadge();
+      } else {
+        await navigator.clearAppBadge();
+      }
+    } catch (error) {
+      console.error("Failed to set app badge", error);
+    }
+  }, [lastSyncedAt]);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !("setAppBadge" in navigator) || typeof Notification === "undefined") {
@@ -64,11 +89,13 @@ export function BadgePermissionCard() {
     setState(Notification.permission as BadgeSupport);
 
     // If permission was already granted (e.g. on an earlier visit, or before
-    // background push existed), make sure this device is subscribed too.
+    // background push existed), make sure this device is subscribed too, and
+    // reflect current staleness onto the icon.
     if (Notification.permission === "granted") {
       subscribeToPush().catch((error) => console.error("Failed to sync push subscription", error));
+      applyBadgeNow();
     }
-  }, []);
+  }, [applyBadgeNow]);
 
   const enableBadges = useCallback(async () => {
     if (busy) return;
@@ -78,13 +105,14 @@ export function BadgePermissionCard() {
       setState(permission as BadgeSupport);
       if (permission === "granted") {
         await subscribeToPush();
+        await applyBadgeNow();
       }
     } catch (error) {
       console.error("Failed to enable badges", error);
     } finally {
       setBusy(false);
     }
-  }, [busy]);
+  }, [busy, applyBadgeNow]);
 
   if (state === "unsupported") {
     return null;

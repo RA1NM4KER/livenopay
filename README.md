@@ -157,6 +157,43 @@ Users can permanently delete their own account from Settings (type `DELETE` to c
 row (cascading to every table keyed off it -- see "Supabase Schema" above) and deletes their
 Supabase Auth user entirely. Fully self-service, no admin action required.
 
+## PWA badge and stale-data notifications
+
+The installed PWA badges its home-screen icon when a user's data goes stale
+(`isSyncStale`, `STALE_AFTER_HOURS = 6`). Two layers:
+
+- **In-app (always on, no config):** `DataSyncAction` calls
+  `navigator.setAppBadge()` / `clearAppBadge()` while the app is open. On iOS
+  the badge only *renders* once the user has granted notification permission,
+  so Settings has an "Enable badges" control (`BadgePermissionCard`) that
+  requests permission from a real tap and reflects current staleness onto the
+  icon immediately.
+- **Background (Web Push, optional):** with VAPID keys configured, enabling
+  badges also subscribes the device (`/api/push/subscribe`, stored in
+  `push_subscriptions`). A daily Vercel cron (`vercel.json` ->
+  `/api/cron/stale-check`, guarded by `CRON_SECRET`) scans connected accounts
+  and sends **one** notification per stale episode -- dedupe lives on
+  `livemopay_connections.stale_notified_at`, set when notified and cleared on
+  the next successful sync, so the cron cadence is only detection resolution,
+  not notification frequency. The service worker's `push` handler shows the
+  notification (iOS requires every push be user-visible) and sets the badge
+  while the app is closed.
+
+Env vars (see `.env.example`; all optional -- the in-app badge works without
+them, these add the background layer):
+
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` -- generate with
+  `node -e "console.log(require('web-push').generateVAPIDKeys())"`. The public
+  key is build-time inlined into the client bundle, so **redeploy after
+  setting it**, not just restart.
+- `VAPID_SUBJECT` -- optional `mailto:` contact, defaults to
+  `mailto:support@newinmeter.app`.
+- `CRON_SECRET` -- shared secret Vercel Cron sends as
+  `Authorization: Bearer <CRON_SECRET>`; the stale-check route rejects anything
+  else. On the Hobby plan cron runs once daily (`0 6 * * *`); for a tighter
+  cadence point an external scheduler (e.g. Upstash QStash) at the same
+  endpoint with the same header.
+
 ## Testing
 
 `npm test` runs the vitest suite (`npm run test:watch` for watch mode, `npm run test:coverage`

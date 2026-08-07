@@ -54,7 +54,7 @@ export default async function SettingsPage() {
         </div>
       </Card>
 
-      <BadgePermissionCard />
+      <BadgePermissionCard lastSyncedAt={connection?.lastSyncedAt ?? null} />
 
       <DeleteAccountCard />
     </div>
