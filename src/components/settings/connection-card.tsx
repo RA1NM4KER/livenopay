@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTile, SettingsGroup } from "@/components/ui/settings";
 
 type ConnectionCardProps = {
@@ -59,36 +60,35 @@ export function ConnectionCard({ status, livemopayEmail, accountLabel, lastSynce
 
         {connected ? (
           <>
-            <dl className="mt-5 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-              <div>
+            <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
+              <div className="min-w-0">
                 <dt className="text-muted">LiveMopay email</dt>
                 <dd className="mt-1 truncate text-ink">{livemopayEmail ?? "Unknown"}</dd>
               </div>
-              <div>
+              <div className="min-w-0">
                 <dt className="text-muted">Last synced</dt>
-                <dd className="mt-1 text-ink">
+                <dd className="mt-1 truncate text-ink">
                   {lastSyncedAt ? new Date(lastSyncedAt).toLocaleString() : "Not synced yet"}
                 </dd>
               </div>
             </dl>
 
             <div className="mt-5 border-t border-line pt-4">
-              {confirming ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-sm text-muted">Disconnect this account? Your history stays.</span>
-                  <Button variant="danger" onClick={() => void handleDisconnect()} disabled={isDisconnecting}>
-                    {isDisconnecting ? "Disconnecting…" : "Confirm disconnect"}
-                  </Button>
-                  <Button onClick={() => setConfirming(false)} disabled={isDisconnecting}>
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <Button variant="dangerGhost" onClick={() => setConfirming(true)}>
-                  Disconnect
-                </Button>
-              )}
+              <Button variant="dangerGhost" onClick={() => setConfirming(true)}>
+                Disconnect
+              </Button>
             </div>
+
+            <ConfirmDialog
+              open={confirming}
+              title="Disconnect LiveMopay?"
+              message="Your imported history stays available. You can reconnect this account anytime."
+              confirmLabel="Disconnect"
+              confirmVariant="danger"
+              busy={isDisconnecting}
+              onConfirm={() => void handleDisconnect()}
+              onCancel={() => setConfirming(false)}
+            />
           </>
         ) : (
           <div className="mt-5">

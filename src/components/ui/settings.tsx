@@ -51,7 +51,7 @@ export function SettingsRow({
 }
 
 const iconTileTones: Record<Tone, string> = {
-  default: "bg-canvas text-muted border border-line",
+  default: "bg-canvas text-ink/70 border border-line",
   accent: "bg-accentSoft text-success",
   danger: "bg-roseSoft text-red-600 dark:text-red-400"
 };

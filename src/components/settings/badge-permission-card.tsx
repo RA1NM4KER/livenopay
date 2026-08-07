@@ -26,12 +26,29 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return output;
 }
 
+// serviceWorker.ready never resolves when no worker will ever activate (e.g.
+// localhost, where the PWA registrar unregisters the SW), which would leave the
+// toggle stuck in its busy state. Race it against a timeout so the control
+// always settles instead of hanging.
+async function getReadyRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (!("serviceWorker" in navigator)) {
+    return null;
+  }
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+  ]);
+}
+
 async function subscribeToPush(): Promise<boolean> {
   if (!VAPID_PUBLIC_KEY || !("serviceWorker" in navigator) || !("PushManager" in window)) {
     return false;
   }
 
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await getReadyRegistration();
+  if (!registration) {
+    return false;
+  }
   const existing = await registration.pushManager.getSubscription();
   const subscription =
     existing ??
@@ -148,7 +165,7 @@ export function BadgePermissionCard({ lastSyncedAt }: BadgePermissionCardProps) 
 
   const description =
     permission === "denied"
-      ? "Blocked. Re-enable in iOS Settings → Notifications → NewinMeter."
+      ? "Notifications are blocked. Re-enable them for NewinMeter in your browser or device settings."
       : "Badge the icon and get one notification when your data goes stale.";
 
   return (

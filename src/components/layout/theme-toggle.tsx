@@ -57,8 +57,8 @@ export function ThemeToggle() {
             type="button"
             aria-pressed={active}
             onClick={() => updateTheme(option.value)}
-            className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[0.8125rem] font-medium transition ${
-              active ? "bg-paper text-ink shadow-sm" : "text-muted hover:text-ink"
+            className={`inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[0.8125rem] font-medium transition ${
+              active ? "bg-paper text-ink shadow-sm" : "text-muted hover:bg-paper/70 hover:text-ink"
             }`}
           >
             {option.icon}
