@@ -107,6 +107,34 @@ uploads keep their buffer and retry. If the Uno reboots (seq or uptime resets)
 the bridge rotates to a fresh `bootId` so restarted seq numbers can't collide
 with previously stored rows.
 
+### How it stays accurate and reliable
+
+**Serial and HTTP run on separate threads.** A dedicated reader thread owns the
+serial port and does nothing but parse pulses into an in-memory buffer; a
+separate uploader batches and POSTs. So a slow upload, retry, DNS failure or
+request timeout can **never stall serial acquisition** — pulses keep being
+collected the whole time the network is down, and the backlog uploads on
+reconnect. Acknowledged batches are removed from the buffer exactly once;
+pulses that arrive during an in-flight upload are never dropped by it.
+
+**The Arduino's uptime is the timing authority.** Each pulse carries the
+Arduino's monotonic `uptime_ms`, which fixes the *relative* spacing between
+pulses. The Mac only supplies the *absolute* UTC anchor: for each boot session
+the bridge estimates `boot_epoch = min(host_receive_time − uptime)` and
+reconstructs `timestamp = boot_epoch + uptime`. Using the minimum means
+serial/OS queue delay (which can only make a pulse arrive *later*) never pushes
+the anchor forward. The upshot: if several pulses are drained from the serial
+buffer in a burst after a block, their reconstructed wall-clock times **still
+preserve the spacing the Arduino measured** — they do not all collapse onto the
+same instant (the bug this replaced). A reboot starts a fresh anchor for the
+new `bootId`.
+
+> ⚠️ **Prototype limitation:** the buffer is **RAM-only**. Pulses already
+> collected but not yet uploaded live only in the bridge process's memory, so a
+> full bridge-process crash, power loss, or `kill -9` can still lose unsent
+> pulses. There is **no** crash-safe on-disk persistence yet. Ctrl+C attempts a
+> final flush of whatever is queued, but a hard crash does not.
+
 ## 7. Verify pulses arrive
 
 - The bridge prints `uploaded N pulse(s) … accepted=… duplicates=…` each cycle.
