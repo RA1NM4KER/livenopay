@@ -6,6 +6,8 @@ import { Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTile, SettingsGroup } from "@/components/ui/settings";
+import { SyncButton } from "@/components/ui/sync-button";
+import { isSyncStale } from "@/lib/sync-status";
 
 type ConnectionCardProps = {
   status: "connected" | "pending_selection" | "disconnected" | "error" | "not_connected";
@@ -73,7 +75,8 @@ export function ConnectionCard({ status, livemopayEmail, accountLabel, lastSynce
               </div>
             </dl>
 
-            <div className="mt-5 border-t border-line pt-4">
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+              <SyncButton onSuccess={() => window.location.reload()} showNudge={isSyncStale(lastSyncedAt)} />
               <Button variant="dangerGhost" onClick={() => setConfirming(true)}>
                 Disconnect
               </Button>
