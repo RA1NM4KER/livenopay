@@ -1,0 +1,8 @@
+# NewinMeter Mac serial bridge (prototype) dependencies.
+# Deliberately separate from the Node package.json -- these are Python-only and
+# should not pollute the app's dependencies.
+#
+#   pip install -r requirements.txt
+#
+pyserial>=3.5
+requests>=2.31

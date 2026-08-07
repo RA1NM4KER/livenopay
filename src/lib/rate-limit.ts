@@ -11,6 +11,15 @@ const RATE_LIMIT_POLICIES = {
   assistant: {
     minuteLimit: 5,
     dayLimit: 30
+  },
+  // Physical meter devices upload small batches roughly every 5 seconds
+  // (~12 req/min, ~17,280 req/day), so the default 1,000/day user policy would
+  // break ingestion within the hour. This dedicated policy is keyed by the
+  // authenticated device id (never IP), with generous headroom for retries and
+  // faster upload intervals, and does not touch the user/assistant policies.
+  meter: {
+    minuteLimit: 60,
+    dayLimit: 30000
   }
 } as const;
 

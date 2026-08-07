@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminSession } from "@/lib/auth/session";
-import { setActivitiesEnabled, setAiAssistantEnabled } from "@/lib/user-roles";
+import { setActivitiesEnabled, setAiAssistantEnabled, setLiveMeterEnabled } from "@/lib/user-roles";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,11 +9,18 @@ export const runtime = "nodejs";
 const bodySchema = z
   .object({
     aiAssistantEnabled: z.boolean().optional(),
-    activitiesEnabled: z.boolean().optional()
+    activitiesEnabled: z.boolean().optional(),
+    liveMeterEnabled: z.boolean().optional()
   })
-  .refine((body) => body.aiAssistantEnabled !== undefined || body.activitiesEnabled !== undefined, {
-    message: "Provide at least one permission to update."
-  });
+  .refine(
+    (body) =>
+      body.aiAssistantEnabled !== undefined ||
+      body.activitiesEnabled !== undefined ||
+      body.liveMeterEnabled !== undefined,
+    {
+      message: "Provide at least one permission to update."
+    }
+  );
 
 export async function PATCH(request: Request, { params }: { params: { userId: string } }) {
   const auth = await requireAdminSession();
@@ -24,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
     );
   }
 
-  const { aiAssistantEnabled, activitiesEnabled } = bodySchema.parse(await request.json());
+  const { aiAssistantEnabled, activitiesEnabled, liveMeterEnabled } = bodySchema.parse(await request.json());
 
   if (aiAssistantEnabled !== undefined) {
     await setAiAssistantEnabled(params.userId, aiAssistantEnabled);
@@ -32,6 +39,10 @@ export async function PATCH(request: Request, { params }: { params: { userId: st
 
   if (activitiesEnabled !== undefined) {
     await setActivitiesEnabled(params.userId, activitiesEnabled);
+  }
+
+  if (liveMeterEnabled !== undefined) {
+    await setLiveMeterEnabled(params.userId, liveMeterEnabled);
   }
 
   return NextResponse.json({ status: "updated" });

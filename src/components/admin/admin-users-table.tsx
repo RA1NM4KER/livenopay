@@ -168,6 +168,9 @@ function TableSkeletonRows({ rowCount }: { rowCount: number }) {
             <Skeleton className="h-6 w-10 rounded-full" />
           </td>
           <td className="px-4 py-3">
+            <Skeleton className="h-6 w-10 rounded-full" />
+          </td>
+          <td className="px-4 py-3">
             <Skeleton className="h-4 w-24" />
           </td>
           <td className="px-4 py-3">
@@ -301,6 +304,34 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
     }
   }
 
+  async function handleLiveMeterToggle(userId: string, liveMeterEnabled: boolean) {
+    const previous = users.find((user) => user.userId === userId)?.liveMeterEnabled ?? false;
+    setErrorByUserId((current) => ({ ...current, [userId]: "" }));
+    patchLocalUser(userId, { liveMeterEnabled });
+    setPendingUserId(userId);
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/permissions`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ liveMeterEnabled })
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message || "Couldn't update permission.");
+      }
+    } catch (caught) {
+      patchLocalUser(userId, { liveMeterEnabled: previous });
+      setErrorByUserId((current) => ({
+        ...current,
+        [userId]: caught instanceof Error ? caught.message : "Couldn't update permission."
+      }));
+    } finally {
+      setPendingUserId(null);
+    }
+  }
+
   async function handleActivitiesToggle(userId: string, activitiesEnabled: boolean) {
     const previous = users.find((user) => user.userId === userId)?.activitiesEnabled ?? false;
     setErrorByUserId((current) => ({ ...current, [userId]: "" }));
@@ -369,6 +400,10 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
                     <span className="hidden sm:inline">AI assistant</span>
                   </th>
                   <th className="px-4 py-3 font-medium">Activities</th>
+                  <th className="px-4 py-3 font-medium">
+                    <span className="sm:hidden">Meter</span>
+                    <span className="hidden sm:inline">Live meter</span>
+                  </th>
                   <th className="px-4 py-3 font-medium">LiveMopay</th>
                   <th className="px-4 py-3 font-medium">
                     <span className="sm:hidden">Sync</span>
@@ -422,6 +457,14 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
                             ariaLabel={`Activities access for ${user.email ?? user.userId}`}
                             checked={user.activitiesEnabled}
                             onChange={(checked) => void handleActivitiesToggle(user.userId, checked)}
+                            disabled={isUserPending}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <Switch
+                            ariaLabel={`Live meter access for ${user.email ?? user.userId}`}
+                            checked={user.liveMeterEnabled}
+                            onChange={(checked) => void handleLiveMeterToggle(user.userId, checked)}
                             disabled={isUserPending}
                           />
                         </td>

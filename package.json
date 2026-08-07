@@ -8,6 +8,7 @@
     "refresh": "python3 refresh_and_sync.py",
     "refresh:emulator": "scripts/refresh_with_emulator.sh",
     "backfill:legacy-owner": "tsx --env-file=.env.local scripts/backfill-legacy-owner.ts",
+    "create:meter-device": "tsx --env-file=.env.local scripts/create-meter-device.ts",
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",

@@ -10,6 +10,7 @@ export type UserPermissions = {
   role: UserRole;
   aiAssistantEnabled: boolean;
   activitiesEnabled: boolean;
+  liveMeterEnabled: boolean;
 };
 
 type UserRoleRow = {
@@ -17,16 +18,18 @@ type UserRoleRow = {
   role: UserRole;
   ai_assistant_enabled: boolean;
   activities_enabled: boolean;
+  live_meter_enabled: boolean;
 };
 
-const SELECT = "user_id,role,ai_assistant_enabled,activities_enabled";
+const SELECT = "user_id,role,ai_assistant_enabled,activities_enabled,live_meter_enabled";
 
 function toPermissions(row: UserRoleRow): UserPermissions {
   return {
     userId: row.user_id,
     role: row.role,
     aiAssistantEnabled: row.ai_assistant_enabled,
-    activitiesEnabled: row.activities_enabled
+    activitiesEnabled: row.activities_enabled,
+    liveMeterEnabled: row.live_meter_enabled
   };
 }
 
@@ -144,6 +147,7 @@ export async function listAllUserPermissions(): Promise<AdminUserListItem[]> {
         role: permissions?.role ?? "user",
         aiAssistantEnabled: permissions?.aiAssistantEnabled ?? true,
         activitiesEnabled: permissions?.activitiesEnabled ?? false,
+        liveMeterEnabled: permissions?.liveMeterEnabled ?? false,
         connectionStatus: connectionStatusByUserId.get(user.id) ?? null,
         lastRunStatus: lastRun?.status ?? null,
         lastRunAt: lastRun?.finished_at ?? lastRun?.started_at ?? null,
@@ -183,6 +187,17 @@ export async function setActivitiesEnabled(userId: string, enabled: boolean): Pr
     "PATCH",
     `/user_roles?user_id=eq.${encodeURIComponent(userId)}`,
     { activities_enabled: enabled, updated_at: new Date().toISOString() },
+    "return=minimal"
+  );
+}
+
+export async function setLiveMeterEnabled(userId: string, enabled: boolean): Promise<void> {
+  await getOrCreateUserPermissions(userId);
+
+  await adminSupabaseRequest(
+    "PATCH",
+    `/user_roles?user_id=eq.${encodeURIComponent(userId)}`,
+    { live_meter_enabled: enabled, updated_at: new Date().toISOString() },
     "return=minimal"
   );
 }
