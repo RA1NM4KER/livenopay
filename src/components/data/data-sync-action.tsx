@@ -41,7 +41,8 @@ export function DataSyncAction({ iconOnly = false, lastSyncedAt, loading = false
     }
 
     const updateBadge = () => {
-      const op = isSyncStale(lastSyncedAt) ? navigator.setAppBadge() : navigator.clearAppBadge();
+      // Explicit count of 1: iOS renders nothing for a no-arg setAppBadge().
+      const op = isSyncStale(lastSyncedAt) ? navigator.setAppBadge(1) : navigator.clearAppBadge();
       op?.catch((error) => {
         console.error("Failed to update app badge", error);
       });

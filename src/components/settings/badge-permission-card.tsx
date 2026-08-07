@@ -72,7 +72,8 @@ export function BadgePermissionCard({ lastSyncedAt }: BadgePermissionCardProps) 
     }
     try {
       if (isSyncStale(lastSyncedAt)) {
-        await navigator.setAppBadge();
+        // Explicit count: iOS renders nothing for a no-arg setAppBadge().
+        await navigator.setAppBadge(1);
       } else {
         await navigator.clearAppBadge();
       }

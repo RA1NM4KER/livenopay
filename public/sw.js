@@ -1,4 +1,4 @@
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL_CACHE = `ledger-shell-${VERSION}`;
 const PAGE_CACHE = `ledger-pages-${VERSION}`;
 const DATA_CACHE = `ledger-data-${VERSION}`;
@@ -87,8 +87,10 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil(
     (async () => {
+      // Pass an explicit count: iOS has no indeterminate badge and renders
+      // nothing for a no-arg setAppBadge(), unlike desktop which shows a dot.
       if ("setAppBadge" in self.navigator) {
-        await self.navigator.setAppBadge().catch(() => undefined);
+        await self.navigator.setAppBadge(1).catch(() => undefined);
       }
 
       await self.registration.showNotification(title, {
