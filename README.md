@@ -163,11 +163,14 @@ The installed PWA badges its home-screen icon when a user's data goes stale
 (`isSyncStale`, `STALE_AFTER_HOURS = 6`). Two layers:
 
 - **In-app (always on, no config):** `DataSyncAction` calls
-  `navigator.setAppBadge()` / `clearAppBadge()` while the app is open. On iOS
-  the badge only *renders* once the user has granted notification permission,
-  so Settings has an "Enable badges" control (`BadgePermissionCard`) that
-  requests permission from a real tap and reflects current staleness onto the
-  icon immediately.
+  `navigator.setAppBadge(1)` / `clearAppBadge()` while the app is open, and the
+  Settings "Enable badges" control (`BadgePermissionCard`) requests notification
+  permission from a real tap and tries to reflect current staleness onto the
+  icon right away. This foreground path works on desktop PWAs (macOS/Windows),
+  but **iOS does not reliably paint the badge from a foreground call** -- on
+  iPhone the icon only updates via the background push path below. The
+  foreground call is still worth keeping for desktop and as the clear-on-open
+  mechanism.
 - **Background (Web Push, optional):** with VAPID keys configured, enabling
   badges also subscribes the device (`/api/push/subscribe`, stored in
   `push_subscriptions`). A daily Vercel cron (`vercel.json` ->
@@ -177,7 +180,16 @@ The installed PWA badges its home-screen icon when a user's data goes stale
   the next successful sync, so the cron cadence is only detection resolution,
   not notification frequency. The service worker's `push` handler shows the
   notification (iOS requires every push be user-visible) and sets the badge
-  while the app is closed.
+  from the worker -- this is what actually lights the iOS icon. The cron only
+  ever *sets* the badge; it's cleared when the user next opens the app and
+  `DataSyncAction` sees fresh data.
+
+Two iOS-specific gotchas learned the hard way, both handled in the code:
+
+- `setAppBadge()` with **no argument** renders nothing on iOS (it has no
+  indeterminate badge). Always pass a count -- the code passes `1`.
+- The badge only appears via a delivered push, not from toggling the Settings
+  switch. That's expected iOS behavior, not a bug.
 
 Env vars (see `.env.example`; all optional -- the in-app badge works without
 them, these add the background layer):
