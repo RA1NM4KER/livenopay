@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getAuthenticatedSession } from "@/lib/auth/session";
+import { logLiveError } from "@/lib/live-log";
 import { DEFAULT_LIVE_WINDOW, isLiveWindow } from "@/lib/live-meter-calc";
 import { loadLiveOverview } from "@/lib/live-meter";
 import { enforceRateLimit, getRateLimitIdentifier, rateLimitHeaders } from "@/lib/rate-limit";
@@ -37,13 +39,14 @@ export async function GET(request: Request) {
   }
   const window = rawWindow ?? DEFAULT_LIVE_WINDOW;
 
+  const reqId = randomUUID().slice(0, 8);
   try {
     // Identity comes only from the session -- the device/connection are
     // resolved server-side from session.userId, never from the request.
     const overview = await loadLiveOverview(session.userId, window);
     return NextResponse.json(overview, { headers });
   } catch (error) {
-    console.error("live_overview_failed", error instanceof Error ? error.message : "unknown error");
+    logLiveError("live_overview_error", error, { reqId, window });
     return NextResponse.json({ message: "Failed to load live overview." }, { status: 500, headers });
   }
 }

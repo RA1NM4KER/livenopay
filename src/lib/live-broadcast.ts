@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSupabaseServiceRoleKey, getSupabaseUrl } from "./env";
+import { logLiveError, logLiveWarning } from "./live-log";
 import { liveMeterTopic, PULSES_CHANGED_EVENT } from "./live-realtime";
 
 // Best-effort Realtime notification, sent AFTER pulses are persisted, telling
@@ -38,9 +39,9 @@ export async function broadcastPulsesChanged(ownerUserId: string, accepted: numb
     });
 
     if (!response.ok) {
-      console.error(`live_broadcast_failed status=${response.status}`);
+      logLiveWarning("live_broadcast_failed", { status: response.status, accepted });
     }
   } catch (error) {
-    console.error("live_broadcast_failed", error instanceof Error ? error.message : "unknown error");
+    logLiveError("live_broadcast_failed", error, { accepted });
   }
 }

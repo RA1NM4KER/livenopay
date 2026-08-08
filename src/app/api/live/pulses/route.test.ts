@@ -110,6 +110,22 @@ describe("POST /api/live/pulses", () => {
     });
   });
 
+  describe("transient server errors (distinct from client errors)", () => {
+    it("returns 503 (not 401) when device authentication throws, e.g. DB down", async () => {
+      mocks.authenticateDeviceKey.mockRejectedValue(new Error("connection refused"));
+      const response = await post({ bootId, pulses: [validPulse] });
+      expect(response.status).toBe(503);
+      expect(mocks.recordPulses).not.toHaveBeenCalled();
+    });
+
+    it("returns 503 when the feature/rate-limit check throws", async () => {
+      mocks.isLiveMeterEnabledForDevice.mockRejectedValue(new Error("permissions read failed"));
+      const response = await post({ bootId, pulses: [validPulse] });
+      expect(response.status).toBe(503);
+      expect(mocks.recordPulses).not.toHaveBeenCalled();
+    });
+  });
+
   describe("rate limiting", () => {
     it("keys the dedicated meter policy by device id", async () => {
       await post({ bootId, pulses: [validPulse] });

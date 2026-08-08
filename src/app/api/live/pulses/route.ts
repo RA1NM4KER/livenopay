@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { broadcastPulsesChanged } from "@/lib/live-broadcast";
+import { logLiveError } from "@/lib/live-log";
 import {
   authenticateDeviceKey,
   isLiveMeterEnabledForDevice,
@@ -38,27 +40,42 @@ function unauthorized() {
 }
 
 export async function POST(request: Request) {
+  // Correlation id for this request, threaded through every log line so a
+  // production failure can be traced end-to-end.
+  const reqId = randomUUID().slice(0, 8);
+
   // Device authentication (not browser session): identity comes entirely from
-  // the bearer key, never from the request body.
-  const device = await authenticateDeviceKey(request.headers.get("authorization"));
+  // the bearer key, never from the request body. A transient error here (e.g.
+  // the DB is down) is a server fault, not "unauthorized" -- and its message is
+  // redacted so the api_key_hash in the lookup URL never reaches logs.
+  let device;
+  try {
+    device = await authenticateDeviceKey(request.headers.get("authorization"));
+  } catch (error) {
+    logLiveError("live_ingest_auth_error", error, { reqId });
+    return NextResponse.json({ message: "Service temporarily unavailable." }, { status: 503 });
+  }
   if (!device) {
     return unauthorized();
   }
 
-  // Feature gate: the live-meter feature is a per-user opt-in (like activities)
-  // while it's prototyped. Ingestion only proceeds if the device owner's flag
-  // is on, so the whole feature stays controlled by that one permission.
-  if (!(await isLiveMeterEnabledForDevice(device))) {
-    return NextResponse.json({ message: "Live meter feature is not enabled for this account." }, { status: 403 });
-  }
+  const rateHeaders: Record<string, string> = {};
+  try {
+    // Feature gate: the live-meter feature is a per-user opt-in (like
+    // activities). Ingestion only proceeds if the device owner's flag is on.
+    if (!(await isLiveMeterEnabledForDevice(device))) {
+      return NextResponse.json({ message: "Live meter feature is not enabled for this account." }, { status: 403 });
+    }
 
-  // Rate limited per authenticated device id, using the dedicated meter policy.
-  const identifier = getRateLimitIdentifier(device.id, "meter");
-  const rateLimit = await enforceRateLimit(identifier, "meter");
-  const rateHeaders = rateLimitHeaders(rateLimit);
-
-  if (!rateLimit.allowed) {
-    return NextResponse.json({ message: "Rate limit exceeded." }, { status: 429, headers: rateHeaders });
+    // Rate limited per authenticated device id, using the dedicated meter policy.
+    const rateLimit = await enforceRateLimit(getRateLimitIdentifier(device.id, "meter"), "meter");
+    Object.assign(rateHeaders, rateLimitHeaders(rateLimit));
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ message: "Rate limit exceeded." }, { status: 429, headers: rateHeaders });
+    }
+  } catch (error) {
+    logLiveError("live_ingest_error", error, { reqId, deviceId: device.id });
+    return NextResponse.json({ message: "Service temporarily unavailable." }, { status: 503, headers: rateHeaders });
   }
 
   let body: z.infer<typeof requestSchema>;
@@ -88,12 +105,9 @@ export async function POST(request: Request) {
       await broadcastPulsesChanged(device.ownerUserId, result.accepted).catch(() => {});
     }
 
-    return NextResponse.json(
-      { accepted: result.accepted, duplicates: result.duplicates },
-      { headers: rateHeaders }
-    );
+    return NextResponse.json({ accepted: result.accepted, duplicates: result.duplicates }, { headers: rateHeaders });
   } catch (error) {
-    console.error("meter_pulses_ingest_failed", error instanceof Error ? error.message : "unknown error");
+    logLiveError("live_ingest_db_error", error, { reqId, deviceId: device.id });
     return NextResponse.json({ message: "Failed to store pulses." }, { status: 500, headers: rateHeaders });
   }
 }
