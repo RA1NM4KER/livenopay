@@ -5,20 +5,32 @@ export const adminUsersQueryParamKeys = {
   direction: "dir"
 } as const;
 
-export const adminUsersSortKeyOptions = ["joined"] as const;
+export const adminUsersSortKeyOptions = ["joined", "lastSync"] as const;
+
+export type AdminUsersSortKey = (typeof adminUsersSortKeyOptions)[number];
+
+// Default view: most recently synced first -- the admin's usual "who's active".
+export const ADMIN_USERS_DEFAULT_SORT: AdminUsersSortKey = "lastSync";
+export const ADMIN_USERS_DEFAULT_DIRECTION: "asc" | "desc" = "desc";
 
 const sortKeySchema = z.enum(adminUsersSortKeyOptions);
 const sortDirectionSchema = z.enum(["asc", "desc"]);
 
 const adminUsersQuerySchema = z.object({
-  sort: sortKeySchema.catch("joined"),
-  dir: sortDirectionSchema.catch("asc")
+  sort: sortKeySchema.catch(ADMIN_USERS_DEFAULT_SORT),
+  dir: sortDirectionSchema.catch(ADMIN_USERS_DEFAULT_DIRECTION)
 });
 
 export type AdminUsersQueryParams = {
-  sortKey: (typeof adminUsersSortKeyOptions)[number];
+  sortKey: AdminUsersSortKey;
   sortDirection: "asc" | "desc";
 };
+
+// Default direction when a column is first selected: joined reads oldest-first;
+// last sync is most useful most-recent-first.
+export function defaultDirectionFor(key: AdminUsersSortKey): "asc" | "desc" {
+  return key === "lastSync" ? "desc" : "asc";
+}
 
 export function parseAdminUsersQuery(searchParams: URLSearchParams): AdminUsersQueryParams {
   const parsed = adminUsersQuerySchema.parse({

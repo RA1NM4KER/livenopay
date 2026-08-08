@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Copy, Pencil, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { DropdownSelect } from "@/components/ui/dropdown-select";
@@ -23,6 +23,32 @@ type AdminUsersApiResponse = {
   rows: AdminUserListItem[];
   total: number;
 };
+
+// The three per-user feature flags, described once so the chips and the drawer
+// stay in sync. `key` matches both the AdminUserListItem field and the
+// permissions API body field.
+const FEATURES = [
+  {
+    key: "aiAssistantEnabled",
+    short: "AI",
+    name: "AI Assistant",
+    description: "Access to the account-aware NewinMeter assistant."
+  },
+  {
+    key: "activitiesEnabled",
+    short: "Activities",
+    name: "Activities",
+    description: "Daily notes, tags and activity reporting."
+  },
+  {
+    key: "liveMeterEnabled",
+    short: "Live",
+    name: "Live Meter",
+    description: "Experimental optical meter telemetry and live usage view."
+  }
+] as const;
+
+type FeatureKey = (typeof FEATURES)[number]["key"];
 
 const roleOptions = [
   { label: "Admin", value: "admin" },
@@ -136,6 +162,72 @@ function ConnectionStatusBadge({ status }: { status: LivemopayConnectionStatus |
   );
 }
 
+function SortHeaderButton({
+  label,
+  shortLabel,
+  active,
+  direction,
+  onClick
+}: {
+  label: string;
+  shortLabel?: string;
+  active: boolean;
+  direction: "asc" | "desc";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="inline-flex items-center font-medium uppercase tracking-[0.16em] transition hover:text-ink"
+      onClick={onClick}
+      type="button"
+      aria-label={`Sort by ${label}`}
+    >
+      {shortLabel ? (
+        <>
+          <span className="sm:hidden">{shortLabel}</span>
+          <span className="hidden sm:inline">{label}</span>
+        </>
+      ) : (
+        label
+      )}
+      {/* Same convention as the data table: a faint up/down icon marks a column
+          as sortable; the active column shows its actual direction. */}
+      {!active ? (
+        <ArrowUpDown aria-hidden="true" className="ml-1 h-3.5 w-3.5 text-muted/55" />
+      ) : direction === "asc" ? (
+        <ArrowUp aria-hidden="true" className="ml-1 h-3.5 w-3.5 text-ink" />
+      ) : (
+        <ArrowDown aria-hidden="true" className="ml-1 h-3.5 w-3.5 text-ink" />
+      )}
+    </button>
+  );
+}
+
+function FeatureChips({ user }: { user: AdminUserListItem }) {
+  const enabled = FEATURES.filter((feature) => user[feature.key]);
+
+  if (enabled.length === 0) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-line bg-canvas px-2.5 py-0.5 text-xs font-medium text-muted">
+        None
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {enabled.map((feature) => (
+        <span
+          key={feature.key}
+          className="inline-flex items-center rounded-full border border-accent/30 bg-accentSoft px-2.5 py-0.5 text-xs font-medium text-brandTeal dark:text-accent"
+        >
+          {feature.short}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 async function fetchAdminUsers() {
   const response = await fetch(apiEndpoints.adminUsers, { cache: "no-store" });
 
@@ -162,13 +254,7 @@ function TableSkeletonRows({ rowCount }: { rowCount: number }) {
             <Skeleton className="h-8 w-28" />
           </td>
           <td className="px-4 py-3">
-            <Skeleton className="h-6 w-10 rounded-full" />
-          </td>
-          <td className="px-4 py-3">
-            <Skeleton className="h-6 w-10 rounded-full" />
-          </td>
-          <td className="px-4 py-3">
-            <Skeleton className="h-6 w-10 rounded-full" />
+            <Skeleton className="h-6 w-32" />
           </td>
           <td className="px-4 py-3">
             <Skeleton className="h-4 w-24" />
@@ -182,11 +268,217 @@ function TableSkeletonRows({ rowCount }: { rowCount: number }) {
   );
 }
 
+type FeatureDraft = Record<FeatureKey, boolean>;
+
+function draftFromUser(user: AdminUserListItem): FeatureDraft {
+  return {
+    aiAssistantEnabled: user.aiAssistantEnabled,
+    activitiesEnabled: user.activitiesEnabled,
+    liveMeterEnabled: user.liveMeterEnabled
+  };
+}
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-line px-4 py-3 last:border-b-0">
+      <span className="text-sm text-muted">{label}</span>
+      <span className="text-sm font-medium text-ink">{children}</span>
+    </div>
+  );
+}
+
+type ManageDrawerProps = {
+  user: AdminUserListItem;
+  isSelf: boolean;
+  saving: boolean;
+  error: string;
+  onClose: () => void;
+  // Resolves true when the save succeeded, so the drawer can animate itself out.
+  onSave: (changes: Partial<FeatureDraft>) => Promise<boolean>;
+};
+
+// Exit animation duration; keep in sync with the transition classes below.
+const DRAWER_ANIM_MS = 220;
+
+function ManageDrawer({ user, isSelf, saving, error, onClose, onSave }: ManageDrawerProps) {
+  const [draft, setDraft] = useState<FeatureDraft>(() => draftFromUser(user));
+  // Drives the slide-in / slide-out. Starts closed, then flips open on the next
+  // frame so the browser animates the transform rather than snapping to it.
+  const [visible, setVisible] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  async function copyEmail() {
+    if (!user.email) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(user.email);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard can be unavailable (insecure context / denied); silently ignore.
+    }
+  }
+
+  const requestClose = useCallback(() => {
+    setVisible(false);
+    window.setTimeout(onClose, DRAWER_ANIM_MS); // unmount after the slide-out
+  }, [onClose]);
+
+  // Lock body scroll, animate in, focus the close button, close on Escape.
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const raf = requestAnimationFrame(() => setVisible(true));
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) {
+        requestClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [requestClose, saving]);
+
+  const dirty = FEATURES.some((feature) => draft[feature.key] !== user[feature.key]);
+
+  async function handleSave() {
+    const changes: Partial<FeatureDraft> = {};
+    for (const feature of FEATURES) {
+      if (draft[feature.key] !== user[feature.key]) {
+        changes[feature.key] = draft[feature.key];
+      }
+    }
+    const ok = await onSave(changes);
+    if (ok) {
+      requestClose();
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Manage access for ${user.email ?? "user"}`}>
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => !saving && requestClose()}
+        className={`absolute inset-0 h-full w-full cursor-default bg-ink/10 backdrop-blur-md transition-opacity duration-200 motion-reduce:transition-none ${
+          visible ? "opacity-100" : "opacity-0"
+        }`}
+      />
+      <aside
+        className={`absolute right-0 top-0 flex h-full w-[min(28rem,92vw)] flex-col border-l border-line bg-paper shadow-soft transition-transform duration-200 ease-out motion-reduce:transition-none ${
+          visible ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+          <div className="flex min-w-0 flex-1 items-start gap-1.5">
+            <h2 className="min-w-0 break-all text-base font-semibold leading-6 text-ink">
+              {user.email ?? "Unknown user"}
+            </h2>
+            {user.email ? (
+              <button
+                type="button"
+                aria-label={copied ? "Email copied" : "Copy email"}
+                title={copied ? "Copied" : "Copy email"}
+                onClick={() => void copyEmail()}
+                className="flex h-6 shrink-0 items-center rounded text-muted outline-none transition hover:text-ink focus-visible:ring-1 focus-visible:ring-line"
+              >
+                {copied ? <Check className="h-4 w-4 text-accent" /> : <Copy className="h-4 w-4" />}
+              </button>
+            ) : null}
+          </div>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            aria-label="Close"
+            onClick={() => !saving && requestClose()}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-line bg-canvas text-muted transition hover:text-ink"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto px-5 py-5">
+          <section className="mb-6">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Account</h3>
+            <div className="overflow-hidden rounded-lg border border-line">
+              <InfoRow label="Joined">{new Date(user.createdAt).toLocaleDateString()}</InfoRow>
+              <InfoRow label="Role">{user.role === "admin" ? "Admin" : "User"}</InfoRow>
+              <InfoRow label="LiveMopay">
+                <ConnectionStatusBadge status={user.connectionStatus} />
+              </InfoRow>
+              <InfoRow label="Last sync">
+                <LastSyncCell user={user} />
+              </InfoRow>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted">Features</h3>
+            <div className="overflow-hidden rounded-lg border border-line">
+              {FEATURES.map((feature) => (
+                <div
+                  key={feature.key}
+                  className="flex items-center justify-between gap-4 border-b border-line px-4 py-3.5 last:border-b-0"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink">{feature.name}</p>
+                    <p className="mt-1 text-xs text-muted">{feature.description}</p>
+                  </div>
+                  <Switch
+                    ariaLabel={`${feature.name} for ${user.email ?? "user"}`}
+                    checked={draft[feature.key]}
+                    onChange={(checked) => setDraft((current) => ({ ...current, [feature.key]: checked }))}
+                    disabled={saving}
+                  />
+                </div>
+              ))}
+            </div>
+            {isSelf ? (
+              <p className="mt-3 text-xs text-muted">Editing your own feature access.</p>
+            ) : null}
+            {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+          </section>
+        </div>
+
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-line px-5 py-4">
+          <button
+            type="button"
+            onClick={requestClose}
+            disabled={saving}
+            className="rounded-md border border-line bg-canvas px-4 py-2 text-sm font-medium text-ink transition hover:bg-paper disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !dirty}
+            className="rounded-md bg-brandTeal px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50 dark:bg-accent dark:text-canvas"
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableProps) {
-  const { sortDirection, onSortChange } = useAdminUsersUrlState();
+  const { sortKey, sortDirection, onSortChange } = useAdminUsersUrlState();
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [errorByUserId, setErrorByUserId] = useState<Record<string, string>>({});
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [drawerSaving, setDrawerSaving] = useState(false);
+  const [drawerError, setDrawerError] = useState("");
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -201,13 +493,28 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
     initialData
   });
 
-  // Server returns oldest-joined-first.
+  // Client-side sort by the selected column. Server returns oldest-joined-first.
   const users = useMemo(() => {
-    const rows = data?.rows ?? [];
-    return sortDirection === "desc" ? [...rows].reverse() : rows;
-  }, [data?.rows, sortDirection]);
+    const rows = [...(data?.rows ?? [])];
+    const dir = sortDirection === "asc" ? 1 : -1;
+
+    if (sortKey === "lastSync") {
+      // Users who have never synced sort to the bottom regardless of direction.
+      return rows.sort((a, b) => {
+        const ta = a.lastRunAt ? Date.parse(a.lastRunAt) : null;
+        const tb = b.lastRunAt ? Date.parse(b.lastRunAt) : null;
+        if (ta === null && tb === null) return 0;
+        if (ta === null) return 1;
+        if (tb === null) return -1;
+        return (ta - tb) * dir;
+      });
+    }
+
+    return rows.sort((a, b) => (Date.parse(a.createdAt) - Date.parse(b.createdAt)) * dir);
+  }, [data?.rows, sortKey, sortDirection]);
   const total = data?.total ?? 0;
   const showTableSkeleton = isLoading || isManualRefreshing;
+  const selectedUser = selectedUserId ? users.find((user) => user.userId === selectedUserId) ?? null : null;
 
   const stats = useMemo(() => {
     const rows = data?.rows ?? [];
@@ -248,6 +555,19 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
     }
   };
 
+  function openDrawer(userId: string) {
+    setDrawerError("");
+    setSelectedUserId(userId);
+  }
+
+  function closeDrawer() {
+    if (drawerSaving) {
+      return;
+    }
+    setSelectedUserId(null);
+    setDrawerError("");
+  }
+
   async function handleRoleChange(userId: string, role: UserRole) {
     const previous = users.find((user) => user.userId === userId)?.role ?? "user";
     setErrorByUserId((current) => ({ ...current, [userId]: "" }));
@@ -276,87 +596,47 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
     }
   }
 
-  async function handleAiToggle(userId: string, aiAssistantEnabled: boolean) {
-    const previous = users.find((user) => user.userId === userId)?.aiAssistantEnabled ?? true;
-    setErrorByUserId((current) => ({ ...current, [userId]: "" }));
-    patchLocalUser(userId, { aiAssistantEnabled });
-    setPendingUserId(userId);
-
-    try {
-      const response = await fetch(`/api/admin/users/${userId}/permissions`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ aiAssistantEnabled })
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.message || "Couldn't update permission.");
-      }
-    } catch (caught) {
-      patchLocalUser(userId, { aiAssistantEnabled: previous });
-      setErrorByUserId((current) => ({
-        ...current,
-        [userId]: caught instanceof Error ? caught.message : "Couldn't update permission."
-      }));
-    } finally {
-      setPendingUserId(null);
+  // Batched feature save: one PATCH with only the changed flags, matching the
+  // permissions endpoint's partial-body contract. Optimistic, reverted on error.
+  // Returns true on success so the drawer can play its slide-out before the
+  // parent unmounts it.
+  async function handleSaveFeatures(userId: string, changes: Partial<FeatureDraft>): Promise<boolean> {
+    if (Object.keys(changes).length === 0) {
+      return true; // nothing changed; let the drawer animate closed
     }
-  }
 
-  async function handleLiveMeterToggle(userId: string, liveMeterEnabled: boolean) {
-    const previous = users.find((user) => user.userId === userId)?.liveMeterEnabled ?? false;
-    setErrorByUserId((current) => ({ ...current, [userId]: "" }));
-    patchLocalUser(userId, { liveMeterEnabled });
-    setPendingUserId(userId);
-
-    try {
-      const response = await fetch(`/api/admin/users/${userId}/permissions`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ liveMeterEnabled })
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.message || "Couldn't update permission.");
-      }
-    } catch (caught) {
-      patchLocalUser(userId, { liveMeterEnabled: previous });
-      setErrorByUserId((current) => ({
-        ...current,
-        [userId]: caught instanceof Error ? caught.message : "Couldn't update permission."
-      }));
-    } finally {
-      setPendingUserId(null);
+    const target = users.find((user) => user.userId === userId);
+    if (!target) {
+      return false;
     }
-  }
+    const previous: Partial<AdminUserListItem> = {};
+    for (const key of Object.keys(changes) as FeatureKey[]) {
+      previous[key] = target[key];
+    }
 
-  async function handleActivitiesToggle(userId: string, activitiesEnabled: boolean) {
-    const previous = users.find((user) => user.userId === userId)?.activitiesEnabled ?? false;
-    setErrorByUserId((current) => ({ ...current, [userId]: "" }));
-    patchLocalUser(userId, { activitiesEnabled });
-    setPendingUserId(userId);
+    setDrawerError("");
+    setDrawerSaving(true);
+    patchLocalUser(userId, changes);
 
     try {
       const response = await fetch(`/api/admin/users/${userId}/permissions`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activitiesEnabled })
+        body: JSON.stringify(changes)
       });
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
-        throw new Error(body?.message || "Couldn't update permission.");
+        throw new Error(body?.message || "Couldn't update features.");
       }
+
+      setDrawerSaving(false);
+      return true;
     } catch (caught) {
-      patchLocalUser(userId, { activitiesEnabled: previous });
-      setErrorByUserId((current) => ({
-        ...current,
-        [userId]: caught instanceof Error ? caught.message : "Couldn't update permission."
-      }));
-    } finally {
-      setPendingUserId(null);
+      patchLocalUser(userId, previous);
+      setDrawerSaving(false);
+      setDrawerError(caught instanceof Error ? caught.message : "Couldn't update features.");
+      return false;
     }
   }
 
@@ -376,38 +656,29 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
       <Card className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
         <div className="relative min-h-0 flex-1">
           <div className="h-full overflow-auto" ref={tableScrollRef}>
-            <table className="w-full min-w-[640px] border-separate border-spacing-0 text-left text-sm">
+            <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-line bg-accentSoft text-xs uppercase tracking-[0.16em] text-brandTeal dark:text-accent shadow-[0_1px_0_rgb(var(--color-line))]">
                 <tr>
                   <th className="px-4 py-3 font-medium">User</th>
                   <th className="px-4 py-3 font-medium">
-                    <button
-                      className="inline-flex items-center font-medium uppercase tracking-[0.16em]"
-                      onClick={onSortChange}
-                      type="button"
-                    >
-                      Joined
-                      {sortDirection === "asc" ? (
-                        <ArrowUp aria-hidden="true" className="ml-1 h-3.5 w-3.5 text-ink" />
-                      ) : (
-                        <ArrowDown aria-hidden="true" className="ml-1 h-3.5 w-3.5 text-ink" />
-                      )}
-                    </button>
+                    <SortHeaderButton
+                      label="Joined"
+                      active={sortKey === "joined"}
+                      direction={sortDirection}
+                      onClick={() => onSortChange("joined")}
+                    />
                   </th>
                   <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">
-                    <span className="sm:hidden">AI</span>
-                    <span className="hidden sm:inline">AI assistant</span>
-                  </th>
-                  <th className="px-4 py-3 font-medium">Activities</th>
-                  <th className="px-4 py-3 font-medium">
-                    <span className="sm:hidden">Meter</span>
-                    <span className="hidden sm:inline">Live meter</span>
-                  </th>
+                  <th className="px-4 py-3 font-medium">Features</th>
                   <th className="px-4 py-3 font-medium">LiveMopay</th>
                   <th className="px-4 py-3 font-medium">
-                    <span className="sm:hidden">Sync</span>
-                    <span className="hidden sm:inline">Last sync</span>
+                    <SortHeaderButton
+                      label="Last sync"
+                      shortLabel="Sync"
+                      active={sortKey === "lastSync"}
+                      direction={sortDirection}
+                      onClick={() => onSortChange("lastSync")}
+                    />
                   </th>
                 </tr>
               </thead>
@@ -419,16 +690,23 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
                     const isSelf = user.userId === currentUserId;
                     const isUserPending = pendingUserId === user.userId;
                     const rowError = errorByUserId[user.userId];
+                    const isActive = user.userId === selectedUserId;
 
                     return (
-                      <tr key={user.userId}>
+                      <tr
+                        key={user.userId}
+                        onClick={() => openDrawer(user.userId)}
+                        className={`group cursor-pointer transition hover:bg-canvas/70 ${isActive ? "bg-accentSoft/50" : ""}`}
+                      >
                         <td className="px-4 py-3">
                           <p className="text-ink">{user.email ?? "Unknown"}</p>
                           {isSelf ? <p className="text-xs text-muted">This is you</p> : null}
                           {rowError ? <p className="text-xs text-red-600">{rowError}</p> : null}
                         </td>
                         <td className="px-4 py-3 text-muted">{new Date(user.createdAt).toLocaleDateString()}</td>
-                        <td className="px-4 py-3">
+                        {/* Role stays inline-editable; stop the click bubbling so
+                            changing the role doesn't also open the drawer. */}
+                        <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                           <DropdownSelect
                             ariaLabel={`Role for ${user.email ?? user.userId}`}
                             value={user.role}
@@ -445,28 +723,24 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <Switch
-                            ariaLabel={`AI assistant access for ${user.email ?? user.userId}`}
-                            checked={user.aiAssistantEnabled}
-                            onChange={(checked) => void handleAiToggle(user.userId, checked)}
-                            disabled={isUserPending}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <Switch
-                            ariaLabel={`Activities access for ${user.email ?? user.userId}`}
-                            checked={user.activitiesEnabled}
-                            onChange={(checked) => void handleActivitiesToggle(user.userId, checked)}
-                            disabled={isUserPending}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <Switch
-                            ariaLabel={`Live meter access for ${user.email ?? user.userId}`}
-                            checked={user.liveMeterEnabled}
-                            onChange={(checked) => void handleLiveMeterToggle(user.userId, checked)}
-                            disabled={isUserPending}
-                          />
+                          <div className="flex items-center gap-2">
+                            <FeatureChips user={user} />
+                            {/* Sleek ghost affordance: hidden until the row is
+                                hovered, but revealed on keyboard focus so it
+                                stays the accessible trigger. Touch users open
+                                via the row tap. */}
+                            <button
+                              type="button"
+                              aria-label={`Manage features for ${user.email ?? user.userId}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openDrawer(user.userId);
+                              }}
+                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted/50 opacity-0 outline-none transition hover:text-ink group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-line"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <ConnectionStatusBadge status={user.connectionStatus} />
@@ -505,6 +779,18 @@ export function AdminUsersTable({ currentUserId, initialData }: AdminUsersTableP
 
         {error instanceof Error ? <p className="px-3 py-2 text-sm text-red-500">{error.message}</p> : null}
       </Card>
+
+      {selectedUser ? (
+        <ManageDrawer
+          key={selectedUser.userId}
+          user={selectedUser}
+          isSelf={selectedUser.userId === currentUserId}
+          saving={drawerSaving}
+          error={drawerError}
+          onClose={closeDrawer}
+          onSave={(changes) => handleSaveFeatures(selectedUser.userId, changes)}
+        />
+      ) : null}
     </div>
   );
 }

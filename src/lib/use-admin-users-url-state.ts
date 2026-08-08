@@ -2,14 +2,21 @@
 
 import { useMemo, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { adminUsersQueryParamKeys, parseAdminUsersQuery } from "@/lib/admin-users-query-params";
+import {
+  ADMIN_USERS_DEFAULT_DIRECTION,
+  ADMIN_USERS_DEFAULT_SORT,
+  adminUsersQueryParamKeys,
+  defaultDirectionFor,
+  parseAdminUsersQuery,
+  type AdminUsersSortKey
+} from "@/lib/admin-users-query-params";
 import { applyQueryUpdates, queryHref } from "@/lib/url-query";
 
 export type AdminUsersUrlState = {
-  sortKey: "joined";
+  sortKey: AdminUsersSortKey;
   sortDirection: "asc" | "desc";
   isPending: boolean;
-  onSortChange: () => void;
+  onSortChange: (key: AdminUsersSortKey) => void;
 };
 
 export function useAdminUsersUrlState(): AdminUsersUrlState {
@@ -20,11 +27,16 @@ export function useAdminUsersUrlState(): AdminUsersUrlState {
 
   const state = useMemo(() => parseAdminUsersQuery(new URLSearchParams(searchParams.toString())), [searchParams]);
 
-  const onSortChange = () => {
-    const nextDirection = state.sortDirection === "asc" ? "desc" : "asc";
+  // Clicking the active column flips its direction; clicking a different column
+  // switches to it at that column's default direction. The schema defaults
+  // (last sync / desc) are omitted from the URL to keep it clean.
+  const onSortChange = (key: AdminUsersSortKey) => {
+    const nextDirection =
+      key === state.sortKey ? (state.sortDirection === "asc" ? "desc" : "asc") : defaultDirectionFor(key);
+
     const next = applyQueryUpdates(searchParams, {
-      [adminUsersQueryParamKeys.sort]: "joined",
-      [adminUsersQueryParamKeys.direction]: nextDirection === "asc" ? null : nextDirection
+      [adminUsersQueryParamKeys.sort]: key === ADMIN_USERS_DEFAULT_SORT ? null : key,
+      [adminUsersQueryParamKeys.direction]: nextDirection === ADMIN_USERS_DEFAULT_DIRECTION ? null : nextDirection
     });
 
     startTransition(() => {
