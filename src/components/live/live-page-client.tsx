@@ -10,6 +10,7 @@ import { DEFAULT_LIVE_WINDOW } from "@/lib/live-meter-calc";
 import type { LiveOverview, LiveWindow } from "@/lib/live-meter-types";
 import { LIVE_FALLBACK_POLL_MS } from "@/lib/live-realtime";
 import { LiveChart } from "./live-chart";
+import { LivePageHeader } from "./live-page-header";
 import { LiveHero } from "./live-hero";
 import { WindowSelector } from "./window-selector";
 import { useLiveRealtime } from "./use-live-realtime";
@@ -37,26 +38,12 @@ export type LivePageClientProps = {
   userId?: string | null;
 };
 
-function PageHeader() {
-  return (
-    <header className="mb-4 pt-4 sm:pt-6">
-      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">Live electricity</h1>
-        <span className="inline-flex items-center rounded-full border border-line px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-muted">
-          Experimental
-        </span>
-      </div>
-      <p className="mt-1.5 text-sm text-muted">Near-live estimates from your meter&rsquo;s optical pulse output.</p>
-    </header>
-  );
-}
-
 function RecentCell({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="px-4 py-4 sm:px-5">
-      <p className="text-xs font-semibold text-muted">{label}</p>
-      <p className="mt-1.5 text-xl font-bold tracking-tight tabular-nums text-ink sm:text-[1.375rem]">{value}</p>
-      <p className="mt-1 text-[0.7rem] text-muted">{detail}</p>
+    <div className="min-w-0 px-3 py-3.5 sm:px-5">
+      <p className="truncate text-[0.7rem] font-semibold text-muted sm:text-xs">{label}</p>
+      <p className="mt-1.5 truncate text-lg font-bold tracking-tight tabular-nums text-ink sm:text-[1.375rem]">{value}</p>
+      <p className="mt-1 text-[0.65rem] text-muted sm:text-[0.7rem]">{detail}</p>
     </div>
   );
 }
@@ -159,7 +146,7 @@ export function LivePageClient({ userId }: LivePageClientProps = {}) {
   if (query.isLoading && !data) {
     return (
       <div className="mx-auto w-full max-w-5xl">
-        <PageHeader />
+        <LivePageHeader />
         <LoadingState />
       </div>
     );
@@ -168,7 +155,7 @@ export function LivePageClient({ userId }: LivePageClientProps = {}) {
   if (!data) {
     return (
       <div className="mx-auto w-full max-w-5xl">
-        <PageHeader />
+        <LivePageHeader />
         <EmptyState
           title="Live data unavailable"
           body="We couldn't load your live meter data just now. It will retry automatically."
@@ -180,7 +167,7 @@ export function LivePageClient({ userId }: LivePageClientProps = {}) {
   if (!data.device) {
     return (
       <div className="mx-auto w-full max-w-5xl">
-        <PageHeader />
+        <LivePageHeader />
         <EmptyState
           title="No live meter reader is configured yet"
           body="Once a meter reader is set up for your account, your near-live electricity usage will appear here."
@@ -197,7 +184,7 @@ export function LivePageClient({ userId }: LivePageClientProps = {}) {
 
   return (
     <div className="mx-auto w-full max-w-5xl pb-6">
-      <PageHeader />
+      <LivePageHeader />
 
       {/* Accessible, colour-independent summary of the current state. */}
       <p className="sr-only">
@@ -239,7 +226,7 @@ export function LivePageClient({ userId }: LivePageClientProps = {}) {
       </Card>
 
       {/* ONE supporting strip -- three columns on desktop, stacked on mobile. */}
-      <div className="mt-4 grid grid-cols-1 divide-y divide-line overflow-hidden rounded-lg border border-line bg-paper/88 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+      <div className="mt-4 grid grid-cols-3 divide-x divide-line overflow-hidden rounded-lg border border-line bg-paper/88">
         <RecentCell label="Last 5 minutes" value={formatLiveKwh(energy.last5MinutesKwh)} detail="Optical pulse total" />
         <RecentCell label="Last hour" value={formatLiveKwh(energy.lastHourKwh)} detail="Optical pulse total" />
         <RecentCell label="Last pulse" value={agoText ?? "—"} detail="Not a device-online indicator" />
