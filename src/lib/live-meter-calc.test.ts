@@ -216,6 +216,25 @@ describe("bucketWattsSeries", () => {
   });
 });
 
+describe("estimator coherence (hero vs graph share one per-pulse model)", () => {
+  it("a single-interval hero estimate equals that interval's bucket value", () => {
+    const ppk = 1000;
+    const start = Date.parse("2026-08-08T10:00:00.000Z");
+    // Hero: median of the last valid interval(s).
+    const hero = estimateLoadWatts([1500], ppk);
+    // Graph: a bucket containing exactly that one pulse.
+    const series = bucketWattsSeries(
+      [{ observedAt: new Date(start + 1000).toISOString(), deltaMs: 1500 }],
+      ppk,
+      start,
+      start + 60_000,
+      10_000
+    );
+    expect(hero).toBe(pulseWatts(ppk, 1500));
+    expect(series[0].watts).toBe(Math.round(pulseWatts(ppk, 1500) as number));
+  });
+});
+
 describe("changeWattsLastMinute", () => {
   const now = Date.parse("2026-08-07T10:30:00.000Z");
   const series: SeriesPoint[] = [

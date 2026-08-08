@@ -35,10 +35,6 @@ export type LivePageClientProps = {
   // The authenticated user's id, passed from the server page. Used only to
   // build this user's own private Realtime topic (not a secret).
   userId?: string | null;
-  // Injectable data source. Defaults to the real session-authenticated API;
-  // overridden only by the local visual-QA harness so every state can be
-  // driven deterministically without production auth or synthetic pulses.
-  overviewFetcher?: (window: LiveWindow) => Promise<LiveOverview>;
 };
 
 function PageHeader() {
@@ -96,7 +92,7 @@ function LoadingState() {
   );
 }
 
-export function LivePageClient({ userId, overviewFetcher = fetchLiveOverview }: LivePageClientProps = {}) {
+export function LivePageClient({ userId }: LivePageClientProps = {}) {
   const [window, setWindow] = useState<LiveWindow>(DEFAULT_LIVE_WINDOW);
   const [tick, setTick] = useState(0);
   const [flash, setFlash] = useState(false);
@@ -105,7 +101,7 @@ export function LivePageClient({ userId, overviewFetcher = fetchLiveOverview }: 
 
   const query = useQuery({
     queryKey: [LIVE_QUERY_KEY, window],
-    queryFn: () => overviewFetcher(window),
+    queryFn: () => fetchLiveOverview(window),
     // Realtime broadcast drives updates; this is only a slow fallback for a
     // missed event or a dropped socket.
     refetchInterval: LIVE_FALLBACK_POLL_MS,
