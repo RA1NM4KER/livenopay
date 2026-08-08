@@ -15,7 +15,7 @@ from pulse_parse import (
     BootTracker,
     PulseBuffer,
     Pulse,
-    drain_once,
+    drain_cycle,
     ingest_line,
     parse_pulse_line,
 )
@@ -164,82 +164,31 @@ def collecting_post_fn(recorder):
     return post_fn
 
 
-class PulseBufferDrainTests(unittest.TestCase):
-    def _item(self, boot_id, seq, uptime=None):
-        return {"bootId": boot_id, "seq": seq, "uptimeMs": uptime if uptime is not None else seq * 1000, "deltaMs": None}
+def item(boot_id, seq, uptime=None):
+    return {"bootId": boot_id, "seq": seq, "uptimeMs": uptime if uptime is not None else seq * 1000, "deltaMs": None}
 
-    def _estimator_for(self, items):
-        est = BootEpochEstimator()
-        for it in items:
-            est.observe(it["bootId"], int(it["uptimeMs"]), 0)
-        return est
 
-    def test_failed_batch_stays_queued_then_retry_removes_exactly_it(self):
-        buf = PulseBuffer()
-        items = [self._item("b", s) for s in range(5)]
-        for it in items:
-            buf.append(it)
-        est = self._estimator_for(items)
+def estimator_for(items):
+    est = BootEpochEstimator()
+    for it in items:
+        est.observe(it["bootId"], int(it["uptimeMs"]), 0)
+    return est
 
-        def failing(boot_id, pulses):
-            return False
 
-        self.assertEqual(drain_once(buf, est, failing), 0)
-        self.assertEqual(len(buf), 5)  # nothing acked on failure
-
-        recorder = []
-        self.assertEqual(drain_once(buf, est, collecting_post_fn(recorder)), 5)
-        self.assertEqual(len(buf), 0)
-        # Exactly one successful post of the 5 seqs -- no local duplication.
-        self.assertEqual(recorder, [("b", [0, 1, 2, 3, 4])])
-
-    def test_pulses_arriving_during_upload_are_not_removed_by_earlier_ack(self):
-        # Requirement 5: 5 uploading, 3 arrive mid-upload -> the 5 are acked,
-        # the 3 remain. Modelled deterministically via a post_fn that appends
-        # the new arrivals at the moment the claimed batch is being "uploaded".
-        buf = PulseBuffer()
-        for s in range(5):
-            buf.append(self._item("b", s))
-        est = BootEpochEstimator()
-        for s in range(8):
-            est.observe("b", s * 1000, 0)
-
-        def post_fn(boot_id, pulses):
-            # Simulate 3 new pulses landing while this batch is in flight.
-            if len(buf) == 5:
-                for s in range(5, 8):
-                    buf.append(self._item("b", s))
-            return True
-
-        uploaded = drain_once(buf, est, post_fn)
-        remaining = [it["seq"] for it in buf.snapshot()]
-        # First claim uploads [0..4] then acks them; the mid-flight [5,6,7]
-        # survive and get uploaded on the next loop iteration of the same drain.
-        self.assertEqual(uploaded, 8)
-        self.assertEqual(remaining, [])
-        # Re-run with a non-appending post to assert the ack math directly:
-        buf2 = PulseBuffer()
-        for s in range(5):
-            buf2.append(self._item("b", s))
-        claimed, _ = buf2.claim_batch()
-        for s in range(5, 8):  # arrive during upload
-            buf2.append(self._item("b", s))
-        buf2.ack(len(claimed))  # ack only the claimed 5
-        self.assertEqual([it["seq"] for it in buf2.snapshot()], [5, 6, 7])
-
+class PulseBufferTests(unittest.TestCase):
     def test_batch_is_capped_at_max_size(self):
         buf = PulseBuffer()
         for s in range(250):
-            buf.append(self._item("b", s))
+            buf.append(item("b", s))
         batch, _ = buf.claim_batch(max_size=100)
         self.assertEqual(len(batch), 100)
 
     def test_batches_never_mix_boot_ids(self):
         buf = PulseBuffer()
         for s in range(3):
-            buf.append(self._item("boot-1", s))
+            buf.append(item("boot-1", s))
         for s in range(1, 3):
-            buf.append(self._item("boot-2", s))
+            buf.append(item("boot-2", s))
         first, boot_a = buf.claim_batch()
         self.assertEqual(boot_a, "boot-1")
         self.assertEqual([it["seq"] for it in first], [0, 1, 2])
@@ -247,6 +196,148 @@ class PulseBufferDrainTests(unittest.TestCase):
         second, boot_b = buf.claim_batch()
         self.assertEqual(boot_b, "boot-2")
         self.assertEqual([it["seq"] for it in second], [1, 2])
+
+    def test_concurrent_arrivals_are_never_removed_by_ack(self):
+        # Requirement 8: claim, then more pulses arrive, then ack only the
+        # claimed count -> the arrivals survive at the back.
+        buf = PulseBuffer()
+        for s in range(5):
+            buf.append(item("b", s))
+        claimed, _ = buf.claim_batch()
+        for s in range(5, 8):  # arrive during "upload"
+            buf.append(item("b", s))
+        buf.ack(len(claimed))  # ack only the claimed 5
+        self.assertEqual([it["seq"] for it in buf.snapshot()], [5, 6, 7])
+
+
+class DrainCycleTests(unittest.TestCase):
+    def test_exactly_the_cycle_start_pulses_are_uploaded(self):
+        # Requirement 1.
+        buf = PulseBuffer()
+        for s in range(5):
+            buf.append(item("b", s))
+        est = estimator_for(buf.snapshot())
+        recorder = []
+
+        result = drain_cycle(buf, est, collecting_post_fn(recorder))
+
+        self.assertEqual(result.eligible, 5)
+        self.assertEqual(result.uploaded, 5)
+        self.assertEqual(result.requests, 1)
+        self.assertEqual(recorder, [("b", [0, 1, 2, 3, 4])])
+        self.assertEqual(len(buf), 0)
+
+    def test_pulses_arriving_during_a_post_wait_for_the_next_cycle(self):
+        # Requirements 2 + 3: a pulse (indeed several) arriving while the POST
+        # callback runs must NOT be swept into this cycle, and must not trigger
+        # a chain of immediate 1-pulse POSTs.
+        buf = PulseBuffer()
+        for s in range(5):
+            buf.append(item("b", s))
+        est = estimator_for([item("b", s) for s in range(20)])
+        recorder = []
+
+        def post_fn(boot_id, pulses):
+            recorder.append(len(pulses))
+            # Two new pulses land during EVERY request callback.
+            base = 100 + len(recorder) * 2
+            buf.append(item("b", base))
+            buf.append(item("b", base + 1))
+            return True
+
+        result = drain_cycle(buf, est, post_fn)
+
+        # Exactly one request of the 5 eligible pulses -- NOT 5 then 1 then 1...
+        self.assertEqual(result.eligible, 5)
+        self.assertEqual(result.uploaded, 5)
+        self.assertEqual(result.requests, 1)
+        self.assertEqual(recorder, [5])
+        # The 2 arrivals during the callback are held for the next cycle.
+        self.assertEqual(len(buf), 2)
+
+        # Next cycle picks up exactly those held pulses.
+        recorder.clear()
+        result2 = drain_cycle(buf, est, post_fn)
+        self.assertEqual(result2.eligible, 2)
+        self.assertEqual(result2.uploaded, 2)
+
+    def test_backlog_drains_in_100_capped_requests_within_one_cycle(self):
+        # Requirement 4: 250 same-boot pulses -> 100 + 100 + 50 in one cycle.
+        buf = PulseBuffer()
+        for s in range(250):
+            buf.append(item("b", s))
+        est = estimator_for(buf.snapshot())
+        recorder = []
+
+        result = drain_cycle(buf, est, collecting_post_fn(recorder))
+
+        self.assertEqual(result.eligible, 250)
+        self.assertEqual(result.uploaded, 250)
+        self.assertEqual(result.requests, 3)
+        self.assertEqual([len(seqs) for _, seqs in recorder], [100, 100, 50])
+        self.assertEqual(len(buf), 0)
+
+    def test_arrivals_during_backlog_drain_wait_for_next_cycle(self):
+        # Requirement 5: pulses arriving while the 250 backlog drains stay for
+        # the next cycle; only the original 250 upload this cycle.
+        buf = PulseBuffer()
+        for s in range(250):
+            buf.append(item("b", s))
+        est = estimator_for([item("b", s) for s in range(300)])
+
+        def post_fn(boot_id, pulses):
+            buf.append(item("b", 250 + len(pulses)))  # one arrival per request
+            return True
+
+        result = drain_cycle(buf, est, post_fn)
+
+        self.assertEqual(result.eligible, 250)
+        self.assertEqual(result.uploaded, 250)
+        self.assertEqual(result.requests, 3)  # 100 + 100 + 50
+        self.assertEqual(len(buf), 3)  # three arrivals held for next cycle
+
+    def test_failed_upload_acknowledges_nothing_from_the_failed_batch(self):
+        # Requirement 6.
+        buf = PulseBuffer()
+        for s in range(5):
+            buf.append(item("b", s))
+        est = estimator_for(buf.snapshot())
+
+        result = drain_cycle(buf, est, lambda boot_id, pulses: False)
+        self.assertEqual(result.uploaded, 0)
+        self.assertEqual(len(buf), 5)  # nothing acked
+
+        # And a mid-backlog failure acks only the batches that succeeded.
+        buf2 = PulseBuffer()
+        for s in range(250):
+            buf2.append(item("b", s))
+        est2 = estimator_for(buf2.snapshot())
+        calls = {"n": 0}
+
+        def flaky(boot_id, pulses):
+            calls["n"] += 1
+            return calls["n"] == 1  # first request ok, second fails
+
+        result2 = drain_cycle(buf2, est2, flaky)
+        self.assertEqual(result2.uploaded, 100)  # only the first batch
+        self.assertEqual(len(buf2), 150)  # failed batch + rest stay queued
+
+    def test_same_boot_boundaries_respected_within_a_cycle(self):
+        # Requirement 7: a budget spanning two boots splits at the boundary.
+        buf = PulseBuffer()
+        for s in range(3):
+            buf.append(item("boot-1", s))
+        for s in range(2):
+            buf.append(item("boot-2", s))
+        est = estimator_for(buf.snapshot())
+        recorder = []
+
+        result = drain_cycle(buf, est, collecting_post_fn(recorder))
+
+        self.assertEqual(result.eligible, 5)
+        self.assertEqual(result.uploaded, 5)
+        self.assertEqual(result.requests, 2)
+        self.assertEqual(recorder, [("boot-1", [0, 1, 2]), ("boot-2", [0, 1])])
 
     def test_reboot_mid_stream_uploads_two_boots_separately(self):
         tracker = BootTracker(boot_id_factory=counting_factory())
@@ -260,7 +351,7 @@ class PulseBufferDrainTests(unittest.TestCase):
             ingest_line(line, tracker, est, buf, host)
 
         recorder = []
-        drain_once(buf, est, collecting_post_fn(recorder))
+        drain_cycle(buf, est, collecting_post_fn(recorder))
         self.assertEqual(recorder, [("boot-1", [1, 2]), ("boot-2", [1])])
 
 
@@ -322,7 +413,7 @@ class SerialNotBlockedByUploadTests(unittest.TestCase):
         self.assertGreater(len(buf), 0)
 
         def run_drain():
-            uploaded_holder["n"] = drain_once(buf, est, blocking_post)
+            uploaded_holder["n"] = drain_cycle(buf, est, blocking_post).uploaded
 
         t_upload = threading.Thread(target=run_drain, daemon=True)
         t_upload.start()

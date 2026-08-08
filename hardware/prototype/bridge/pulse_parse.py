@@ -7,7 +7,7 @@ imported here; pyserial/requests live in bridge.py.
 
 Threading model (see bridge.py): a single *producer* thread owns the serial
 port and calls ingest_line(); a single *consumer* thread batches and uploads
-via drain_once(). The two shared objects -- PulseBuffer and BootEpochEstimator
+via drain_cycle(). The two shared objects -- PulseBuffer and BootEpochEstimator
 -- are internally locked. BootTracker is touched only by the producer.
 """
 
@@ -128,7 +128,7 @@ class BootEpochEstimator:
     host time still reconstructs to their true spacing, because each keeps its
     own uptime_ms.
 
-    Timestamps are computed at *upload* time (drain_once), not at read time, so
+    Timestamps are computed at *upload* time (drain_cycle), not at read time, so
     they use the best boot-epoch estimate available so far. Because the DB
     idempotency key is (device_id, boot_id, seq) and observed_at is not part of
     it, a retry recomputing a marginally different timestamp is harmless -- the
@@ -264,26 +264,53 @@ def build_payload_pulses(estimator: BootEpochEstimator, batch: List[BufferedPuls
     ]
 
 
-def drain_once(
+@dataclass(frozen=True)
+class DrainResult:
+    eligible: int  # pulses queued at cycle start -- the only ones this cycle may upload
+    uploaded: int  # pulses acknowledged this cycle
+    requests: int  # successful HTTP POSTs this cycle (>1 only to clear a backlog)
+
+
+def drain_cycle(
     buffer: PulseBuffer,
     estimator: BootEpochEstimator,
     post_fn: PostFn,
     max_batch: int = MAX_BATCH_SIZE,
-) -> int:
-    """Consumer step: upload leading batches until one fails or the buffer empties.
+) -> DrainResult:
+    """Consumer step for one BATCH_SECONDS cycle, with a fixed eligibility boundary.
 
-    Returns the number of pulses successfully acknowledged this call. Stops at
-    the first failed batch, leaving it (and everything after) queued.
+    The number of pulses queued at the START of the cycle is the budget: only
+    those may be uploaded this cycle. Pulses the serial thread appends *while*
+    this cycle's HTTP requests are in flight fall outside the budget and stay
+    buffered for the NEXT cycle -- which is what stops the "5, then 1, then 1,
+    then 1" chain caused by the old drain-until-empty loop.
+
+    Within the budget the cycle may still make several requests back-to-back
+    (each capped at max_batch and at same-boot boundaries) to efficiently clear
+    a backlog that already existed when the cycle began -- e.g. 250 queued ->
+    100 + 100 + 50 in one cycle, no waiting between them.
+
+    Stops at the first failed batch, acknowledging nothing from it (exact-once):
+    that batch and everything after it stay queued for a later cycle.
     """
+    # Snapshot the eligibility boundary once, up front. Front-of-queue items are
+    # stable (only this single consumer pops; the producer only appends at the
+    # back), so the first `eligible` items are exactly this snapshot.
+    eligible = len(buffer)
     uploaded = 0
-    while True:
-        batch, boot_id = buffer.claim_batch(max_batch)
+    requests = 0
+
+    while uploaded < eligible:
+        batch, boot_id = buffer.claim_batch(min(max_batch, eligible - uploaded))
         if not batch or boot_id is None:
-            return uploaded
+            break
 
         pulses = build_payload_pulses(estimator, batch, boot_id)
         if not post_fn(boot_id, pulses):
-            return uploaded
+            break
 
         buffer.ack(len(batch))
         uploaded += len(batch)
+        requests += 1
+
+    return DrainResult(eligible=eligible, uploaded=uploaded, requests=requests)

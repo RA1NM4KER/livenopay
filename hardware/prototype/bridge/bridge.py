@@ -53,7 +53,7 @@ from pulse_parse import (
     BootTracker,
     PostFn,
     PulseBuffer,
-    drain_once,
+    drain_cycle,
     ingest_line,
 )
 
@@ -67,7 +67,7 @@ def env(name: str, default: str | None = None, required: bool = False) -> str | 
 
 
 def make_post_fn(session: requests.Session, url: str, headers: dict, timeout: float) -> PostFn:
-    """Wrap requests into a never-raising sender for drain_once.
+    """Wrap requests into a never-raising sender for drain_cycle.
 
     Returns True only on a 2xx/3xx acknowledged upload. Any failure (>=400 or a
     network exception) returns False so the batch stays queued. The device key
@@ -168,15 +168,26 @@ def main() -> None:
             # Interruptible wait: KeyboardInterrupt breaks out of sleep so a
             # Ctrl+C mid-cycle still reaches the flush below.
             time.sleep(batch_seconds)
-            drain_once(buffer, estimator, post_fn)
+            result = drain_cycle(buffer, estimator, post_fn)
+            # One concise line per non-empty cycle, so batching is verifiable at
+            # a glance: how many were eligible when the cycle began, how many
+            # uploaded, how many HTTP requests that took (>1 only to clear a
+            # pre-existing backlog), and how many remain queued (arrivals during
+            # the cycle, held for the next one).
+            if result.eligible > 0:
+                print(
+                    f"[bridge] cycle: eligible={result.eligible} uploaded={result.uploaded} "
+                    f"requests={result.requests} remaining={len(buffer)}"
+                )
     except KeyboardInterrupt:
         print(f"\n[bridge] stopping; {len(buffer)} pulse(s) queued, attempting final flush")
         stop_event.set()
         reader.join(timeout=2)
-        # Best-effort final flush. RAM-only buffer: anything still unsent after
-        # this (e.g. network still down) is lost on exit -- this prototype does
-        # not persist the backlog to disk.
-        drain_once(buffer, estimator, post_fn)
+        # Best-effort final flush. The reader is stopped, so the cycle budget
+        # equals everything left -- one drain_cycle clears the whole remaining
+        # backlog (in <=100 chunks). RAM-only buffer: anything still unsent
+        # after this (e.g. network still down) is lost on exit.
+        drain_cycle(buffer, estimator, post_fn)
         remaining = len(buffer)
         if remaining:
             print(f"[bridge] warning: {remaining} pulse(s) could not be uploaded and are lost")
