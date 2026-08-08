@@ -1,5 +1,6 @@
 import "server-only";
 
+import { z } from "zod";
 import {
   bucketWattsSeries,
   changeWattsLastMinute,
@@ -10,7 +11,7 @@ import {
   recentMedianIntervalMs
 } from "./live-meter-calc";
 import type { EstimateState, LiveOverview, LiveWindow } from "./live-meter-types";
-import { adminSupabaseCount, adminSupabaseFetch } from "./supabase-rest";
+import { adminSupabaseRequest } from "./supabase-rest";
 
 // Cap the number of raw pulses pulled for the series query, so a very busy
 // meter over a 6h window can't return an unbounded row set. The result is
@@ -21,41 +22,23 @@ const PULSE_QUERY_CAP = 20000;
 // cadence. Small: the hero is the median of the latest few valid intervals.
 const HERO_LOOKBACK = 8;
 
-type DeviceRow = { id: string; name: string; pulses_per_kwh: number };
-type PulseRow = { observed_at: string; delta_ms: number | null };
+// Contract of the live_meter_overview RPC. Validated on every read so a schema
+// drift surfaces as a clear error rather than a silent NaN downstream.
+const overviewRpcSchema = z.object({
+  device: z
+    .object({ id: z.string(), name: z.string(), pulses_per_kwh: z.number().int().positive() })
+    .nullable(),
+  latest: z.array(z.object({ observed_at: z.string(), delta_ms: z.number().nullable() })),
+  series: z.array(z.object({ observed_at: z.string(), delta_ms: z.number().nullable() })),
+  count5m: z.number().int().nonnegative(),
+  count1h: z.number().int().nonnegative()
+});
 
-// Every connection row this user has ever owned (an old disconnected row plus a
-// reconnect both count), so a device attached to any of them resolves. Scoped
-// strictly to the caller's user_id -- ownership is never taken from the client.
-async function getUserConnectionIds(userId: string): Promise<string[]> {
-  const rows = await adminSupabaseFetch<Array<{ id: string }>>(
-    `/livemopay_connections?select=id&user_id=eq.${encodeURIComponent(userId)}`
-  );
-  return rows.map((row) => row.id);
-}
+type OverviewRpcResult = z.infer<typeof overviewRpcSchema>;
 
-// Device-selection rule: the most recently seen enabled device wins (last_seen_at
-// desc, nulls last). The prototype has exactly one enabled reader; if more than
-// one ever exists for a user, this deterministically picks the one that most
-// recently reported pulses rather than blindly merging several devices' data.
-// Only presentation fields are selected -- api_key_hash / key_hint never leave
-// the server.
-async function resolveLiveDevice(connectionIds: string[]): Promise<DeviceRow | null> {
-  if (connectionIds.length === 0) {
-    return null;
-  }
-
-  const inList = connectionIds.map((id) => encodeURIComponent(id)).join(",");
-  const rows = await adminSupabaseFetch<DeviceRow[]>(
-    `/meter_devices?select=id,name,pulses_per_kwh&connection_id=in.(${inList})` +
-      `&enabled=eq.true&order=last_seen_at.desc.nullslast&limit=1`
-  );
-  return rows[0] ?? null;
-}
-
-function emptyOverview(window: LiveWindow, device: LiveOverview["device"], nowMs: number): LiveOverview {
+function emptyOverview(window: LiveWindow, nowMs: number): LiveOverview {
   return {
-    device,
+    device: null,
     window,
     latest: {
       estimatedWatts: null,
@@ -70,44 +53,46 @@ function emptyOverview(window: LiveWindow, device: LiveOverview["device"], nowMs
   };
 }
 
+// Fetch device + pulses + counts for the caller's own device in ONE snapshot
+// (see the live_meter_overview migration). Scoped strictly by userId; the RPC
+// is service-role-only and resolves the device from the user's connections.
+async function fetchOverviewSnapshot(userId: string, windowStartIso: string, nowMs: number): Promise<OverviewRpcResult> {
+  const raw = await adminSupabaseRequest<unknown>("POST", "/rpc/live_meter_overview", {
+    p_user_id: userId,
+    p_window_start: windowStartIso,
+    p_five_min: new Date(nowMs - 5 * 60_000).toISOString(),
+    p_one_hour: new Date(nowMs - 60 * 60_000).toISOString(),
+    p_hero_lookback: HERO_LOOKBACK,
+    p_series_cap: PULSE_QUERY_CAP
+  });
+  return overviewRpcSchema.parse(raw);
+}
+
 // Presentation data for the Live page, derived entirely server-side from the
 // caller's own device pulses. The browser never reads meter_pulses directly.
 export async function loadLiveOverview(userId: string, window: LiveWindow): Promise<LiveOverview> {
   const nowMs = Date.now();
-
-  const device = await resolveLiveDevice(await getUserConnectionIds(userId));
-  if (!device) {
-    return emptyOverview(window, null, nowMs);
-  }
-
-  const deviceInfo = { name: device.name, pulsesPerKwh: device.pulses_per_kwh };
-  const deviceFilter = `device_id=eq.${encodeURIComponent(device.id)}`;
   // Snap the window start DOWN to a bucket boundary so the leftmost bucket is
-  // whole and its epoch-aligned key is stable between refetches (the interior
-  // buckets are already stable via epoch alignment).
+  // whole and its epoch-aligned key is stable between refetches.
   const bucketMs = LIVE_WINDOWS[window].bucketMs;
   const windowStartMs = Math.floor((nowMs - LIVE_WINDOWS[window].ms) / bucketMs) * bucketMs;
-  const fiveMinAgo = new Date(nowMs - 5 * 60_000).toISOString();
-  const oneHourAgo = new Date(nowMs - 60 * 60_000).toISOString();
-  const windowStartIso = new Date(windowStartMs).toISOString();
 
-  const [latestRows, seriesRows, count5m, count1h] = await Promise.all([
-    adminSupabaseFetch<PulseRow[]>(
-      `/meter_pulses?select=observed_at,delta_ms&${deviceFilter}&order=observed_at.desc&limit=${HERO_LOOKBACK}`
-    ),
-    adminSupabaseFetch<PulseRow[]>(
-      `/meter_pulses?select=observed_at,delta_ms&${deviceFilter}` +
-        `&observed_at=gte.${windowStartIso}&order=observed_at.asc&limit=${PULSE_QUERY_CAP}`
-    ),
-    adminSupabaseCount(`/meter_pulses?select=id&${deviceFilter}&observed_at=gte.${fiveMinAgo}`),
-    adminSupabaseCount(`/meter_pulses?select=id&${deviceFilter}&observed_at=gte.${oneHourAgo}`)
-  ]);
+  const snapshot = await fetchOverviewSnapshot(userId, new Date(windowStartMs).toISOString(), nowMs);
 
-  // Hero: median of the latest few valid intervals (most-recent-first).
-  const recentDeltas = latestRows.map((row) => row.delta_ms);
-  const estimatedWatts = estimateLoadWatts(recentDeltas, deviceInfo.pulsesPerKwh);
-  const lastPulseAt = latestRows[0]?.observed_at ?? null;
-  const lastDeltaMs = latestRows[0]?.delta_ms ?? null;
+  if (!snapshot.device) {
+    return emptyOverview(window, nowMs);
+  }
+
+  const pulsesPerKwh = snapshot.device.pulses_per_kwh;
+
+  // Hero: median of the latest few valid intervals (most-recent-first). Uses the
+  // same per-pulse converter (pulseWatts, inside estimateLoadWatts) as the graph
+  // buckets -- the hero is the instantaneous end, the graph is the time-bucketed
+  // history, but neither invents a different power model.
+  const recentDeltas = snapshot.latest.map((row) => row.delta_ms);
+  const estimatedWatts = estimateLoadWatts(recentDeltas, pulsesPerKwh);
+  const lastPulseAt = snapshot.latest[0]?.observed_at ?? null;
+  const lastDeltaMs = snapshot.latest[0]?.delta_ms ?? null;
 
   let estimateState: EstimateState;
   if (estimatedWatts === null || lastPulseAt === null) {
@@ -119,8 +104,8 @@ export async function loadLiveOverview(userId: string, window: LiveWindow): Prom
   }
 
   const series = bucketWattsSeries(
-    seriesRows.map((row) => ({ observedAt: row.observed_at, deltaMs: row.delta_ms })),
-    deviceInfo.pulsesPerKwh,
+    snapshot.series.map((row) => ({ observedAt: row.observed_at, deltaMs: row.delta_ms })),
+    pulsesPerKwh,
     windowStartMs,
     nowMs,
     bucketMs
@@ -131,7 +116,7 @@ export async function loadLiveOverview(userId: string, window: LiveWindow): Prom
   const rawChange = estimateState === "fresh" ? changeWattsLastMinute(series, estimatedWatts, nowMs) : null;
 
   return {
-    device: deviceInfo,
+    device: { name: snapshot.device.name, pulsesPerKwh },
     window,
     latest: {
       estimatedWatts: estimatedWatts === null ? null : Math.round(estimatedWatts),
@@ -141,8 +126,8 @@ export async function loadLiveOverview(userId: string, window: LiveWindow): Prom
       changeWattsLastMinute: rawChange === null ? null : Math.round(rawChange)
     },
     energy: {
-      last5MinutesKwh: energyKwh(count5m, deviceInfo.pulsesPerKwh),
-      lastHourKwh: energyKwh(count1h, deviceInfo.pulsesPerKwh)
+      last5MinutesKwh: energyKwh(snapshot.count5m, pulsesPerKwh),
+      lastHourKwh: energyKwh(snapshot.count1h, pulsesPerKwh)
     },
     series,
     generatedAt: new Date(nowMs).toISOString()
